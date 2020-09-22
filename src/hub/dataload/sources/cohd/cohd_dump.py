@@ -1,31 +1,42 @@
-from biothings.utils.common import unzipall
-from biothings.hub.dataload.dumper import ManualDumper
+from biothings.hub.dataload.dumper import HTTPDumper
 from config import DATA_ARCHIVE_ROOT
 import os
 import os.path
 import sys
 import time
+import bs4
 
 import biothings
 import config
 biothings.config_for_app(config)
 
 
-class COHDDumper(ManualDumper):
+class COHDDumper(HTTPDumper):
+    """
+    DrugBank requires to sign-in before downloading a file. This dumper
+    will just monitor new versions and report when a new one is available
+    """
 
     SRC_NAME = "cohd"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
-    #VERSION = '2020-4-7'
+    AUTO_UPLOAD = False  # it's still manual, so upload won't have the
 
-    # def __init__(self, *args, **kwargs):
-    #    super(UMLSDumper,self).__init__(*args,**kwargs)
-    #    self.logger.info("""Manu#ally download from: https://download.nlm.nih.gov/umls/kss/2019AB/umls-2019AB-mrconso.zip""")
+    SCHEDULE = "0 12 * * *"
+    VERSIONS_URL = "https://www.drugbank.ca/releases"
 
-    # def create_todump_list(self, force=True):
-    #    self.release = VERSION
-    #    local = os.path.join(SRC_ROOT_FOLDER, VERSION)
-    #    self.to_dump.append({"remote":VERSION, "local":local})
-
-    # def post_dump(self, *args, **kwargs):
-    #    self.logger.info("Unzipping files in '%s'" % self.new_data_folder)
-    #    unzipall(self.new_data_folder)
+    def create_todump_list(self, force=False, **kwargs):
+        res = self.client.get(self.VERSIONS_URL)
+        html = bs4.BeautifulSoup(res.text, "lxml")
+        table = html.findAll(attrs={"class": "table-bordered"})
+        assert len(table) == 1, "Expecting one table element, got %s" % len(table)
+        table = table.pop()
+        # the very first element in the table contains the latest version
+        version = table.find("tbody").find("tr").find("td").text
+        if force or not self.src_doc or (self.src_doc and self.src_doc.get("download", {}).get("release") < version):
+            self.release = version  # new_data_folder can be generated
+            self.logger.info("DrugBank, new release '%s' available, please download it from " % version +
+                             "https://www.drugbank.ca/releases and put the file in folder '%s'. " % self.new_data_folder +
+                             "Once downloaded, run upload('drugbank') from the hub command line",
+                             extra={"notify": True})
+            local = os.path.join(self.new_data_folder, "releases")
+            self.to_dump.append({"remote": self.VERSIONS_URL, "local": local})
