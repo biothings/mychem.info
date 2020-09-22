@@ -84,30 +84,30 @@ def query_pubchem(pubchem_ids: list) -> dict:
 
 
 def load_data(data_folder):
-    cohd_file_path = os.path.join(data_folder, 'concept_xref.json')
-    with open(cohd_file_path) as f:
-        mychem2cohd_mapping = defaultdict(set)
-        cohd_file = json.load(f)
-        cohd_mapping = fetch_cohd2ids(cohd_file)
-        chembl2mychem = query_chembl(cohd_mapping["chembl"].keys())
-        pubchem2mychem = query_pubchem(cohd_mapping["pubchem"].keys())
-        chebi2mychem = query_chebi(cohd_mapping["chebi"].keys())
-        for _id in chembl2mychem:
-            for chembl in chembl2mychem[_id]:
-                for cohd in cohd_mapping["chembl"][chembl]:
-                    mychem2cohd_mapping[_id].add(cohd)
-            for chebi in chebi2mychem[_id]:
-                for cohd in cohd_mapping["chebi"][chebi]:
-                    mychem2cohd_mapping[_id].add(cohd)
-            for pubchem in chebi2mychem[_id]:
-                for cohd in cohd_mapping["pubchem"][pubchem]:
-                    mychem2cohd_mapping[_id].add(cohd)
-        for k, v in mychem2cohd_mapping.items():
-            cohd = [{"cohd": item, "name": cohd_mapping["cohd"][item]}
-                    for item in v]
-            if len(cohd) == 1:
-                cohd = cohd[0]
-            yield {
-                "_id": k,
-                "cohd": cohd
-            }
+    import requests
+    cohd_file = requests.get(
+        "https://raw.githubusercontent.com/polyg314/COHD_APIs/master/COHD_prework/concept_xref.json").json()
+    mychem2cohd_mapping = defaultdict(set)
+    cohd_mapping = fetch_cohd2ids(cohd_file)
+    chembl2mychem = query_chembl(cohd_mapping["chembl"].keys())
+    pubchem2mychem = query_pubchem(cohd_mapping["pubchem"].keys())
+    chebi2mychem = query_chebi(cohd_mapping["chebi"].keys())
+    for _id in chembl2mychem:
+        for chembl in chembl2mychem[_id]:
+            for cohd in cohd_mapping["chembl"][chembl]:
+                mychem2cohd_mapping[_id].add(cohd)
+        for chebi in chebi2mychem[_id]:
+            for cohd in cohd_mapping["chebi"][chebi]:
+                mychem2cohd_mapping[_id].add(cohd)
+        for pubchem in chebi2mychem[_id]:
+            for cohd in cohd_mapping["pubchem"][pubchem]:
+                mychem2cohd_mapping[_id].add(cohd)
+    for k, v in mychem2cohd_mapping.items():
+        cohd = [{"cohd": item, "name": cohd_mapping["cohd"][item]}
+                for item in v]
+        if len(cohd) == 1:
+            cohd = cohd[0]
+        yield {
+            "_id": k,
+            "cohd": cohd
+        }

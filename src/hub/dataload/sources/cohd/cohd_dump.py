@@ -11,7 +11,7 @@ import config
 biothings.config_for_app(config)
 
 
-class UMLSDumper(ManualDumper):
+class COHDDumper(ManualDumper):
 
     SRC_NAME = "cohd"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)

@@ -1,9 +1,19 @@
 import requests
 import math
+import logging
 
 from biothings.utils.dataload import dict_sweep, unlist
-from biothings.hub.datatransform.datatransform_api import DataTransformMyChemInfo
+# from biothings.hub.datatransform.datatransform_api import DataTransformMyChemInfo
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger_formatter = logging.Formatter('%(asctime)s - \
+    %(name)s - %(levelname)s - %(message)s')
+logger_handler = logging.FileHandler('dgidb.log')
+logger_handler.setLevel(logging.DEBUG)
+logger_handler.setFormatter(logger_formatter)
+logger.addHandler(logger_handler)
 
 def count_total_docs():
     """
@@ -35,9 +45,28 @@ def fetch_all_docs_from_api():
     assert len(dgidb_docs) == total_count
     return dgidb_docs
 
-@DataTransformMyChemInfo([('chembl', 'dgidb.chembl_id')], ['inchikey'])
+def chembl2mychemid(chembl_id):
+    template_url = "http://mychem.info/v1/query?q=chembl.molecule_chembl_id:{chembl_id}&fields=_id"
+    query_url = template_url.replace('{chembl_id}', chembl_id)
+    doc = requests.get(query_url).json()
+    if doc.get('total') == 0:
+        logger.info('This chembl id %s is not found in MyChem.', chembl_id)
+        return chembl_id
+    elif doc.get('total') == 1:
+        return doc.get('hits')[0].get('_id')
+    else:
+        logger.info('This chembl id %s has >1 hits in MyChem.', chembl_id)
+        mychem_ids = [_doc['_id'] for _doc in doc['hits']]
+        return mychem_ids
+"""
+DGIdb api
+"""
+
+
+# @DataTransformMyChemInfo([('chembl', 'dgidb.chembl_id')], ['inchikey'])
 def load_data():
     dgidb_docs = fetch_all_docs_from_api()
     for _doc in dgidb_docs:
         _doc['interaction_id'] = _doc.pop('id')
+        _doc['_id'] = chembl2mychemid(_doc['chembl_id'])
         yield dict_sweep(unlist({'dgidb': _doc}), vals=[None, "", []])
