@@ -8,7 +8,7 @@ class COHDUploader(uploader.BaseSourceUploader):
     name = "cohd"
 
     def load_data(self, data_folder):
-        cohd_docs = load_data(data_folder)
+        cohd_docs = load_data()
         return cohd_docs
 
     @classmethod
