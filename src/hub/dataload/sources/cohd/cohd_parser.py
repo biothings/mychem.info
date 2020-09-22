@@ -83,7 +83,7 @@ def query_pubchem(pubchem_ids: list) -> dict:
     return new_res
 
 
-def load_data(data_folder):
+def load_data():
     import requests
     cohd_file = requests.get(
         "https://raw.githubusercontent.com/polyg314/COHD_APIs/master/COHD_prework/concept_xref.json").json()
