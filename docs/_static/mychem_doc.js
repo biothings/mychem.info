@@ -10,8 +10,7 @@ jQuery(document).ready(function () {
         // get the metadata information
         jQuery.ajax({
             url: "//mychem.info/v1/metadata",
-            dataType: "JSONP",
-            jsonpCallback: "callback",
+            dataType: "json",
             type: "GET",
             success: function (data) {
                 // Set the total number of chems
@@ -33,8 +32,7 @@ jQuery(document).ready(function () {
                 });
                 jQuery.ajax({
                     url: "//mychem.info/v1/metadata/fields",
-                    dataType: "JSONP",
-                    jsonpCallback: "callback",
+                    dataType: "json",
                     type: "GET",
                     success: function (data) {
                         jQuery.each(data, function (field, d) {
