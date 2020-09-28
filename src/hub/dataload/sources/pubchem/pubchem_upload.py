@@ -1,27 +1,30 @@
 import os
 import glob
-import zipfile
 import pymongo
+# when code is exported, import becomes relative
+try:
+    from pubchem.pubchem_parser import load_annotations as parser_func
+except ImportError:
+    from .pubchem_parser import load_annotations as parser_func
 
-from .pubchem_parser import load_data
-from hub.dataload.uploader import BaseDrugUploader
+
+# from parser import load_data
+# from hub.dataload.uploader import BaseDrugUploader
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 import biothings.hub.dataload.storage as storage
 
+class PubChemUploader(ParallelizedSourceUploader):
 
-SRC_META = {
+    name = "pubchem"
+    storage_class = storage.IgnoreDuplicatedStorage
+
+    __metadata__ = { "src_meta" : {
         "url": "https://pubchem.ncbi.nlm.nih.gov/",
         "license_url" : "https://www.ncbi.nlm.nih.gov/home/about/policies/",
         "license_url_short" : "http://bit.ly/2AqoLOc",
         "license": "public domain"
         }
-
-
-class PubChemUploader(BaseDrugUploader,ParallelizedSourceUploader):
-
-    name = "pubchem"
-    storage_class = storage.IgnoreDuplicatedStorage
-    __metadata__ = {"src_meta" : SRC_META}
+    }
 
     COMPOUND_PATTERN = "Compound*.xml.gz"
 
@@ -32,17 +35,11 @@ class PubChemUploader(BaseDrugUploader,ParallelizedSourceUploader):
 
     def load_data(self,input_file):
         self.logger.info("Load data from file '%s'" % input_file)
-        return load_data(input_file)
-
-    def post_update_data(self, *args, **kwargs):
-        # hashed because inchi is too long (and we'll do == ops to hashed are enough)
-        for idxname in ["pubchem.inchi","pubchem.cid"]:
-            self.logger.info("Indexing '%s'" % idxname)
-            self.collection.create_index([(idxname,pymongo.HASHED)],background=True)
+        return parser_func(input_file)
 
     @classmethod
     def get_mapping(klass):
-        mapping = {
+        return {
                 "pubchem" : {
                     "properties" : {
                         "inchi_key" : {
@@ -144,6 +141,4 @@ class PubChemUploader(BaseDrugUploader,ParallelizedSourceUploader):
                         }
                 }
             }
-
-        return mapping
 
