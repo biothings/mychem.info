@@ -17,7 +17,7 @@ class PubChemDumper(FTPDumper):
     CWD_DIR = '/pubchem/Compound/CURRENT-Full/XML'
     ARCHIVE = False
     SCHEDULE = "0 12 * * *"
-    # MAX_PARALLEL_DUMP = 5
+    MAX_PARALLEL_DUMP = 5
 
     VERSION_DIR = '/pubchem/Compound/Monthly'
 
