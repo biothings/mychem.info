@@ -103,11 +103,11 @@ def load_data():
             for cohd in cohd_mapping["pubchem"][pubchem]:
                 mychem2cohd_mapping[_id].add(cohd)
     for k, v in mychem2cohd_mapping.items():
-        cohd = [{"cohd": item, "name": cohd_mapping["cohd"][item]}
+        cohd = [{"omop": item, "name": cohd_mapping["cohd"][item]}
                 for item in v]
         if len(cohd) == 1:
             cohd = cohd[0]
         yield {
             "_id": k,
-            "cohd": cohd
+            "omop": cohd
         }
