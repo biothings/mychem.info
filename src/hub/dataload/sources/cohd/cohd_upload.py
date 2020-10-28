@@ -22,9 +22,9 @@ class COHDUploader(uploader.BaseSourceUploader):
     @classmethod
     def get_mapping(klass):
         mapping = {
-            "cohd": {
+            "omop": {
                 "properties": {
-                    "cohd": {
+                    "omop": {
                         "type": "keyword",
                         "normalizer": "keyword_lowercase_normalizer",
                         'copy_to': ['all'],
