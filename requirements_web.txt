@@ -1,4 +1,4 @@
-biothings[web_extra]==0.8.2
+biothings[web_extra]==0.8.3
 elasticsearch==6.3.1
 elasticsearch-dsl==6.3.1
 # for dotstring utilities
