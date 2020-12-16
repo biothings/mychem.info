@@ -146,7 +146,6 @@ class TestMychemDataIntegrity(MychemDataTestBase):
         assert 'indication' in C0242339['drugcentral']['drug_use']
         assert 'umls_cui' in C0242339['drugcentral']['drug_use']['indication']
         assert C0242339['drugcentral']['drug_use']['indication']['umls_cui'].lower() == 'c0242339'
-        pass
 
     # ---------------
     # via Annotation
