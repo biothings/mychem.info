@@ -139,13 +139,12 @@ class TestMychemDataIntegrity(MychemDataTestBase):
             assert foundone, "Expecting at least one result with q=%(q)s&fields=%(fields)s" % d
 
     def test_050(self):
-        # C0242339 = self.request('query?q=drugcentral.drug_use.indication.umls_cui:C0242339').json()
-        # assert 'drugcentral' in C0242339
-        # assert 'drug_use' in C0242339['drugcentral']
-        # assert 'indication' in C0242339['drugcentral']['drug_use']
-        # assert 'umls_cui' in C0242339['drugcentral']['drug_use']['indication']
-        # public query self.api at /query via get
-        pass  # TODO
+        C0242339 = self.request('query?q=drugcentral.drug_use.indication.umls_cui:C0242339').json()['hits'][0]
+        assert 'drugcentral' in C0242339
+        assert 'drug_use' in C0242339['drugcentral']
+        assert 'indication' in C0242339['drugcentral']['drug_use']
+        assert 'umls_cui' in C0242339['drugcentral']['drug_use']['indication']
+        assert C0242339['drugcentral']['drug_use']['indication']['umls_cui'].lower() == 'c0242339'
 
     # ---------------
     # via Annotation
