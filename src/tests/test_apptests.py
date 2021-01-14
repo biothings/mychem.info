@@ -7,11 +7,6 @@ import elasticsearch
 from biothings.tests.web import BiothingsWebAppTest
 
 
-class TestMultiIndices(BiothingsWebAppTest):
-    def test_000_null(self):
-        pass
-
-
 class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
     def _process_es_data_dir(self, data_dir_path):
         if not os.path.exists(data_dir_path):
