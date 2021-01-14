@@ -152,7 +152,4 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
         # matches the UNII regex, so nothing should be returned
         q = 'DEFAULTSCO'
         # FIXME: check response status code
-        res = self.request("chem", method="POST", data={"ids": q}, expect=200)
-        res = res.json()
-        assert len(res) == 1
-        assert res[0]["notfound"]
+        res = self.request(f"chem/{q}", method="GET", expect=404)
