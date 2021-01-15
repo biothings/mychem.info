@@ -1,0 +1,12 @@
+{"index": {"_id": "mock0"}}
+{"drugbank": {"id": "DB0"}}
+{"index": {"_id": "mock1"}}
+{"chembl": {"molecule_chembl_id": "CHEMBL0"}}
+{"index": {"_id": "mock2"}}
+{"chebi": {"id": "CHEBI:0", "secondary_chebi_id": "CHEBI:2"}}
+{"index": {"_id": "mock3"}}
+{"unii": {"unii": "MOCKUNII00"}}
+{"index": {"_id": "mock4"}}
+{"pubchem": {"cid": "0"}}
+{"index": {"_id": "DEFAULTSCO"}}
+{"drugbank": {"name": "mock item should not be hit"}}
