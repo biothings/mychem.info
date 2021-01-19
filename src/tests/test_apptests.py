@@ -8,6 +8,8 @@ from biothings.tests.web import BiothingsWebAppTest
 
 
 class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
+    TEST_DATA_NAME = 'AnnotationIdRegex'
+
     def _process_es_data_dir(self, data_dir_path):
         if not os.path.exists(data_dir_path):
             yield
@@ -53,7 +55,11 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
 
     @pytest.fixture(scope="class", autouse=True)
     def load_es_data_cls(self, request):
-        data_dir = './test_data/' + request.cls.__name__
+        if self.TEST_DATA_NAME is not None:
+            data_dir = self.TEST_DATA_NAME
+        else:
+            data_dir = request.cls.__name__
+        data_dir = os.path.join('./test_data/', data_dir)
 
         yield from self._process_es_data_dir(data_dir)
 
