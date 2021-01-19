@@ -57,7 +57,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
     @asyncio.coroutine
     def update_data(self, batch_size, job_manager=None):
         self.before_update_data()
-        yield from super(self, ParallelizedSourceUploader).update_date()
+        yield from super(ChemblUploader, self).update_data(batch_size, job_manager)
 
     def load_data(self, input_file):
         """load data from an input file"""
