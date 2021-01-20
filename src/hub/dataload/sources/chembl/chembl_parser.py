@@ -1,3 +1,4 @@
+import os
 import json
 import glob
 import urllib.parse
@@ -290,7 +291,7 @@ class MechanismAdapter(JsonFileAdapterMixin):
                         "ClinicalTrials", "Patent", "UniProt"
                     ]
                     
-                Comma-separated references are found in mechanisms json object so far, so I skipped splitting 
+                Comma-separated references are not found in mechanisms json object so far, so I skipped splitting 
                 "ClinicalTrials" references here as in `DrugIndicationAdapter`.
                 """
                 # if key == "mechanism_refs":
@@ -517,7 +518,7 @@ class DrugIndicationAdapter(JsonFileAdapterMixin):
                                    'chronic progressive multiple sclerosis',
                                    'chronic progressive multiple sclerosis']
 
-                    On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201610/ "Drug Indications" panel, 
+                    On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel, 
                     mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references 
                     """
 
@@ -623,11 +624,11 @@ class LoadDataFunction:
                 (self.binding_site_dict is not None):
             raise ValueError("LoadDataFunction already pre-read; should not call `pre_read()` again")
 
-        drug_indication_json_files = glob.iglob(data_folder, "drug_indication.*.json")
-        mechanism_json_files = glob.iglob(data_folder, "mechanism.*.json")
-        drug_json_files = glob.iglob(data_folder, "drug.*.json")
-        target_json_files = glob.iglob(data_folder, "target.*.json")
-        binding_site_json_files = glob.iglob(data_folder, "binding_site.*.json")
+        drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
+        mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
+        drug_json_files = glob.iglob(os.path.join(data_folder, "drug.*.json"))
+        target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
+        binding_site_json_files = glob.iglob(os.path.join(data_folder, "binding_site.*.json"))
 
         self.drug_indication_dict = DrugIndicationAdapter.read_data(drug_indication_json_files)
         self.mechanism_dict = MechanismAdapter.read_data(mechanism_json_files)
@@ -666,10 +667,14 @@ class LoadDataFunction:
         molecule_data = json.load(open(input_file))['molecules']
         molecule_list = [MoleculeEntryTransformer.transform(entry) for entry in molecule_data]
         for molecule in molecule_list:
-            molecule["chembl"]["drug_indications"] = self.drug_indication_dict.\
-                get(molecule["chembl"]["molecule_chembl_id"], [])
-            molecule["chembl"]["drug_mechanisms"] = self.mechanism_dict.\
-                get(molecule["chembl"]["molecule_chembl_id"], [])
+            drug_indications = self.drug_indication_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
+            drug_mechanisms = self.mechanism_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
+
+            if drug_indications is not None:
+                molecule["chembl"]["drug_indications"] = drug_indications
+
+            if drug_mechanisms is not None:
+                molecule["chembl"]["drug_mechanisms"] = drug_mechanisms
 
             try:
                 _id = molecule["chembl"]['inchi_key']
