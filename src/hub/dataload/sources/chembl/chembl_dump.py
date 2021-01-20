@@ -47,7 +47,7 @@ class ChemblDumper(HTTPDumper):
         # Used to join with `mechanism` by `target_chembl_id`
         "target": "https://www.ebi.ac.uk/chembl/api/data/target.json",
         # used to join with `mechanism` by `site_id`
-        "binding_sites": "https://www.ebi.ac.uk/chembl/api/data/binding_site.json"
+        "binding_site": "https://www.ebi.ac.uk/chembl/api/data/binding_site.json"
     }
 
     SCHEDULE = "0 12 * * *"
@@ -110,7 +110,6 @@ class ChemblDumper(HTTPDumper):
             return True
 
         local_data = self.load_json_from_file(localfile)
-
         self.logger.info("ChEMBL DB version: remote=={}, local=={}".
                          format(remote_data["chembl_db_version"], local_data["chembl_db_version"]))
 
@@ -131,6 +130,9 @@ class ChemblDumper(HTTPDumper):
             current_localfile = None
 
         remote_better = self.remote_is_better(self.__class__.SRC_VERSION_URL, current_localfile)
+        self.logger.info("ChEMBL Dump: force=={}, current_localfile=={}, remote_better=={}".
+                         format(force, current_localfile, remote_better))
+
         if force or current_localfile is None or remote_better:
             new_localfile = os.path.join(self.new_data_folder, version_filename)
             self.to_dump.append({"remote": self.__class__.SRC_VERSION_URL, "local": new_localfile})
