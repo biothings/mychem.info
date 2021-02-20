@@ -29,21 +29,8 @@ The value of each fields above is a list. In some cases, the list can be very la
 
 This truncation affects only 143 objects (as of 2018-11-28, `full list here <https://github.com/biothings/mychem.info/blob/master/src/hub/dataload/sources/chebi/exclusion_ids.py>`_), comparing to total 98,511 objects containing `chebi` data (<0.15%).
 
-ChEMBL
-------
-
-Data for `ChEMBL <https://www.ebi.ac.uk/chemb>`_ is pulled from 6 online json sources:
-
-- `Molecule <https://www.ebi.ac.uk/chembl/api/data/molecule.json>`_, which serves as a root data source. Entries from other sources are attached molecule entries as new fields
-- `Drug Indications <https://www.ebi.ac.uk/chembl/api/data/drug_indication.json>`_, which will parsed and attached to molecule entries, e.g. ``molecule["drug_indications"] = list_of_drug_indications``
-- `Drug Mechanisms <https://www.ebi.ac.uk/chembl/api/data/mechanism.json>`_, which will parsed and attached to molecule entries, e.g. ``molecule["drug_mechanism"] = list_of_drug_mechanism``
-- `Drug <https://www.ebi.ac.uk/chembl/api/data/drug.json>`_, used to augment ``first_approval`` field to drug indication entries
-- `Target <https://www.ebi.ac.uk/chembl/api/data/target.json>`_, used to augment ``target_name`` and ``target_organism`` fields to drug mechanism entries
-- `Binding Sites <https://www.ebi.ac.uk/chembl/api/data/binding_site.json>`_, used to augment ``binding_site_name`` field to drug mechanism entries
-
-Dictionaries are created for each chemical based on their ``standardinchikey`` in the following format: 
-
-``{_id: "standardinchikey", "chembl": {"<drug_indications>":"<...>", "<drug_mechanisms>":"<...>",..}}``
+.. ChEMBL
+.. ------
 
 DrugBank
 --------
