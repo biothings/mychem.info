@@ -75,26 +75,74 @@ class MoleculeCrossReferenceListTransformer(JsonListTransformer):
         return xref_output
 
 
-class ClinicalTrialsReferenceListFilter:
+class ReferenceListTransformer:
+    """
+    Used by MechanismAdapter and DrugIndicationAdapter to transform their reference objects.
+
+    Transformations include:
+
+    - Split comma-separated ClinicalTrials references into multiple references
+    - Use shorter keys: `ref_id` => `id`, `ref_type` => `type`, `ref_url` => `url`
+    - Add a new entry for each reference object with its `ref_type` value as key, its`ref_id` value as value
+
+    The first transformation only applies to comma-separated ClinicalTrials references.
+    E.g. the following reference should be split into 2 objects:
+
+        ```
+        {'ref_id': 'NCT00375713,NCT02447393',
+         'ref_type': 'ClinicalTrials',
+         'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
+        ```
+
+    The second and third transformations apply to all types of references.
+    E.g. The following reference object
+
+        ```
+        {"ref_id": "NCT01910259",
+         "ref_type": "ClinicalTrials",
+         "ref_url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
+        ```
+
+        will be tranformed into:
+
+        ```
+        {"ClinicalTrials": "NCT01910259",
+         "id": "NCT01910259",
+         "type": "ClinicalTrials",
+         "url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
+        ```
+
+    """
     @classmethod
     def __create_clinical_trials_reference(cls, ref_id):
+        ref_type = "ClinicalTrials"
         ref_url = 'https://clinicaltrials.gov/search?id="{}"'.format(ref_id)
         # percent-encode the `ref_url`, skipping characters of "?", "=", "/", and ":"
         # basically it does only one thing -- encoding each double quote to "%22"
         ref_url = urllib.parse.quote(ref_url, safe="?=/:")
 
+        # See https://github.com/biothings/mychem.info/issues/67#issuecomment-767744333
         ref = {
-            "ref_id": ref_id,
-            'ref_type': 'ClinicalTrials',
-            'ref_url': ref_url
+            "id": ref_id,
+            'type': ref_type,
+            'url': ref_url,
+            ref_type: ref_id
         }
 
         return ref
 
     @classmethod
-    def filter(cls, ref_list):
+    def __transform_one_reference(cls, ref):
+        ref["id"] = ref.pop("ref_id")
+        ref["type"] = ref.pop("ref_type")
+        ref["url"] = ref.pop("ref_url")
+
+        ref[ref["type"]] = ref["id"]
+
+    @classmethod
+    def iter_transform(cls, ref_list):
         """
-        Iterate the input list of ClinicalTrials references, split comma-separated references into multiple references
+        Iterate the input list of references, split comma-separated references into multiple references
         if found. E.g. the following reference should be split into 2:
 
             {'ref_id': 'NCT00375713,NCT02447393',
@@ -115,7 +163,7 @@ class ClinicalTrialsReferenceListFilter:
                 for ref_id in ref["ref_id"].split(","):
                     yield cls.__create_clinical_trials_reference(ref_id)
             else:
-                yield ref
+                yield cls.__transform_one_reference(ref)
 
 
 class TargetAdapter(JsonFileAdapterMixin):
@@ -182,47 +230,6 @@ class TargetAdapter(JsonFileAdapterMixin):
             del entry[cls.primary_key]
 
         return ret_dict
-
-
-class DrugAdapter(JsonFileAdapterMixin):
-    # key of the raw content to the entry list
-    entry_list_key = "drugs"
-
-    # keys to preserve and group on for each entry in the entry list
-    primary_key = "molecule_chembl_id"
-    field_key = "first_approval"
-    preserved_keys = {primary_key, field_key}
-
-    @classmethod
-    def adapt_raw_content(cls, entry_list):
-        for entry in entry_list:
-            for key in list(entry):
-                if key not in cls.preserved_keys:
-                    del entry[key]
-
-        return entry_list
-
-    @classmethod
-    def transform_to_dict(cls, entry_list):
-        """
-        `entry_list` is a list of `<"molecule_chembl_id" : xxx, "first_approval": yyy>` dictionaries,
-        here we convert it into a `<xxx : yyy>` dictionary
-
-        E.g.
-
-            entry_list = [
-                {'molecule_chembl_id': 'CHEMBL2', 'first_approval': 1976},
-                {'molecule_chembl_id': 'CHEMBL3', 'first_approval': 1984}
-            ]
-
-        after transformation we have:
-
-            return_dict = {
-                'CHEMBL2' : 1976,
-                'CHEMBL3' : 1984
-            }
-        """
-        return {entry[cls.primary_key]: entry[cls.field_key] for entry in entry_list}
 
 
 class BindingSiteAdapter(JsonFileAdapterMixin):
@@ -612,44 +619,25 @@ class LoadDataFunction:
     def __init__(self):
         self.drug_indication_dict = None
         self.mechanism_dict = None
-        self.drug_dict = None
         self.target_dict = None
         self.binding_site_dict = None
 
     def pre_read(self, data_folder):
         if (self.drug_indication_dict is not None) or \
                 (self.mechanism_dict is not None) or \
-                (self.drug_dict is not None) or \
                 (self.target_dict is not None) or \
                 (self.binding_site_dict is not None):
             raise ValueError("LoadDataFunction already pre-read; should not call `pre_read()` again")
 
         drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
         mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
-        drug_json_files = glob.iglob(os.path.join(data_folder, "drug.*.json"))
         target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
         binding_site_json_files = glob.iglob(os.path.join(data_folder, "binding_site.*.json"))
 
         self.drug_indication_dict = DrugIndicationAdapter.read_data(drug_indication_json_files)
         self.mechanism_dict = MechanismAdapter.read_data(mechanism_json_files)
-        self.drug_dict = DrugAdapter.read_data(drug_json_files)
         self.target_dict = TargetAdapter.read_data(target_json_files)
         self.binding_site_dict = BindingSiteAdapter.read_data(binding_site_json_files)
-
-        # Join `drug::first_approval` to `drug_indication`
-        for chembl_id, indication_list in self.drug_indication_dict.items():
-            """
-            Some data are missing in the original `drug` data source.
-
-            E.g. "CHEMBL1003" is not included in the `drug` json but 
-            https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1003/ 
-            "drug indications" panel shows it was first approved in 1984.
-
-            Not sure what to do for such cases.
-            """
-            first_approval = self.drug_dict.get(chembl_id, None)
-            for indication in indication_list:
-                indication["first_approval"] = first_approval
 
         # Join `binding_site::binding_site_name` to `mechanism`
         # Join `target::target_type`, `target::target_organism` and `target::target_name` to `mechanism`
@@ -671,6 +659,11 @@ class LoadDataFunction:
             drug_mechanisms = self.mechanism_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
 
             if drug_indications is not None:
+                # Join `molecule::first_approval` to `drug_indication::first_approval`
+                first_approval = molecule["chembl"]["first_approval"]
+                for indication in drug_indications:
+                    indication["first_approval"] = first_approval
+
                 molecule["chembl"]["drug_indications"] = drug_indications
 
             if drug_mechanisms is not None:
