@@ -14,40 +14,52 @@ class JsonListTransformer(ABC):
     @classmethod
     @abstractmethod
     def transform_to_dict(cls, entry_list):
+        """
+        Transform a list of json object into a dictionary
+        """
         pass
 
 
-class JsonFileAdapterMixin(JsonListTransformer, ABC):
-    @classmethod
-    def _read_raw_content(cls, file):
-        if not cls.entry_list_key:
-            raise ValueError("Class attribute `entry_list_key` not initialized")
+class JsonFilesAdapter(JsonListTransformer, ABC):
+    """
+    Each adapter class extending JsonFilesAdapter should overwrite the following attribute/methods:
 
-        entry_list = json.load(open(file))[cls.entry_list_key]
-        return entry_list
-
-    @classmethod
-    def _read_file_and_adapt_content(cls, file):
-        entry_list = cls._read_raw_content(file)
-
-        adapt_raw_content_op = getattr(cls, "adapt_raw_content", None)
-        if not callable(adapt_raw_content_op):
-            raise NotImplementedError("Class method `adapt_raw_content` not implemented")
-
-        return cls.adapt_raw_content(entry_list)
+    - entry_list_key: a key in the raw json file to the desired collection of json objects
+    - reformat(cls, entry): reformat a single json object and return it
+    - transform_to_dict(cls, entry_list): transform the (reformatted) json list into a dictionary
+    """
+    entry_list_key: str  # type annotation to avoid the "unresolved reference" warning
 
     @classmethod
-    def read_files_and_adapt_contents(cls, file_iter):
+    @abstractmethod
+    def reformat(cls, entry):
+        """
+        Reformat a json object from download to the desired structure, and return the new object.
+        """
+        pass
+
+    @classmethod
+    def read_files(cls, file_iter):
+        """
+        Read and reformat json objects from a collection of files, merge them into a list, and then transform the list
+        of json objects into a dictionary.
+        """
+        def _read_file_and_reformat_content(file):
+            if not cls.entry_list_key:
+                raise ValueError("Class attribute `entry_list_key` not initialized")
+
+            _entry_list = json.load(open(file))[cls.entry_list_key]
+            _entry_list = [cls.reformat(entry) for entry in _entry_list]
+
+            return _entry_list
+
         files = list(file_iter)
         if len(files) == 1:
-            return cls._read_file_and_adapt_content(files[0])
+            entry_list = _read_file_and_reformat_content(files[0])
         else:
             # merge the entry lists into one and return
-            return list(chain.from_iterable(cls._read_file_and_adapt_content(f) for f in files))
+            entry_list = list(chain.from_iterable(_read_file_and_reformat_content(f) for f in files))
 
-    @classmethod
-    def read_data(cls, file_iter):
-        entry_list = cls.read_files_and_adapt_contents(file_iter)
         return cls.transform_to_dict(entry_list)
 
 
@@ -75,18 +87,19 @@ class MoleculeCrossReferenceListTransformer(JsonListTransformer):
         return xref_output
 
 
-class ReferenceListTransformer:
+class ReferenceUtil:
     """
-    Used by MechanismAdapter and DrugIndicationAdapter to transform their reference objects.
+    Used by DrugIndicationReferenceListUtil and MechanismReferenceListUtil
+    to transform their reference objects.
+    """
 
-    Transformations include:
+    @classmethod
+    def create_clinical_trials_reference(cls, ref_id):
+        """
+        Create a new ClinicalTrials from ref_id, used when splitting comma-separated ClinicalTrials references
+        into multiple references.
 
-    - Split comma-separated ClinicalTrials references into multiple references
-    - Use shorter keys: `ref_id` => `id`, `ref_type` => `type`, `ref_url` => `url`
-    - Add a new entry for each reference object with its `ref_type` value as key, its`ref_id` value as value
-
-    The first transformation only applies to comma-separated ClinicalTrials references.
-    E.g. the following reference should be split into 2 objects:
+        E.g. the following reference should be split into 2 objects:
 
         ```
         {'ref_id': 'NCT00375713,NCT02447393',
@@ -94,34 +107,14 @@ class ReferenceListTransformer:
          'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
         ```
 
-    The second and third transformations apply to all types of references.
-    E.g. The following reference object
-
-        ```
-        {"ref_id": "NCT01910259",
-         "ref_type": "ClinicalTrials",
-         "ref_url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
-        ```
-
-        will be tranformed into:
-
-        ```
-        {"ClinicalTrials": "NCT01910259",
-         "id": "NCT01910259",
-         "type": "ClinicalTrials",
-         "url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
-        ```
-
-    """
-    @classmethod
-    def __create_clinical_trials_reference(cls, ref_id):
+        and each ref_id will be used to create a new reference.
+        """
         ref_type = "ClinicalTrials"
         ref_url = 'https://clinicaltrials.gov/search?id="{}"'.format(ref_id)
         # percent-encode the `ref_url`, skipping characters of "?", "=", "/", and ":"
         # basically it does only one thing -- encoding each double quote to "%22"
         ref_url = urllib.parse.quote(ref_url, safe="?=/:")
 
-        # See https://github.com/biothings/mychem.info/issues/67#issuecomment-767744333
         ref = {
             "id": ref_id,
             'type': ref_type,
@@ -132,41 +125,108 @@ class ReferenceListTransformer:
         return ref
 
     @classmethod
-    def __transform_one_reference(cls, ref):
+    def reformat(cls, ref):
+        """
+        For a downloaded reference object, transform in the following two ways:
+
+        - Use shorter keys: `ref_id` => `id`, `ref_type` => `type`, `ref_url` => `url`
+        - Add a new entry for each reference object with its `ref_type` value as key, its`ref_id` value as value
+
+        E.g. The following reference object
+
+        ```
+        {"ref_id": "NCT01910259",
+         "ref_type": "ClinicalTrials",
+         "ref_url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
+        ```
+
+        will be transformed into:
+
+        ```
+        {"ClinicalTrials": "NCT01910259",
+         "id": "NCT01910259",
+         "type": "ClinicalTrials",
+         "url": "https://clinicaltrials.gov/search?id=%22NCT01910259%22"}
+        ```
+
+        See https://github.com/biothings/mychem.info/issues/67#issuecomment-767744333
+        """
         ref["id"] = ref.pop("ref_id")
         ref["type"] = ref.pop("ref_type")
         ref["url"] = ref.pop("ref_url")
 
         ref[ref["type"]] = ref["id"]
 
-    @classmethod
-    def iter_transform(cls, ref_list):
-        """
-        Iterate the input list of references, split comma-separated references into multiple references
-        if found. E.g. the following reference should be split into 2:
+        return ref
 
-            {'ref_id': 'NCT00375713,NCT02447393',
-             'ref_type': 'ClinicalTrials',
+
+class DrugIndicationReferenceListUtil:
+    @classmethod
+    def iter_reformat(cls, ref_list):
+        """
+        Iterate the input list of references, transform and yield each reference.
+
+        Four types of references found in drug indications are:
+
+            ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
+
+        I only found comma-separated references in "ClinicalTrials" type, e.g.
+
+            {'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
              'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
 
-        Test case: https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1575/#Indications
+        Commas are also found in some "FDA" references but serves as part of the file names, e.g.
+
+            {'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
+             'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'}
+
+        Commas are not found in the other two types of references.
+
+        So here I only split comma-separated references in "ClinicalTrials"
 
         Args:
-            ref_list (list): a list of ClinicalTrials reference json objects
+            ref_list (list): a list of reference json objects
 
         Returns:
-            the filtered references
+            the transformed references
         """
 
         for ref in ref_list:
             if ref["ref_type"] == "ClinicalTrials" and "," in ref["ref_id"]:
                 for ref_id in ref["ref_id"].split(","):
-                    yield cls.__create_clinical_trials_reference(ref_id)
+                    yield ReferenceUtil.create_clinical_trials_reference(ref_id)
             else:
-                yield cls.__transform_one_reference(ref)
+                yield ReferenceUtil.reformat(ref)
 
 
-class TargetAdapter(JsonFileAdapterMixin):
+class MechanismReferenceListUtil:
+    @classmethod
+    def iter_reformat(cls, ref_list):
+        """
+        Iterate the input list of references, transform and yield each reference.
+
+        Sixteen types of references found in mechanism json objects:
+
+            ref_types = [
+                "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
+                "FDA", "DOI", "KEGG", "PubChem", "IUPHAR", "PMC", "InterPro",
+                "ClinicalTrials", "Patent", "UniProt"
+            ]
+
+        Comma-separated references are not found in mechanisms json object so far.
+
+        Args:
+            ref_list (list): a list of reference json objects
+
+        Returns:
+            the transformed references
+        """
+
+        for ref in ref_list:
+            yield ReferenceUtil.reformat(ref)
+
+
+class TargetAdapter(JsonFilesAdapter):
     # key of the raw content to the entry list
     entry_list_key = "targets"
 
@@ -183,17 +243,16 @@ class TargetAdapter(JsonFileAdapterMixin):
     }
 
     @classmethod
-    def adapt_raw_content(cls, entry_list):
-        for entry in entry_list:
-            for key in list(entry):
-                if key not in cls.preserved_keys:
-                    del entry[key]
+    def reformat(cls, entry):
+        for key in list(entry):
+            if key not in cls.preserved_keys:
+                del entry[key]
 
-                if key in cls.rekeying_map:
-                    new_key = cls.rekeying_map[key]
-                    entry[new_key] = entry.pop(key)
+            if key in cls.rekeying_map:
+                new_key = cls.rekeying_map[key]
+                entry[new_key] = entry.pop(key)
 
-        return entry_list
+        return entry
 
     @classmethod
     def transform_to_dict(cls, entry_list):
@@ -232,7 +291,7 @@ class TargetAdapter(JsonFileAdapterMixin):
         return ret_dict
 
 
-class BindingSiteAdapter(JsonFileAdapterMixin):
+class BindingSiteAdapter(JsonFilesAdapter):
     # key of the raw content to the entry list
     entry_list_key = "binding_sites"
 
@@ -242,13 +301,12 @@ class BindingSiteAdapter(JsonFileAdapterMixin):
     preserved_keys = {primary_key, field_key}
 
     @classmethod
-    def adapt_raw_content(cls, entry_list):
-        for entry in entry_list:
-            for key in list(entry):
-                if key not in cls.preserved_keys:
-                    del entry[key]
+    def reformat(cls, entry):
+        for key in list(entry):
+            if key not in cls.preserved_keys:
+                del entry[key]
 
-        return entry_list
+        return entry
 
     @classmethod
     def transform_to_dict(cls, entry_list):
@@ -273,7 +331,7 @@ class BindingSiteAdapter(JsonFileAdapterMixin):
         return {entry[cls.primary_key]: entry[cls.field_key] for entry in entry_list}
 
 
-class MechanismAdapter(JsonFileAdapterMixin):
+class MechanismAdapter(JsonFilesAdapter):
     # key of the raw content to the entry list
     entry_list_key = "mechanisms"
 
@@ -283,28 +341,15 @@ class MechanismAdapter(JsonFileAdapterMixin):
     preserved_keys = set([primary_key] + field_keys)
 
     @classmethod
-    def adapt_raw_content(cls, entry_list):
-        for entry in entry_list:
-            for key in list(entry):
-                if key not in cls.preserved_keys:
-                    del entry[key]
+    def reformat(cls, entry):
+        for key in list(entry):
+            if key not in cls.preserved_keys:
+                del entry[key]
 
-                """
-                Sixteen types of references found in mechanism json objects:
-                
-                    ref_types = [
-                        "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
-                        "FDA", "DOI", "KEGG", "PubChem", "IUPHAR", "PMC", "InterPro", 
-                        "ClinicalTrials", "Patent", "UniProt"
-                    ]
-                    
-                Comma-separated references are not found in mechanisms json object so far, so I skipped splitting 
-                "ClinicalTrials" references here as in `DrugIndicationAdapter`.
-                """
-                # if key == "mechanism_refs":
-                #     entry[key] = ...
+            if key == "mechanism_refs":
+                entry[key] = list(MechanismReferenceListUtil.iter_reformat(entry[key]))
 
-        return entry_list
+        return entry
 
     @classmethod
     def transform_to_dict(cls, entry_list):
@@ -323,46 +368,28 @@ class MechanismAdapter(JsonFileAdapterMixin):
         return ret_dict
 
 
-class DrugIndicationAdapter(JsonFileAdapterMixin):
+class DrugIndicationAdapter(JsonFilesAdapter):
     # key of the raw content to the entry list
     entry_list_key = "drug_indications"
 
     # keys to preserve and group on for each entry in the entry list
-    primary_key = "molecule_chembl_id"
-    secondary_key = "mesh_id"
+    primary_key, secondary_key = "molecule_chembl_id", "mesh_id"
     field_keys = ["mesh_heading", "efo_id", "efo_term", "max_phase_for_ind", "indication_refs"]
     preserved_keys = set([primary_key, secondary_key] + field_keys)
 
+    # key to the reference list (which needs special transformation)
+    reference_key = "indication_refs"
+
     @classmethod
-    def adapt_raw_content(cls, entry_list):
-        for entry in entry_list:
-            for key in list(entry):
-                if key not in cls.preserved_keys:
-                    del entry[key]
+    def reformat(cls, entry):
+        for key in list(entry):
+            if key not in cls.preserved_keys:
+                del entry[key]
 
-                """
-                Four types of references found in drug indications are:
-                
-                    ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
-                
-                I only found comma-separated references in "ClinicalTrials" type, e.g.
-                
-                    {'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
-                     'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
+            if key == cls.reference_key:
+                entry[key] = list(DrugIndicationReferenceListUtil.iter_reformat(entry[key]))
 
-                Commas are also found in some "FDA" references but serves as part of the file names, e.g.
-                
-                    {'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
-                     'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'}
-                
-                Commas are not found in the other two types of references.
-                
-                So here I only split comma-separated references in "ClinicalTrials"
-                """
-                if key == "indication_refs":
-                    entry[key] = list(ClinicalTrialsReferenceListFilter.filter(entry[key]))
-
-        return entry_list
+        return entry
 
     @classmethod
     def transform_to_dict(cls, entry_list):
@@ -568,9 +595,9 @@ class DrugIndicationAdapter(JsonFileAdapterMixin):
         return dict(extract_molecule_id_and_merge_mesh_subgroups())
 
 
-class MoleculeEntryTransformer:
+class MoleculeUtil:
     @classmethod
-    def transform(cls, dictionary):
+    def reformat(cls, dictionary):
         ret_dict = dict()
         _flag = 0
         for key in list(dictionary):
@@ -634,10 +661,10 @@ class LoadDataFunction:
         target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
         binding_site_json_files = glob.iglob(os.path.join(data_folder, "binding_site.*.json"))
 
-        self.drug_indication_dict = DrugIndicationAdapter.read_data(drug_indication_json_files)
-        self.mechanism_dict = MechanismAdapter.read_data(mechanism_json_files)
-        self.target_dict = TargetAdapter.read_data(target_json_files)
-        self.binding_site_dict = BindingSiteAdapter.read_data(binding_site_json_files)
+        self.drug_indication_dict = DrugIndicationAdapter.read_files(drug_indication_json_files)
+        self.mechanism_dict = MechanismAdapter.read_files(mechanism_json_files)
+        self.target_dict = TargetAdapter.read_files(target_json_files)
+        self.binding_site_dict = BindingSiteAdapter.read_files(binding_site_json_files)
 
         # Join `binding_site::binding_site_name` to `mechanism`
         # Join `target::target_type`, `target::target_organism` and `target::target_name` to `mechanism`
@@ -653,7 +680,7 @@ class LoadDataFunction:
 
     def __call__(self, input_file):
         molecule_data = json.load(open(input_file))['molecules']
-        molecule_list = [MoleculeEntryTransformer.transform(entry) for entry in molecule_data]
+        molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
         for molecule in molecule_list:
             drug_indications = self.drug_indication_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
             drug_mechanisms = self.mechanism_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
