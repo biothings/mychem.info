@@ -650,11 +650,11 @@ class LoadDataFunction:
         self.binding_site_dict = None
 
     def pre_read(self, data_folder):
-        if (self.drug_indication_dict is not None) or \
-                (self.mechanism_dict is not None) or \
-                (self.target_dict is not None) or \
-                (self.binding_site_dict is not None):
-            raise ValueError("LoadDataFunction already pre-read; should not call `pre_read()` again")
+        # if (self.drug_indication_dict is not None) or \
+        #         (self.mechanism_dict is not None) or \
+        #         (self.target_dict is not None) or \
+        #         (self.binding_site_dict is not None):
+        #     raise ValueError("LoadDataFunction already pre-read; should not call `pre_read()` again")
 
         drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
         mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
@@ -687,9 +687,10 @@ class LoadDataFunction:
 
             if drug_indications is not None:
                 # Join `molecule::first_approval` to `drug_indication::first_approval`
-                first_approval = molecule["chembl"]["first_approval"]
-                for indication in drug_indications:
-                    indication["first_approval"] = first_approval
+                first_approval = molecule["chembl"].get("first_approval", None)
+                if first_approval:
+                    for indication in drug_indications:
+                        indication["first_approval"] = first_approval
 
                 molecule["chembl"]["drug_indications"] = drug_indications
 
