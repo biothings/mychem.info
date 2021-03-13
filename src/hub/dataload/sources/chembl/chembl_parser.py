@@ -642,20 +642,14 @@ class MoleculeUtil:
         return ret_dict
 
 
-class LoadDataFunction:
+class NonMoleculeFileLoader:
     def __init__(self):
         self.drug_indication_dict = None
         self.mechanism_dict = None
         self.target_dict = None
         self.binding_site_dict = None
 
-    def pre_read(self, data_folder):
-        # if (self.drug_indication_dict is not None) or \
-        #         (self.mechanism_dict is not None) or \
-        #         (self.target_dict is not None) or \
-        #         (self.binding_site_dict is not None):
-        #     raise ValueError("LoadDataFunction already pre-read; should not call `pre_read()` again")
-
+    def load(self, data_folder):
         drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
         mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
         target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
@@ -678,29 +672,38 @@ class LoadDataFunction:
                 for key in target_keys:
                     mechanism[key] = target[key]
 
-    def __call__(self, input_file):
-        molecule_data = json.load(open(input_file))['molecules']
-        molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
-        for molecule in molecule_list:
-            drug_indications = self.drug_indication_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
-            drug_mechanisms = self.mechanism_dict.get(molecule["chembl"]["molecule_chembl_id"], None)
+    def get_drug_indications(self):
+        return self.drug_indication_dict
 
-            if drug_indications is not None:
-                # Join `molecule::first_approval` to `drug_indication::first_approval`
-                first_approval = molecule["chembl"].get("first_approval", None)
-                if first_approval:
-                    for indication in drug_indications:
-                        indication["first_approval"] = first_approval
+    def get_drug_mechanisms(self):
+        return self.mechanism_dict
 
-                molecule["chembl"]["drug_indications"] = drug_indications
 
-            if drug_mechanisms is not None:
-                molecule["chembl"]["drug_mechanisms"] = drug_mechanisms
+def load_molecule_file(molecule_file, non_molecule_file_loader: NonMoleculeFileLoader):
+    molecule_data = json.load(open(molecule_file))['molecules']
+    molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
+    for molecule in molecule_list:
+        drug_indications = non_molecule_file_loader.get_drug_indications().get(
+            molecule["chembl"]["molecule_chembl_id"], None)
+        drug_mechanisms = non_molecule_file_loader.get_drug_mechanisms().get(
+            molecule["chembl"]["molecule_chembl_id"], None)
 
-            try:
-                _id = molecule["chembl"]['inchi_key']
-                molecule["_id"] = _id
-            except KeyError:
-                pass
+        if drug_indications is not None:
+            # Join `molecule::first_approval` to `drug_indication::first_approval`
+            first_approval = molecule["chembl"].get("first_approval", None)
+            if first_approval:
+                for indication in drug_indications:
+                    indication["first_approval"] = first_approval
 
-            yield molecule
+            molecule["chembl"]["drug_indications"] = drug_indications
+
+        if drug_mechanisms is not None:
+            molecule["chembl"]["drug_mechanisms"] = drug_mechanisms
+
+        try:
+            _id = molecule["chembl"]['inchi_key']
+            molecule["_id"] = _id
+        except KeyError:
+            pass
+
+        yield molecule
