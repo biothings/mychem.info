@@ -9,7 +9,7 @@ import config
 
 biothings.config_for_app(config)
 
-from config import DATA_ARCHIVE_ROOT
+from config import DATA_ARCHIVE_ROOT, HUB_MAX_WORKERS
 from biothings.hub.dataload.dumper import HTTPDumper
 from biothings.utils.common import iter_n
 
@@ -27,7 +27,6 @@ class ChemblDumper(HTTPDumper):
     - 1,961,462 "molecule" json objects
     - 5,134 "mechanism" json objects
     - 37,259 "drug_indication" json objects
-    - 13,308 "drug" json objects
     - 13,382 "target" json objects
     - 14,342 "binding_site" json objects
     """
@@ -39,11 +38,6 @@ class ChemblDumper(HTTPDumper):
         "drug_indication": "https://www.ebi.ac.uk/chembl/api/data/drug_indication.json",
         "mechanism": "https://www.ebi.ac.uk/chembl/api/data/mechanism.json",
 
-        # Used to augment `first_approval` field to `drug_indication`
-        # E.g. if a drug has `first_approval` of 1990, all its drug indications will have a `first_approval`
-        #   field of 1990
-        "drug": "https://www.ebi.ac.uk/chembl/api/data/drug.json",
-
         # Used to join with `mechanism` by `target_chembl_id`
         "target": "https://www.ebi.ac.uk/chembl/api/data/target.json",
         # used to join with `mechanism` by `site_id`
@@ -51,6 +45,7 @@ class ChemblDumper(HTTPDumper):
     }
 
     SCHEDULE = "0 12 * * *"
+    MAX_PARALLEL_DUMP = HUB_MAX_WORKERS // 2
 
     # number of documents in each download job, i.e. number of documents in each .part* file
     TO_DUMP_DOWNLOAD_SIZE = 1000
@@ -140,7 +135,7 @@ class ChemblDumper(HTTPDumper):
             """
             Now we need to scroll the API endpoints. Let's get the total number of records
             and generate URLs for each call to parallelize the downloads for each type of source data, 
-            i.e. "molecule", "mechanism", "drug_indication", "drug", "target" and "binding_site".
+            i.e. "molecule", "mechanism", "drug_indication", "target" and "binding_site".
             
             The partition size is set to 1000 json objects (represented by `TO_DUMP_DOWNLOAD_SIZE`). 
             
@@ -185,7 +180,7 @@ class ChemblDumper(HTTPDumper):
 
                 """
                 For each "molecule" json object, we only fetch the value associated with the "molecules" key.
-                This rule also applies to "mechanism", "drug_indication", "drug", "target" and "binding_site" 
+                This rule also applies to "mechanism", "drug_indication", "target" and "binding_site" 
                 json objects.
                 """
                 data_key = src_data_name + "s"
