@@ -8,6 +8,14 @@ CHEM_CLIENT = get_client('chem')
 # list of UMLS semantic types belonging to chemical is based on
 # https://www.nlm.nih.gov/research/umls/META3_current_semantic_types.html
 UMLS_CHEMICAL_SEMANTIC_TYPES = [
+    "Manufactured Object",
+    "Medical Device",
+    "Drug Delivery Device",
+    "Research Device",
+    "Clinical Drug",
+    'Substance',
+    'Chemical',
+    'Chemical Viewed Functionally',
     'Pharmacologic Substance',
     'Antibiotic',
     'Biomedical or Dental Material',
@@ -28,9 +36,10 @@ UMLS_CHEMICAL_SEMANTIC_TYPES = [
     'Food'
 ]
 
+
 def fetch_chemical_umls_cuis(mrsty_file):
     """Fetch all UMLS CUI IDs belonging to chemical semantic types
-    
+
     :param: mrsty_file: the file path of MRSTY.RRF file
     """
     chem_set = set()
@@ -41,29 +50,33 @@ def fetch_chemical_umls_cuis(mrsty_file):
                 chem_set.add(vals[0])
     return chem_set
 
+
 def query_mesh(mesh_ids: list) -> dict:
     """Use biothings_client.py to query mesh ids and get back '_id' in mychem.info
-    
+
     :param: mesh_ids: list of mesh ids
     """
-    res = CHEM_CLIENT.querymany(mesh_ids, scopes='drugcentral.xrefs.mesh_supplemental_record_ui,ginas.xrefs.MESH,pharmgkb.xrefs.mesh', fields='_id')
+    res = CHEM_CLIENT.querymany(
+        mesh_ids, scopes='drugcentral.xrefs.mesh_supplemental_record_ui,ginas.xrefs.MESH,pharmgkb.xrefs.mesh', fields='_id')
     new_res = defaultdict(list)
     for item in res:
         if not "notfound" in item:
             new_res[item['query']].append(item['_id'])
     return new_res
 
+
 def query_drug_name(names: list) -> dict:
     """Use biothings_client.py to query drug names and get back '_id' in mychem.info
-    
+
     :param: names: list of drug names
     """
     new_res = defaultdict(list)
     n = 500
-    for i in range((len(names) + n - 1) // n ):
+    for i in range((len(names) + n - 1) // n):
         print(i)
         try:
-            res = CHEM_CLIENT.querymany(names[i * n:(i + 1) * n], scopes='ginas.preferred_name, pharmgkb.name, chebi.name, chembl.pref_name, drugbank.name', fields='_id')
+            res = CHEM_CLIENT.querymany(
+                names[i * n:(i + 1) * n], scopes='ginas.preferred_name, pharmgkb.name, chebi.name, chembl.pref_name, drugbank.name', fields='_id')
         except:
             print("failed at {}".format(i))
             continue
@@ -71,6 +84,7 @@ def query_drug_name(names: list) -> dict:
             if not item.get("notfound"):
                 new_res[item['query']].append(item['_id'])
     return new_res
+
 
 def parse_umls(rrf_file, chem_umls):
     """Parse the UMLS to determine the HGNC identifier of each gene CUI.
@@ -92,8 +106,8 @@ def parse_umls(rrf_file, chem_umls):
                     if vals[1] == 'ENG' and vals[2] == 'P':
                         mesh_id = vals[vals.index('MSH') - 1]
                         res[cui].append({'cui': cui,
-                                        'mesh': mesh_id,
-                                        'name': vals[-5]})
+                                         'mesh': mesh_id,
+                                         'name': vals[-5]})
                         mesh_ids.add(mesh_id)
                         if ',' not in vals[-5]:
                             names.add('"' + vals[-5] + '"')
@@ -106,10 +120,11 @@ def unlist(l):
         return l[0]
     return l
 
+
 def load_data(data_folder):
     mrsat_file = os.path.join(data_folder, 'MRSTY.RRF')
-    mrconso_file = os.path.join(data_folder, 'MRCONSO.RRF') 
-    chem_umls = fetch_chemical_umls_cuis(mrsat_file) 
+    mrconso_file = os.path.join(data_folder, 'MRCONSO.RRF')
+    chem_umls = fetch_chemical_umls_cuis(mrsat_file)
     cui_map, mesh_ids, names = parse_umls(mrconso_file, chem_umls)
     name_mapping = query_drug_name(names)
     time.sleep(200)
@@ -122,7 +137,7 @@ def load_data(data_folder):
             mesh = rec.get('mesh')
             if mesh_id_mapping.get(mesh):
                 for _id in mesh_id_mapping.get(mesh):
-                    if  _id not in id_set:
+                    if _id not in id_set:
                         res.append({
                             "_id": _id,
                             "umls": rec
