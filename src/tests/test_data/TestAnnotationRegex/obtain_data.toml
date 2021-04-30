@@ -1,0 +1,37 @@
+[queries]
+
+[queries.drugbank_id]
+query = '{"query": {"exists": {"field": "drugbank.id"}}}'
+doc_id = ["UCMIRNVEIXFBKS-UHFFFAOYSA-N"]
+
+
+# UCMIRNVEIXFBKS-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+[queries.chembl_id]
+query = '{"query": {"exists": {"field": "chembl.molecule_chembl_id"}}}'
+doc_id = ["FUTARTAINOHELR-UHFFFAOYSA-N"]
+
+
+# FUTARTAINOHELR-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+[queries.chebi_id]
+query = '{"query": {"exists": {"field": "chebi.id"}}}'
+doc_id = ["UCMIRNVEIXFBKS-UHFFFAOYSA-N"]
+
+
+# UCMIRNVEIXFBKS-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+[queries.chebi_2nd_id]
+query = '{"query": {"exists": {"field": "chebi.secondary_chebi_id"}}}'
+doc_id = ["UCMIRNVEIXFBKS-UHFFFAOYSA-N"]
+
+
+# UCMIRNVEIXFBKS-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+[queries.unii_id]
+query = '{"query": {"exists": {"field": "unii.unii"}}}'
+doc_id = ["UCMIRNVEIXFBKS-UHFFFAOYSA-N", "FUTARTAINOHELR-UHFFFAOYSA-N"]
+
+
+# UCMIRNVEIXFBKS-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+# FUTARTAINOHELR-UHFFFAOYSA-N added on 2021-04-29T20:54:07-07:00
+[queries.pubchem_id]
+query = '{"query": {"exists": {"field": "pubchem.cid"}}}'
+doc_id = ["120933777"]
+# 120933777 added on 2021-04-29T20:54:07-07:00
