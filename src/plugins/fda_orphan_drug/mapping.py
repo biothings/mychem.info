@@ -18,8 +18,7 @@ def get_customized_mapping(cls):
                         ]
                     },
                     "umls": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
+                        "type": "text",
                         "copy_to": [
                             "all"
                         ]
