@@ -10,12 +10,11 @@ import re
 # Elasticsearch variables
 # *****************************************************************************
 ES_HOST = 'localhost:9200'
-ES_INDEX = 'mydrugs_current'
-ES_DOC_TYPE = 'chem'
 ES_INDICES = {
-    "drug": "mydrugs_current",
-    "compound": "mydrugs_current",
-    "chem": "mydrugs_current"
+    None: "mychem_current",
+    "chem": "mychem_current",
+    "drug": "mychem_current",
+    "compound": "mychem_current"
 }
 ES_SCROLL_TIME = '10m'
 
@@ -43,7 +42,5 @@ ANNOTATION_ID_REGEX_LIST = [
 
 STATUS_CHECK = {
     'id': 'USNINKBPBVKHHZ-CYUUQNCZSA-L',  # penicillin
-    'index': 'mydrugs_current',
-    'doc_type': 'drug'
+    'index': 'mychem_current',
 }
-

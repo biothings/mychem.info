@@ -1,15 +1,21 @@
 #############
 # HUB VARS  #
 #############
+import logging
+from biothings.utils.loggers import setup_default_log
+from biothings.utils.configuration import ConfigurationError, ConfigurationDefault
+import biothings.utils.jsondiff
+import importlib
 import os
 
 DATA_HUB_DB_DATABASE = "drug_hubdb"                   # db containing the following (internal use)
 DATA_SRC_MASTER_COLLECTION = 'src_master'             # for metadata of each src collections
 DATA_SRC_DUMP_COLLECTION = 'src_dump'                 # for src data download information
 DATA_SRC_BUILD_COLLECTION = 'src_build'               # for src data build information
-DATA_SRC_BUILD_CONFIG_COLLECTION = 'src_build_config' # for src data build configuration
+DATA_SRC_BUILD_CONFIG_COLLECTION = 'src_build_config'  # for src data build configuration
 DATA_PLUGIN_COLLECTION = 'data_plugin'                # for data plugins information
-API_COLLECTION = 'api'                                # for api information (running under hub control)
+# for api information (running under hub control)
+API_COLLECTION = 'api'
 EVENT_COLLECTION = "event"
 CMD_COLLECTION = "cmd"
 
@@ -54,135 +60,135 @@ HUB_ICON = "http://biothings.io/static/img/mychem-logo-shiny.svg"
 
 # Pre-prod/test ES definitions
 INDEX_CONFIG = {
-        "indexer_select": {
-            # default
-            None : "hub.dataindex.indexer.DrugIndexer",
-            },
-        "env" : {
-            "prod" : {
-                "host" : "<PRODSERVER>:9200",
-                "indexer" : {
-                    "args" : {
-                        "timeout" : 300,
-                        "retry_on_timeout" : True,
-                        "max_retries" : 10,
-                        },
+    "indexer_select": {
+        # default
+        None: "hub.dataindex.indexer.DrugIndexer",
+    },
+    "env": {
+        "prod": {
+            "host": "<PRODSERVER>:9200",
+            "indexer": {
+                    "args": {
+                        "timeout": 300,
+                        "retry_on_timeout": True,
+                        "max_retries": 10,
                     },
-                "index" : [{"index": "mydrugs_current", "doc_type": "drug"}],
-                },
-            "local" : {
-                "host" : "localhost:9200",
-                "indexer" : {
-                    "args" : {
-                        "timeout" : 300,
-                        "retry_on_timeout" : True,
-                        "max_retries" : 10,
-                        },
-                    },
-                "index" : [{"index": "mydrugs_current", "doc_type": "drug"}],
-                },
             },
-        }
+            "index": [{"index": "mydrugs_current", "doc_type": "drug"}],
+        },
+        "local": {
+            "host": "localhost:9200",
+            "indexer": {
+                    "args": {
+                        "timeout": 300,
+                        "retry_on_timeout": True,
+                        "max_retries": 10,
+                    },
+            },
+            "index": [{"index": "mydrugs_current", "doc_type": "drug"}],
+        },
+    },
+}
 
 
 # Snapshot environment configuration
 SNAPSHOT_CONFIG = {
-        "env" : {
-            "prod" : {
-                "cloud" : {
-                    "type" : "aws", # default, only one supported by now
-                    "access_key" : None,
-                    "secret_key" : None,
-                    },
-                "repository" : {
-                    "name" : "drug_repository-$(Y)",
-                    "type" : "s3",
-                    "settings" : {
-                        "bucket" : "<SNAPSHOT_BUCKET_NAME>",
-                        "base_path" : "mychem.info/$(Y)", # per year
-                        "region" : "us-west-2",
-                        },
-                    "acl" : "private",
-                    },
-                "indexer" : {
-                    # reference to INDEX_CONFIG
-                    "env" : "local",
-                    },
-                # when creating a snapshot, how long should we wait before querying ES
-                # to check snapshot status/completion ? (in seconds)
-                "monitor_delay" : 60 * 5,
+    "env": {
+        "prod": {
+            "cloud": {
+                "type": "aws",  # default, only one supported by now
+                "access_key": None,
+                "secret_key": None,
+            },
+            "repository": {
+                "name": "drug_repository-$(Y)",
+                "type": "s3",
+                "settings": {
+                        "bucket": "<SNAPSHOT_BUCKET_NAME>",
+                        "base_path": "mychem.info/$(Y)",  # per year
+                        "region": "us-west-2",
                 },
-            "demo" : {
-                "cloud" : {
-                    "type" : "aws", # default, only one supported by now
-                    "access_key" : None,
-                    "secret_key" : None,
-                    },
-                "repository" : {
-                    "name" : "drug_repository-demo-$(Y)",
-                    "type" : "s3",
-                    "settings" : {
-                        "bucket" : "<SNAPSHOT_DEMO_BUCKET_NAME>",
-                        "base_path" : "mychem.info/$(Y)", # per year
-                        "region" : "us-west-2",
-                        },
-                    "acl" : "public",
-                    },
-                "indexer" : {
-                    # reference to INDEX_CONFIG
-                    "env" : "local",
-                    },
-                # when creating a snapshot, how long should we wait before querying ES
-                # to check snapshot status/completion ? (in seconds)
-                "monitor_delay" : 10,
-                }
-            }
+                "acl": "private",
+            },
+            "indexer": {
+                # reference to INDEX_CONFIG
+                "env": "local",
+            },
+            # when creating a snapshot, how long should we wait before querying ES
+            # to check snapshot status/completion ? (in seconds)
+            "monitor_delay": 60 * 5,
+        },
+        "demo": {
+            "cloud": {
+                "type": "aws",  # default, only one supported by now
+                "access_key": None,
+                "secret_key": None,
+            },
+            "repository": {
+                "name": "drug_repository-demo-$(Y)",
+                "type": "s3",
+                "settings": {
+                        "bucket": "<SNAPSHOT_DEMO_BUCKET_NAME>",
+                        "base_path": "mychem.info/$(Y)",  # per year
+                        "region": "us-west-2",
+                },
+                "acl": "public",
+            },
+            "indexer": {
+                # reference to INDEX_CONFIG
+                "env": "local",
+            },
+            # when creating a snapshot, how long should we wait before querying ES
+            # to check snapshot status/completion ? (in seconds)
+            "monitor_delay": 10,
         }
+    }
+}
 
 # Release configuration
 # Each root keys define a release environment (test, prod, ...)
 RELEASE_CONFIG = {
-        "env" : {
-            "prod" : {
-                "cloud" : {
-                    "type" : "aws", # default, only one supported by now
-                    "access_key" : None,
-                    "secret_key" : None,
-                    },
-                "release" : {
-                    "bucket" : "<RELEASES_BUCKET_NAME>",
-                    "region" : "us-west-2",
-                    "folder" : "mychem.info",
-                    "auto" : True, # automatically generate release-note ?
-                    },
-                "diff" : {
-                    "bucket" : "<DIFFS_BUCKET_NAME>",
-                    "folder" : "mychem.info",
-                    "region" : "us-west-2",
-                    "auto" : True, # automatically generate diff ? Careful if lots of changes
-                    },
-                },
-            "demo": {
-                "cloud" : {
-                    "type" : "aws", # default, only one supported by now
-                    "access_key" : None,
-                    "secret_key" : None,
-                    },
-                "release" : {
-                    "bucket" : "<RELEASES_BUCKET_NAME>",
-                    "region" : "us-west-2",
-                    "folder" : "mychem.info-demo",
-                    "auto" : True, # automatically generate release-note ?
-                    },
-                "diff" : {
-                    "bucket" : "<DIFFS_BUCKET_NAME>",
-                    "folder" : "mychem.info",
-                    "region" : "us-west-2",
-                    "auto" : True, # automatically generate diff ? Careful if lots of changes
-                    },
-                }
-            }
+    "env": {
+        "prod": {
+            "cloud": {
+                "type": "aws",  # default, only one supported by now
+                "access_key": None,
+                "secret_key": None,
+            },
+            "release": {
+                "bucket": "<RELEASES_BUCKET_NAME>",
+                "region": "us-west-2",
+                "folder": "mychem.info",
+                "auto": True,  # automatically generate release-note ?
+            },
+            "diff": {
+                "bucket": "<DIFFS_BUCKET_NAME>",
+                "folder": "mychem.info",
+                "region": "us-west-2",
+                "auto": True,  # automatically generate diff ? Careful if lots of changes
+            },
+        },
+        "demo": {
+            "cloud": {
+                "type": "aws",  # default, only one supported by now
+                "access_key": None,
+                "secret_key": None,
+            },
+            "release": {
+                "bucket": "<RELEASES_BUCKET_NAME>",
+                "region": "us-west-2",
+                "folder": "mychem.info-demo",
+                "auto": True,  # automatically generate release-note ?
+            },
+            "diff": {
+                "bucket": "<DIFFS_BUCKET_NAME>",
+                "folder": "mychem.info",
+                "region": "us-west-2",
+                "auto": True,  # automatically generate diff ? Careful if lots of changes
+            },
         }
+    }
+}
 
 
 SLACK_WEBHOOK = None
@@ -196,7 +202,7 @@ HUB_API_PORT = 7080
 ################################################################################
 # The format is a dictionary of 'username': 'cryptedpassword'
 # Generate crypted passwords with 'openssl passwd -crypt'
-HUB_PASSWD = {"guest":"9RKfd8gDuNf0Q"}
+HUB_PASSWD = {"guest": "9RKfd8gDuNf0Q"}
 
 # cached data (it None, caches won't be used at all)
 CACHE_FOLDER = None
@@ -207,8 +213,6 @@ STANDALONE_VERSION = "standalone_v3"
 # don't bother with elements order in a list when diffing,
 # mygene optmized uploaders can't produce different results
 # when parsing data (parallelization)
-import importlib
-import biothings.utils.jsondiff
 importlib.reload(biothings.utils.jsondiff)
 biothings.utils.jsondiff.UNORDERED_LIST = True
 
@@ -225,47 +229,51 @@ biothings.utils.jsondiff.UNORDERED_LIST = True
 # any other variables in this file as required. Variables defined as ValueError() exceptions
 # *must* be defined
 #
-from biothings import ConfigurationError, ConfigurationDefault
 # To be defined at application-level:
 
 # Individual source database connection
 DATA_SRC_SERVER = ConfigurationError("Define hostname for source database")
 DATA_SRC_PORT = ConfigurationError("Define port for source database")
 DATA_SRC_DATABASE = ConfigurationError("Define name for source database")
-DATA_SRC_SERVER_USERNAME = ConfigurationError("Define username for source database connection (or None if not needed)")
-DATA_SRC_SERVER_PASSWORD = ConfigurationError("Define password for source database connection (or None if not needed)")
+DATA_SRC_SERVER_USERNAME = ConfigurationError(
+    "Define username for source database connection (or None if not needed)")
+DATA_SRC_SERVER_PASSWORD = ConfigurationError(
+    "Define password for source database connection (or None if not needed)")
 
 # Target (merged collection) database connection
 DATA_TARGET_SERVER = ConfigurationError("Define hostname for target database (merged collections)")
 DATA_TARGET_PORT = ConfigurationError("Define port for target database (merged collections)")
 DATA_TARGET_DATABASE = ConfigurationError("Define name for target database (merged collections)")
-DATA_TARGET_SERVER_USERNAME = ConfigurationError("Define username for target database connection (or None if not needed)")
-DATA_TARGET_SERVER_PASSWORD = ConfigurationError("Define password for target database connection (or None if not needed)")
+DATA_TARGET_SERVER_USERNAME = ConfigurationError(
+    "Define username for target database connection (or None if not needed)")
+DATA_TARGET_SERVER_PASSWORD = ConfigurationError(
+    "Define password for target database connection (or None if not needed)")
 
 HUB_DB_BACKEND = ConfigurationError("Define Hub DB connection")
 # Internal backend. Default to mongodb
 # For now, other options are: mongodb, sqlite3, elasticsearch
-#HUB_DB_BACKEND = {
+# HUB_DB_BACKEND = {
 #        "module" : "biothings.utils.sqlite3",
 #        "sqlite_db_folder" : "./db",
 #        }
-#HUB_DB_BACKEND = {
+# HUB_DB_BACKEND = {
 #        "module" : "biothings.utils.mongo",
 #        "uri" : "mongodb://localhost:27017",
 #        #"uri" : "mongodb://user:passwd@localhost:27017", # mongodb std URI
 #        }
-#HUB_DB_BACKEND = {
+# HUB_DB_BACKEND = {
 #        "module" : "biothings.utils.es",
 #        "host" : "localhost:9200",
 #        }
 
 # Path to a folder to store all downloaded files, logs, caches, etc...
-DATA_ARCHIVE_ROOT = ConfigurationError("Define path to folder which will contain all downloaded data, cache files, etc...")
+DATA_ARCHIVE_ROOT = ConfigurationError(
+    "Define path to folder which will contain all downloaded data, cache files, etc...")
 
 # Path to a folder to store all 3rd party parsers, dumpers, etc...
 DATA_PLUGIN_FOLDER = ConfigurationDefault(
-        default="./plugins",
-        desc="Define path to folder which will contain all 3rd party parsers, dumpers, etc...")
+    default="./plugins",
+    desc="Define path to folder which will contain all 3rd party parsers, dumpers, etc...")
 
 # this dir must be created manually
 LOG_FOLDER = ConfigurationError("Define path to folder which will contain log files")
@@ -273,7 +281,7 @@ LOG_FOLDER = ConfigurationError("Define path to folder which will contain log fi
 #LOG_FOLDER = os.path.join(DATA_ARCHIVE_ROOT,'logs')
 
 # Path to folder containing diff files
-DIFF_PATH = ConfigurationError("Define path to folder which will contain output files from diff")                                                                                                                                       
+DIFF_PATH = ConfigurationError("Define path to folder which will contain output files from diff")
 # Usually inside DATA_ARCHIVE_ROOT
 #DIFF_PATH = os.path.join(DATA_ARCHIVE_ROOT,"diff")
 
@@ -283,8 +291,6 @@ RELEASE_PATH = ConfigurationError("Define path to folder which will contain outp
 #RELEASE_PATH = os.path.join(DATA_ARCHIVE_ROOT,"release")
 
 # default hub logger
-from biothings.utils.loggers import setup_default_log
-import logging
 logger = ConfigurationDefault(
-        default=logging,
-        desc="Provide a default hub logger instance (use setup_default_log(name,log_folder)")
+    default=logging,
+    desc="Provide a default hub logger instance (use setup_default_log(name,log_folder)")
