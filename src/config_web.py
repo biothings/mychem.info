@@ -11,22 +11,11 @@ import re
 # *****************************************************************************
 ES_HOST = 'localhost:9200'
 ES_INDICES = {
-    None: "mychem_current",
     "chem": "mychem_current",
     "drug": "mychem_current",
     "compound": "mychem_current"
 }
 ES_SCROLL_TIME = '10m'
-
-# *****************************************************************************
-# App URL Patterns
-# *****************************************************************************
-
-GA_ACTION_QUERY_GET = 'query_get'
-GA_ACTION_QUERY_POST = 'query_post'
-GA_ACTION_ANNOTATION_GET = 'drug_get'
-GA_ACTION_ANNOTATION_POST = 'drug_post'
-GA_TRACKER_URL = 'c.biothings.io'
 
 # *****************************************************************************
 # Endpoint Specifics
