@@ -25,7 +25,6 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
         assert len(res) == 1
         assert self.value_in_result(q, res, 'chebi.id', True)
 
-
     def test_013_chebi_secondary(self):
         q = 'chebi:22821'
         res = self.request("chem", method="POST", data={"ids": q})
@@ -61,7 +60,6 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
         assert len(res) == 1
         assert self.value_in_result(q, res, 'drugbank.id', True)
 
-
     def test_021_chembl_ci(self):
         q = 'CHEMBL297569'
         res = self.request("chem", method="POST", data={"ids": q})
@@ -69,14 +67,12 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
         assert len(res) == 1
         assert self.value_in_result(q, res, 'chembl.molecule_chembl_id', True)
 
-
     def test_022_chebi_ci(self):
         q = 'ChEBI:57966'
         res = self.request("chem", method="POST", data={"ids": q})
         res = res.json()
         assert len(res) == 1
         assert self.value_in_result(q, res, 'chebi.id', True)
-
 
     def test_023_cid_ci(self):
         q = 'Cid:120933777'
