@@ -1,9 +1,7 @@
 import os
-import glob
-import zipfile
 import pymongo
 
-from .chebi_parser import load_data
+from .chebi_parser import ChebiParser, CompoundReader, OntologyReader
 from .exclusion_ids import exclusion_ids
 from hub.dataload.uploader import BaseDrugUploader
 from biothings.utils.mongo import get_src_db
@@ -23,15 +21,13 @@ SRC_META = {
 class ChebiUploader(BaseDrugUploader):
 
     name = "chebi"
-    #storage_class = storage.IgnoreDuplicatedStorage
+    # storage_class = storage.IgnoreDuplicatedStorage
     storage_class = storage.RootKeyMergerStorage
     __metadata__ = {"src_meta": SRC_META}
-    keylookup = MyChemKeyLookup(
-        [('inchikey', 'chebi.inchikey'),
-         ('drugbank', 'chebi.xrefs.drugbank'),
-         ('chebi', 'chebi.id'),
-         ],
-        copy_from_doc=True)
+    keylookup = MyChemKeyLookup([('inchikey', 'chebi.inchikey'),
+                                 ('drugbank', 'chebi.xrefs.drugbank'),
+                                 ('chebi', 'chebi.id')], copy_from_doc=True)
+
     # See the comment on the ExcludeFieldsById for use of this class.
     exclude_fields = ExcludeFieldsById(exclusion_ids, [
         "chebi.xrefs.intenz",
@@ -43,18 +39,27 @@ class ChebiUploader(BaseDrugUploader):
 
     def load_data(self, data_folder):
         self.logger.info("Load data from '%s'" % data_folder)
-        input_file = os.path.join(data_folder, "ChEBI_complete.sdf")
+
+        sdf_input_file = os.path.join(data_folder, "ChEBI_complete.sdf")
+        assert os.path.exists(sdf_input_file), "Can't find input file '%s'" % sdf_input_file
+
+        obo_input_file = os.path.join(data_folder, "chebi_lite.obo")
+        assert os.path.exists(obo_input_file), "Can't find input file '%s'" % obo_input_file
+
         # get others source collection for inchi key conversion
         drugbank_col = get_src_db()["drugbank"]
-        assert drugbank_col.count() > 0, "'drugbank' collection is empty (required for inchikey " + \
-            "conversion). Please run 'drugbank' uploader first"
+        assert drugbank_col.count() > 0, \
+            "'drugbank' collection is empty (required for inchikey conversion). Please run 'drugbank' uploader first"
         chembl_col = get_src_db()["chembl"]
-        assert chembl_col.count() > 0, "'chembl' collection is empty (required for inchikey " + \
-            "conversion). Please run 'chembl' uploader first"
-        assert os.path.exists(
-            input_file), "Can't find input file '%s'" % input_file
+        assert chembl_col.count() > 0, \
+            "'chembl' collection is empty (required for inchikey conversion). Please run 'chembl' uploader first"
+
+        compound_reader = CompoundReader(sdf_input_file)
+        ontology_reader = OntologyReader(obo_input_file)
+        chebi_parser = ChebiParser(compound_reader, ontology_reader)
+
         # KeyLookup is disabled due to duplicate key errors
-        return self.exclude_fields(self.keylookup(load_data, debug=True))(input_file)
+        return self.exclude_fields(self.keylookup(chebi_parser.parse, debug=True))()
         # return self.exclude_fields(load_data)(input_file)
 
     def post_update_data(self, *args, **kwargs):
