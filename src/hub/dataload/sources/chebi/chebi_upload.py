@@ -294,6 +294,30 @@ class ChebiUploader(BaseDrugUploader):
                                 "type": "keyword",
                             }
                         }
+                    },
+                    "num_children": {
+                        "type": "integer"
+                    },
+                    "children": {
+                        "type": "text"
+                    },
+                    "num_parents": {
+                        "type": "integer"
+                    },
+                    "parents": {
+                        "type": "text"
+                    },
+                    "num_descendants": {
+                        "type": "integer"
+                    },
+                    "descendants": {
+                        "type": "text"
+                    },
+                    "num_ancestors": {
+                        "type": "integer"
+                    },
+                    "ancestors": {
+                        "type": "text"
                     }
                 }
             }
