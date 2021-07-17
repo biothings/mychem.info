@@ -163,13 +163,13 @@ class OntologyReader:
     @classmethod
     def convert_subset_value(cls, value):
         """
-        The 'subset' field of ontology nodes has 3 values, {'1_STAR', '2_STAR', '3_STAR'}
+        The 'subset' field of ontology nodes has 3 unique values, { ['1_STAR'], ['2_STAR'], ['3_STAR'] }
         This method will convert the a 'subset' value from string to integer correspondingly, i.e. {1, 2, 3}
         """
         if not value:
             return None
 
-        return int(value.split("_")[0])
+        return int(value[0].split("_")[0])
 
     @classmethod
     def convert_relationship_value(cls, value):
@@ -210,7 +210,9 @@ class OntologyReader:
           
         node_obj['subset'] has 3 values, {'1_STAR', '2_STAR', '3_STAR'}, and will be converted to {1, 2, 3}
         """
-        node_obj = self.ontology_graph_node_view[node_id]
+        node_obj = self.ontology_graph_node_view.get(node_id)
+        if node_obj is None:
+            return None
 
         successors = list(self.ontology_graph.successors(node_id))  # graph.predecessors(): iterator
         predecessors = list(self.ontology_graph.predecessors(node_id))  # graph.predecessors(): iterator
@@ -229,7 +231,6 @@ class OntologyReader:
 
         # Use the same naming convention as in the Mondo parser
         #   See https://github.com/biothings/mydisease.info/blob/master/src/plugins/mondo/parser.py
-        # TODO add to mapping
         ontology_dict["num_children"] = len(successors)
         ontology_dict["num_parents"] = len(predecessors)
         ontology_dict["num_descendants"] = len(descendants)
@@ -260,7 +261,10 @@ class ChebiParser:
         used_chebi_ids = set()
 
         for compound_dict in self.compound_reader.iter_read_compounds():
-            chebi_id = compound_dict["id"]
+            # Note that in CompoundReader.convert_comp_attr_to_dict_entry(), all fields of compound documents are
+            #   converted to list of strings. And at this step, `unlist` is not executed yet, so `compound_dict["id"]`
+            #   must be a list of one string at now.
+            chebi_id = compound_dict["id"][0]
 
             ontology_dict = self.ontology_reader.read_ontology(chebi_id)
             if ontology_dict:
