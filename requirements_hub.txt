@@ -19,3 +19,4 @@ xmltodict==0.11.0 # drugbank parsing
 beautifulsoup4==4.5.1 # drugbank dumper
 lxml # bs4 html parsing (note: no version avail to set it fixed)
 pandas==1.0.1 # sider parser
+obonet==0.3.0
