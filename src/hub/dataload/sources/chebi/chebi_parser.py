@@ -228,6 +228,7 @@ class OntologyReader:
         """
         Read the node object in the ontology graph given `node_id` and convert it to an ontology document
         """
+
         """
         Each node_obj has 6 keys: {'alt_id', 'def', 'is_a', 'name', 'relationship', 'subset'}
         
@@ -239,8 +240,6 @@ class OntologyReader:
           node_obj['name']         -> ontology_dict['name']
           node_obj['relationship'] -> ontology_dict['relationship']
           node_obj['subset']       -> ontology_dict['star']
-          
-        node_obj['subset'] has 3 values, {'1_STAR', '2_STAR', '3_STAR'}, and will be converted to {1, 2, 3}
         """
         node_obj = self.ontology_graph_node_view.get(node_id)
         if node_obj is None:
