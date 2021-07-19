@@ -1,4 +1,4 @@
-biothings[web_extra]==0.8.5
+git+git://github.com/biothings/biothings.api@1b96f0a#egg=biothings[web_extra]
 elasticsearch==6.3.1
 elasticsearch-dsl==6.3.1
 # for dotstring utilities
