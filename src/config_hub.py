@@ -225,7 +225,7 @@ biothings.utils.jsondiff.UNORDERED_LIST = True
 # any other variables in this file as required. Variables defined as ValueError() exceptions
 # *must* be defined
 #
-from biothings import ConfigurationError, ConfigurationDefault
+from biothings.utils.configuration import ConfigurationError, ConfigurationDefault
 # To be defined at application-level:
 
 # Individual source database connection
