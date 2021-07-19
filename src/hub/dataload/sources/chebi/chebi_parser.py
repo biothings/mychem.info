@@ -172,6 +172,38 @@ class OntologyReader:
         return int(value[0].split("_")[0])
 
     @classmethod
+    def convert_def_value(cls, value):
+        """
+        The 'def' field of obo ontology has a format of "<def_string> [<dbxref>]".
+            See https://owlcollab.github.io/oboformat/doc/GO.format.obo-1_4.html#S.2.2
+
+        Lib `obonet` will read the such a field incorrectly into a whole string. The solve the issue fundamentally,
+        it's better use some other libraries (e.g. pronto) to parse the obo files.
+
+        However the the 'def' fields within the current ChEBI obo file all have empty <dbxref> lists. A quick fix is to
+        trim them from the string values of 'def' fields.
+
+        E.g.
+
+            '"A macrocyclic lactone with a ring of twelve or more members derived from a polyketide." []'
+
+        will be trimmed to
+
+            'A macrocyclic lactone with a ring of twelve or more members derived from a polyketide.'
+
+        Note that the quotes inside will also be removed.
+        """
+        if not value:
+            return None
+
+        # Usually `obonet` uses double quotes inside, but to play safe, check both cases.
+        if (value.startswith(r'"') and value.endswith(r'" []')) or (value.startswith(r"'") and value.endswith(r"' []")):
+            # Remove the first quote, the last quote, the last space, and the ending pair of brackets
+            return value[1: -4]
+        else:
+            return value
+
+    @classmethod
     def convert_relationship_value(cls, value):
         """
         The 'relationship' field of ontology nodes is a list of space-separated strings. E.g.
@@ -224,7 +256,7 @@ class OntologyReader:
         ontology_dict["id"] = node_id
 
         ontology_dict["secondary_chebi_id"] = node_obj.get("alt_id")
-        ontology_dict['definition'] = node_obj.get('def')
+        ontology_dict['definition'] = self.convert_def_value(node_obj.get('def'))
         ontology_dict['name'] = node_obj.get('name')
         ontology_dict['relationship'] = self.convert_relationship_value(node_obj.get('relationship'))
         ontology_dict['star'] = self.convert_subset_value(node_obj.get('subset'))
