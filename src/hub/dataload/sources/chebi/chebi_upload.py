@@ -318,6 +318,37 @@ class ChebiUploader(BaseDrugUploader):
                     },
                     "ancestors": {
                         "type": "text"
+                    },
+                    "relationship": {
+                        "properties": {
+                            "has_functional_parent": {
+                                "type": "text"
+                            },
+                            "has_parent_hydride": {
+                                "type": "text"
+                            },
+                            "has_part": {
+                                "type": "text"
+                            },
+                            "has_role": {
+                                "type": "text"
+                            },
+                            "is_conjugate_acid_of": {
+                                "type": "text"
+                            },
+                            "is_conjugate_base_of": {
+                                "type": "text"
+                            },
+                            "is_enantiomer_of": {
+                                "type": "text"
+                            },
+                            "is_substituent_group_from": {
+                                "type": "text"
+                            },
+                            "is_tautomer_of": {
+                                "type": "text"
+                            }
+                        }
                     }
                 }
             }

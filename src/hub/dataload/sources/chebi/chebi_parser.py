@@ -213,6 +213,12 @@ class OntologyReader:
         This method will convert the a 'relationship' value to a dict correspondingly. E.g.
 
           {'has_role': ['CHEBI:68495', 'CHEBI:38637', 'CHEBI:35610'], 'has_functional_parent': [CHEBI:28179']}
+
+        Currently there are 9 types of relationship in the ChEBI obo file:
+
+          {'has_functional_parent', 'has_parent_hydride', 'has_part', 'has_role',
+           'is_conjugate_acid_of', 'is_conjugate_base_of', 'is_enantiomer_of', 'is_substituent_group_from',
+           'is_tautomer_of'}
         """
         if not value:
             return None
