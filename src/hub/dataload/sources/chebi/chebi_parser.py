@@ -163,13 +163,13 @@ class OntologyReader:
     @classmethod
     def convert_subset_value(cls, value):
         """
-        The 'subset' field of ontology nodes has 3 unique values, { ['1_STAR'], ['2_STAR'], ['3_STAR'] }
-        This method will convert the a 'subset' value from string to integer correspondingly, i.e. {1, 2, 3}
+        The 'subset' field of ontology nodes has 3 unique values, ['1_STAR'], ['2_STAR'], and ['3_STAR']
+        This method will convert the a 'subset' value from string to integer correspondingly, i.e. 1, 2, and 3
         """
         if not value:
             return None
-
-        return int(value[0].split("_")[0])
+        
+        return int(value[0][0])
 
     @classmethod
     def convert_def_value(cls, value):
