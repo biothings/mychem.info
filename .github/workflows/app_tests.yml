@@ -1,9 +1,7 @@
 name: App Tests
 
 on:
-  push:
-    branches:
-      - master
+  push: {}
   pull_request:
     branches:
       - master
