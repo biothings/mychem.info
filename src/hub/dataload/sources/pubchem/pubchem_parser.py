@@ -1,6 +1,38 @@
 import os
 import xml.etree.ElementTree as ET
 import gzip
+import re
+
+from biothings.utils.dataload import value_convert_to_number
+
+
+def camel_to_snake(s):
+    """Convert camelCase strings to snake_case"""
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', s)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+
+
+def dict_to_snake_case(d, skipped_keys=[]):
+    """Recursively convert a dictionary's keys to snake_case, while removing spaces and '-'.
+    We must iterate items twice, because modifying the key can change the order of items.
+    The first pass freezes the items in their current order, and the second modifies them.
+    """
+    items = []
+    for key, val in d.items():
+        items.append((key, val))
+    for key, val in items:
+        if isinstance(val, dict):
+            dict_to_snake_case(val, skipped_keys)
+        if type(key) == str and key not in skipped_keys:
+            new_key = key
+            if not key.islower():
+                new_key = camel_to_snake(key)
+            if " " in key or "-" in key:
+                new_key = new_key.replace("-", "_").replace(" _", "_").replace(" ", "_")
+            if new_key != key:
+                d[new_key] = val
+                del d[key]
+    return d
 
 
 def load_annotations(input_file):
@@ -46,6 +78,10 @@ def load_annotations(input_file):
                     current_compound["pubchem"] = compound_data
                     # rarely, some will be missing a cid. make sure this isn't the case
                     if(current_compound["_id"]):
+                        # Convert numeric values to float or integer
+                        current_compound = value_convert_to_number(current_compound)
+                        # Convert keys to snake_case
+                        current_compound = dict_to_snake_case(current_compound)
                         # yield the compound
                         yield(current_compound)
                     # clear element from memory
@@ -179,7 +215,17 @@ def load_annotations(input_file):
                         if(elem.text):
                             compound_data["complexity"] = elem.text
                         complexity = False
-            except:
-                continue
-    except:
-        continue
+            except Exception as e:
+                print(e)
+    except Exception as e:
+        print(e)
+
+
+if __name__ == "__main__":
+    import json
+
+    i = 0
+    while i < 3:
+        annotations = load_annotations("./data/Compound_024500001_025000000.xml.gz")
+        print(json.dumps(next(annotations), indent=2))
+        i += 1
