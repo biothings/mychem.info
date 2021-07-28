@@ -1,6 +1,5 @@
-import os
+import os.path
 import glob
-import pymongo
 # when code is exported, import becomes relative
 try:
     from pubchem.pubchem_parser import load_annotations as parser_func
@@ -13,16 +12,18 @@ except ImportError:
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 import biothings.hub.dataload.storage as storage
 
+
 class PubChemUploader(ParallelizedSourceUploader):
 
     name = "pubchem"
-    storage_class = storage.IgnoreDuplicatedStorage
+    storage_class = storage.RootKeyMergerStorage
 
-    __metadata__ = { "src_meta" : {
-        "url": "https://pubchem.ncbi.nlm.nih.gov/",
-        "license_url" : "https://www.ncbi.nlm.nih.gov/home/about/policies/",
-        "license_url_short" : "http://bit.ly/2AqoLOc",
-        "license": "public domain"
+    __metadata__ = {
+        "src_meta": {
+            "url": "https://pubchem.ncbi.nlm.nih.gov/",
+            "license_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+            "license_url_short": "http://bit.ly/2AqoLOc",
+            "license": "public domain"
         }
     }
 
@@ -30,115 +31,137 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def jobs(self):
         # this will generate arguments for self.load.data() method, allowing parallelization
-        xmlgz_files = glob.glob(os.path.join(self.data_folder,self.__class__.COMPOUND_PATTERN))
+        xmlgz_files = glob.glob(os.path.join(self.data_folder, self.__class__.COMPOUND_PATTERN))
         return [(f,) for f in xmlgz_files]
 
-    def load_data(self,input_file):
+    def load_data(self, input_file):
         self.logger.info("Load data from file '%s'" % input_file)
         return parser_func(input_file)
+
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        for idxname in ["pubchem.cid", "pubchem.inchi"]:
+            self.logger.info("Indexing '%s'" % idxname)
+            # background=true or it'll lock the whole database...
+            # pubchem can be an array, hence it doesn't support hashed indexes
+            self.collection.create_index(idxname, background=True)
 
     @classmethod
     def get_mapping(klass):
         return {
-                "pubchem" : {
-                    "properties" : {
-                        "inchi_key" : {
-                            "normalizer": "keyword_lowercase_normalizer",
-                            "type": "keyword",
+            "pubchem": {
+                "properties": {
+                    "cid": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword",
+                        'copy_to': ['all'],
+                    },
+                    "iupac": {
+                        "properties": {
+                            "allowed": {
+                                "type": "text"
                             },
-                        "undefined_atom_stereocenter_count" : {
-                            "type":"integer"
+                            "cas_like_style": {
+                                "type": "text"
                             },
-                        "formal_charge" : {
-                            "type":"integer"
+                            "markup": {
+                                "type": "text"
                             },
-                        "isotope_atom_count" : {
-                            "type":"integer"
+                            "preferred": {
+                                "type": "text"
                             },
-                        "defined_atom_stereocenter_count" : {
-                            "type":"integer"
+                            "systematic": {
+                                "type": "text"
                             },
-                        "molecular_weight" : {
-                            "type":"float"
-                            },
-                        "monoisotopic_weight" : {
-                            "type":"float"
-                            },
-                        "tautomers_count" : {
-                            "type":"integer"
-                            },
-                        "rotatable_bond_count" : {
-                            "type":"integer"
-                            },
-                        "exact_mass" : {
-                            "type":"float"
-                            },
-                        "chiral_bond_count" : {
-                            "type":"integer"
-                            },
-                        "smiles" : {
-                            "properties" : {
-                                "isomeric" : {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "canonical" : {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    }
-                                }
-                            },
-                        "hydrogen_bond_acceptor_count" : {
-                            "type":"integer"
-                            },
-                        "hydrogen_bond_donor_count" : {
-                                "type":"integer"
-                                },
-                        "inchi" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                },
-                        "undefined_bond_stereocenter_count" : {
-                                "type":"integer"
-                                },
-                        "defined_bond_stereocenter_count" : {
-                                "type":"integer"
-                                },
-                        "xlogp" : {
-                                "type":"float"
-                                },
-                        "chiral_atom_count" : {
-                                "type":"integer"
-                                },
-                        "cid" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                'copy_to': ['all'],
-                                },
-                        "topological_polar_surface_area" : {
-                                "type":"float"
-                                },
-                        "iupac" : {
-                                "properties" : {
-                                    "traditional" : {
-                                        "type":"text"
-                                        }
-                                    }
-                                },
-                        "complexity" : {
-                                "type":"float"
-                                },
-                        "heavy_atom_count" : {
-                                "type":"integer"
-                                },
-                        "molecular_formula" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                },
-                        "covalently-bonded_unit_count" : {
-                                "type":"integer"
-                                }
+                            "traditional": {
+                                "type": "text"
+                            }
                         }
+                    },
+                    "smiles": {
+                        "properties": {
+                            "canonical": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            },
+                            "isomeric": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "formal_charge": {
+                        "type": "integer"
+                    },
+                    "complexity": {
+                        "type": "float"
+                    },
+                    "hydrogen_bond_acceptor_count": {
+                        "type": "integer"
+                    },
+                    "hydrogen_bond_donor_count": {
+                        "type": "integer"
+                    },
+                    "rotatable_bond_count": {
+                        "type": "integer"
+                    },
+                    "inchi": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inchikey": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "xlogp": {
+                        "type": "float"
+                    },
+                    "exact_mass": {
+                        "type": "float"
+                    },
+                    "molecular_formula": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "molecular_weight": {
+                        "type": "float"
+                    },
+                    "topological_polar_surface_area": {
+                        "type": "float"
+                    },
+                    "monoisotopic_weight": {
+                        "type": "float"
+                    },
+                    "heavy_atom_count": {
+                        "type": "integer"
+                    },
+                    "chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "chiral_bond_count": {
+                        "type": "integer"
+                    },
+                    "defined_chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "undefined_chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "defined_chiral_bond_count": {
+                        "type": "integer"
+                    },
+                    "undefined_chiral_bond_count": {
+                        "type": "integer"
+                    },
+                    "isotope_atom_count": {
+                        "type": "integer"
+                    },
+                    "covalent_unit_count": {
+                        "type": "integer"
+                    },
+                    "tautomers_count": {
+                        "type": "integer"
+                    }
                 }
             }
-
+        }
