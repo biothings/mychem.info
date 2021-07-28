@@ -70,6 +70,7 @@ def load_annotations(input_file):
                 if((elem.tag == "PC-CompoundType_id_cid") & (event == 'start')):
                     current_compound = {}
                     compound_data = {}
+                    # cid is _id, unless inchikey exists (overwritten below)
                     current_compound["_id"] = elem.text
                     compound_data["cid"] = elem.text
                     compound_data["iupac"] = {}
@@ -159,6 +160,8 @@ def load_annotations(input_file):
                         inchi = False
                     elif(inchikey):
                         if(elem.text):
+                            # override _id if inchikey exists
+                            current_compound["_id"] = elem.text
                             compound_data["inchikey"] = elem.text
                         inchikey = False
                     elif(iupac):
@@ -219,13 +222,3 @@ def load_annotations(input_file):
                 print(e)
     except Exception as e:
         print(e)
-
-
-if __name__ == "__main__":
-    import json
-
-    i = 0
-    while i < 3:
-        annotations = load_annotations("./data/Compound_024500001_025000000.xml.gz")
-        print(json.dumps(next(annotations), indent=2))
-        i += 1
