@@ -96,6 +96,10 @@ def load_annotations(input_file):
             if(elem.text):
                 if((elem.tag == "PC-Count_heavy-atom") & (event == 'end')):
                     compound_data["heavy_atom_count"] = elem.text
+                elif((elem.tag == "PC-Count_atom-chiral") & (event == 'end')):
+                    compound_data["chiral_atom_count"] = elem.text
+                elif((elem.tag == "PC-Count_bond-chiral") & (event == 'end')):
+                    compound_data["chiral_bond_count"] = elem.text
                 elif((elem.tag == "PC-Count_atom-chiral-def") & (event == 'end')):
                     compound_data["defined_chiral_atom_count"] = elem.text
                 elif((elem.tag == "PC-Count_bond-chiral-def") & (event == 'end')):

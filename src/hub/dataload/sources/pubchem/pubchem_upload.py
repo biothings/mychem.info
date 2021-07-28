@@ -136,6 +136,12 @@ class PubChemUploader(ParallelizedSourceUploader):
                     "heavy_atom_count": {
                         "type": "integer"
                     },
+                    "chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "chiral_bond_count": {
+                        "type": "integer"
+                    },
                     "defined_chiral_atom_count": {
                         "type": "integer"
                     },
