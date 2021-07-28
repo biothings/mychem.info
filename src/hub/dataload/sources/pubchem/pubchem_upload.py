@@ -1,6 +1,5 @@
-import os
+import os.path
 import glob
-import pymongo
 # when code is exported, import becomes relative
 try:
     from pubchem.pubchem_parser import load_annotations as parser_func
@@ -13,16 +12,18 @@ except ImportError:
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 import biothings.hub.dataload.storage as storage
 
+
 class PubChemUploader(ParallelizedSourceUploader):
 
     name = "pubchem"
     storage_class = storage.RootKeyMergerStorage
 
-    __metadata__ = { "src_meta" : {
-        "url": "https://pubchem.ncbi.nlm.nih.gov/",
-        "license_url" : "https://www.ncbi.nlm.nih.gov/home/about/policies/",
-        "license_url_short" : "http://bit.ly/2AqoLOc",
-        "license": "public domain"
+    __metadata__ = {
+        "src_meta": {
+            "url": "https://pubchem.ncbi.nlm.nih.gov/",
+            "license_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+            "license_url_short": "http://bit.ly/2AqoLOc",
+            "license": "public domain"
         }
     }
 
@@ -30,13 +31,12 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def jobs(self):
         # this will generate arguments for self.load.data() method, allowing parallelization
-        xmlgz_files = glob.glob(os.path.join(self.data_folder,self.__class__.COMPOUND_PATTERN))
+        xmlgz_files = glob.glob(os.path.join(self.data_folder, self.__class__.COMPOUND_PATTERN))
         return [(f,) for f in xmlgz_files]
 
-    def load_data(self,input_file):
+    def load_data(self, input_file):
         self.logger.info("Load data from file '%s'" % input_file)
         return parser_func(input_file)
-
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following upload"""
@@ -45,7 +45,6 @@ class PubChemUploader(ParallelizedSourceUploader):
             # background=true or it'll lock the whole database...
             # pubchem can be an array, hence it doesn't support hashed indexes
             self.collection.create_index(idxname, background=True)
-
 
     @classmethod
     def get_mapping(klass):
