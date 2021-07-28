@@ -50,105 +50,111 @@ class PubChemUploader(ParallelizedSourceUploader):
     @classmethod
     def get_mapping(klass):
         return {
-                "pubchem" : {
-                    "properties" : {
-                        "inchi_key" : {
-                            "normalizer": "keyword_lowercase_normalizer",
-                            "type": "keyword",
+            "pubchem": {
+                "properties": {
+                    "cid": {
+                        "type": "integer"
+                    },
+                    "iupac": {
+                        "properties": {
+                            "allowed": {
+                                "type": "text"
                             },
-                        "undefined_atom_stereocenter_count" : {
-                            "type":"integer"
+                            "cas_like_style": {
+                                "type": "text"
                             },
-                        "formal_charge" : {
-                            "type":"integer"
+                            "markup": {
+                                "type": "text"
                             },
-                        "isotope_atom_count" : {
-                            "type":"integer"
+                            "preferred": {
+                                "type": "text"
                             },
-                        "defined_atom_stereocenter_count" : {
-                            "type":"integer"
+                            "systematic": {
+                                "type": "text"
                             },
-                        "molecular_weight" : {
-                            "type":"float"
-                            },
-                        "monoisotopic_weight" : {
-                            "type":"float"
-                            },
-                        "tautomers_count" : {
-                            "type":"integer"
-                            },
-                        "rotatable_bond_count" : {
-                            "type":"integer"
-                            },
-                        "exact_mass" : {
-                            "type":"float"
-                            },
-                        "chiral_bond_count" : {
-                            "type":"integer"
-                            },
-                        "smiles" : {
-                            "properties" : {
-                                "isomeric" : {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "canonical" : {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    }
-                                }
-                            },
-                        "hydrogen_bond_acceptor_count" : {
-                            "type":"integer"
-                            },
-                        "hydrogen_bond_donor_count" : {
-                                "type":"integer"
-                                },
-                        "inchi" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                },
-                        "undefined_bond_stereocenter_count" : {
-                                "type":"integer"
-                                },
-                        "defined_bond_stereocenter_count" : {
-                                "type":"integer"
-                                },
-                        "xlogp" : {
-                                "type":"float"
-                                },
-                        "chiral_atom_count" : {
-                                "type":"integer"
-                                },
-                        "cid" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                'copy_to': ['all'],
-                                },
-                        "topological_polar_surface_area" : {
-                                "type":"float"
-                                },
-                        "iupac" : {
-                                "properties" : {
-                                    "traditional" : {
-                                        "type":"text"
-                                        }
-                                    }
-                                },
-                        "complexity" : {
-                                "type":"float"
-                                },
-                        "heavy_atom_count" : {
-                                "type":"integer"
-                                },
-                        "molecular_formula" : {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                                },
-                        "covalently-bonded_unit_count" : {
-                                "type":"integer"
-                                }
+                            "traditional": {
+                                "type": "text"
+                            }
                         }
+                    },
+                    "smiles": {
+                        "properties": {
+                            "canonical": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            },
+                            "isomeric": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "formal_charge": {
+                        "type": "integer"
+                    },
+                    "complexity": {
+                        "type": "integer"
+                    },
+                    "hydrogen_bond_acceptor_count": {
+                        "type": "integer"
+                    },
+                    "hydrogen_bond_donor_count": {
+                        "type": "integer"
+                    },
+                    "rotatable_bond_count": {
+                        "type": "integer"
+                    },
+                    "inchi": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inchikey": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "xlogp": {
+                        "type": "float"
+                    },
+                    "exact_mass": {
+                        "type": "float"
+                    },
+                    "molecular_formula": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "molecular_weight": {
+                        "type": "float"
+                    },
+                    "topological_polar_surface_area": {
+                        "type": "float"
+                    },
+                    "monoisotopic_weight": {
+                        "type": "float"
+                    },
+                    "heavy_atom_count": {
+                        "type": "integer"
+                    },
+                    "defined_chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "undefined_chiral_atom_count": {
+                        "type": "integer"
+                    },
+                    "defined_chiral_bond_count": {
+                        "type": "integer"
+                    },
+                    "undefined_chiral_bond_count": {
+                        "type": "integer"
+                    },
+                    "isotope_atom_count": {
+                        "type": "integer"
+                    },
+                    "covalent_unit_count": {
+                        "type": "integer"
+                    },
+                    "tautomers_count": {
+                        "type": "integer"
+                    }
                 }
             }
-
+        }
