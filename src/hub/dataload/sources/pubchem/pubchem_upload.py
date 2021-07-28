@@ -16,7 +16,7 @@ import biothings.hub.dataload.storage as storage
 class PubChemUploader(ParallelizedSourceUploader):
 
     name = "pubchem"
-    storage_class = storage.IgnoreDuplicatedStorage
+    storage_class = storage.RootKeyMergerStorage
 
     __metadata__ = { "src_meta" : {
         "url": "https://pubchem.ncbi.nlm.nih.gov/",
@@ -36,6 +36,16 @@ class PubChemUploader(ParallelizedSourceUploader):
     def load_data(self,input_file):
         self.logger.info("Load data from file '%s'" % input_file)
         return parser_func(input_file)
+
+
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        for idxname in ["pubchem.cid", "pubchem.inchi"]:
+            self.logger.info("Indexing '%s'" % idxname)
+            # background=true or it'll lock the whole database...
+            # pubchem can be an array, hence it doesn't support hashed indexes
+            self.collection.create_index(idxname, background=True)
+
 
     @classmethod
     def get_mapping(klass):
