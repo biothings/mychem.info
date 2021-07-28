@@ -6,35 +6,6 @@ import re
 from biothings.utils.dataload import value_convert_to_number
 
 
-def camel_to_snake(s):
-    """Convert camelCase strings to snake_case"""
-    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', s)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
-
-
-def dict_to_snake_case(d, skipped_keys=[]):
-    """Recursively convert a dictionary's keys to snake_case, while removing spaces and '-'.
-    We must iterate items twice, because modifying the key can change the order of items.
-    The first pass freezes the items in their current order, and the second modifies them.
-    """
-    items = []
-    for key, val in d.items():
-        items.append((key, val))
-    for key, val in items:
-        if isinstance(val, dict):
-            dict_to_snake_case(val, skipped_keys)
-        if type(key) == str and key not in skipped_keys:
-            new_key = key
-            if not key.islower():
-                new_key = camel_to_snake(key)
-            if " " in key or "-" in key:
-                new_key = new_key.replace("-", "_").replace(" _", "_").replace(" ", "_")
-            if new_key != key:
-                d[new_key] = val
-                del d[key]
-    return d
-
-
 def load_annotations(input_file):
     """Main function to load data from individual xml files"""
 
@@ -109,8 +80,6 @@ def load_annotations(input_file):
             assert current_compound.get("_id"), "Document {} is missing an _id".format(current_compound)
             # Convert numeric values to float or integer
             current_compound = value_convert_to_number(current_compound)
-            # Convert keys to snake_case
-            current_compound = dict_to_snake_case(current_compound)
             # yield the compound
             yield(current_compound)
             # clear element from memory
@@ -178,9 +147,9 @@ def load_annotations(input_file):
             elif(elem.text == 'Rotatable Bond'):
                 rotatable_bond = True
             elif(iupac):
-                iupac_key = elem.text
+                iupac_key = camel_to_snake(elem.text)
             elif(smiles):
-                smiles_key = elem.text
+                smiles_key = camel_to_snake(elem.text)
 
         elif((elem.tag == "PC-InfoData_value_sval") & (event == 'end')):
             if(inchi):
@@ -246,6 +215,15 @@ def load_annotations(input_file):
                 if(elem.text):
                     compound_data["complexity"] = elem.text
                 complexity = False
+
+
+def camel_to_snake(s):
+    """Convert camelCase strings to snake_case, keeping abbreviations together,
+    and removing white space, and dashes."""
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', s)
+    s = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+    s = s.replace("-", "_").replace(" _", "_").replace(" ", "_")
+    return s
 
 
 if __name__ == "__main__":
