@@ -53,7 +53,9 @@ class PubChemUploader(ParallelizedSourceUploader):
             "pubchem": {
                 "properties": {
                     "cid": {
-                        "type": "integer"
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword",
+                        'copy_to': ['all'],
                     },
                     "iupac": {
                         "properties": {
@@ -93,7 +95,7 @@ class PubChemUploader(ParallelizedSourceUploader):
                         "type": "integer"
                     },
                     "complexity": {
-                        "type": "integer"
+                        "type": "float"
                     },
                     "hydrogen_bond_acceptor_count": {
                         "type": "integer"
