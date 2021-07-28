@@ -1,4 +1,3 @@
-import os
 import xml.etree.ElementTree as ET
 import gzip
 import re
@@ -72,14 +71,14 @@ def load_annotations(input_file):
             compound_data["cid"] = elem.text
             compound_data["iupac"] = {}
             compound_data["smiles"] = {}
-            assert elem.text != None, "Every document must have a CID."
+            assert elem.text is not None, "Every document must have a CID."
 
         elif((elem.tag == "PC-Compound") & (event == 'end')):
             # Document parsing is complete
             current_compound["pubchem"] = compound_data
             assert current_compound.get("_id"), "Document {} is missing an _id".format(current_compound)
             # Convert numeric values to float or integer
-            current_compound = value_convert_to_number(current_compound)
+            current_compound = value_convert_to_number(current_compound, skipped_keys=["_id", "pubchem.cid"])
             # yield the compound
             yield(current_compound)
             # clear element from memory
