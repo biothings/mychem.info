@@ -1,8 +1,8 @@
-import os
-import time
+import os.path
 import ftplib
 
-import biothings, config
+import biothings
+import config
 biothings.config_for_app(config)
 
 from config import DATA_ARCHIVE_ROOT
@@ -17,7 +17,7 @@ class PubChemDumper(FTPDumper):
     CWD_DIR = '/pubchem/Compound/CURRENT-Full/XML'
     ARCHIVE = False
     SCHEDULE = "0 12 * * *"
-    MAX_PARALLEL_DUMP = 5
+    MAX_PARALLEL_DUMP = 2
 
     VERSION_DIR = '/pubchem/Compound/Monthly'
 
@@ -32,7 +32,7 @@ class PubChemDumper(FTPDumper):
             self.client.cwd(self.__class__.CWD_DIR)
 
     def new_release_available(self):
-        current_release = self.src_doc.get("download",{}).get("release")
+        current_release = self.src_doc.get("download", {}).get("release")
         if not current_release or self.release > current_release:
             self.logger.info("New release '%s' found" % self.release)
             return True
@@ -47,11 +47,10 @@ class PubChemDumper(FTPDumper):
             remote_files = self.client.nlst()
             for remote in remote_files:
                 try:
-                    local = os.path.join(self.new_data_folder,remote)
-                    if not os.path.exists(local) or self.remote_is_better(remote,local):
-                        self.to_dump.append({"remote": remote,"local":local})
+                    local = os.path.join(self.new_data_folder, remote)
+                    if not os.path.exists(local) or self.remote_is_better(remote, local):
+                        self.to_dump.append({"remote": remote, "local": local})
                 except ftplib.error_temp as e:
                     self.logger.debug("Recycling FTP client because: '%s'" % e)
                     self.release_client()
                     self.prepare_client()
-
