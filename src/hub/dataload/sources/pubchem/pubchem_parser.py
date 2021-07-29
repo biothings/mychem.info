@@ -6,6 +6,17 @@ from biothings.utils.dataload import value_convert_to_number
 
 
 def load_annotations(input_file):
+    """Main function to load data from individual xml files
+       With a nicer error handling.
+    """
+    try:
+        return parse_one_file(input_file)
+    except ET.ParseError:
+        print("Error parsing file: ", input_file)
+        raise
+
+
+def parse_one_file(input_file):
     """Main function to load data from individual xml files"""
 
     # use gzip to read the .gz file
