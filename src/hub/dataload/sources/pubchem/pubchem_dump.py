@@ -63,8 +63,6 @@ class PubChemDumper(FTPDumper):
         '''Validate downloaded files'''
         self.logger.debug("Start validating downloaded files...")
         cmd = shutil.which('md5sum')
-        if not cmd:
-            raise OSError('"md5sum" is not found in the PATH!')
         if cmd:
             old = os.path.abspath(os.curdir)
             os.chdir(self.new_data_folder)
@@ -81,3 +79,5 @@ class PubChemDumper(FTPDumper):
                 self.logger.debug("All %s files are validated.", len(md5_files))
             finally:
                 os.chdir(old)
+        else:
+            self.logger.warning('"md5sum" is not found in the PATH! File validation is skipped.')
