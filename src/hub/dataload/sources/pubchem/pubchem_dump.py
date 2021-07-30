@@ -1,5 +1,9 @@
+import os
 import os.path
 import ftplib
+import glob
+import shutil
+import subprocess
 
 import biothings
 import config
@@ -54,3 +58,26 @@ class PubChemDumper(FTPDumper):
                     self.logger.debug("Recycling FTP client because: '%s'" % e)
                     self.release_client()
                     self.prepare_client()
+
+    def post_dump(self, *args, **kwargs):
+        '''Validate downloaded files'''
+        self.logger.debug("Start validating downloaded files...")
+        cmd = shutil.which('md5sum')
+        if not cmd:
+            raise OSError('"md5sum" is not found in the PATH!')
+        if cmd:
+            old = os.path.abspath(os.curdir)
+            os.chdir(self.new_data_folder)
+            try:
+                md5_files = glob.glob("*.md5")
+                if md5_files:
+                    for md5_file in md5_files:
+                        cmd = ["md5sum", "-c", md5_file]
+                        self.logger.debug("\tValidating md5 checksum for: ", md5_file)
+                        try:
+                            subprocess.check_call(cmd)
+                        except subprocess.SubprocessError:
+                            raise DumperException("Failed to validate: ", md5_file)
+                self.logger.debug("All %s files are validated.", len(md5_files))
+            finally:
+                os.chdir(old)
