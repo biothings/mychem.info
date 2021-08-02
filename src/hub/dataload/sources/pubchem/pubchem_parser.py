@@ -227,6 +227,18 @@ def parse_one_file(input_file):
                 if(elem.text):
                     compound_data["topological_polar_surface_area"] = elem.text
                 topological = False
+            elif(molecular_weight):
+                if(elem.text):
+                    compound_data["molecular_weight"] = elem.text
+                molecular_weight = False
+            elif(monoisotopic_weight):
+                if(elem.text):
+                    compound_data["monoisotopic_weight"] = elem.text
+                monoisotopic_weight = False
+            elif(mass):
+                if(elem.text):
+                    compound_data["exact_mass"] = elem.text
+                mass = False
             elif(complexity):
                 if(elem.text):
                     compound_data["complexity"] = elem.text
