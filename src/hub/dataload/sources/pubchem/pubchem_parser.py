@@ -47,6 +47,7 @@ def parse_one_file(input_file):
     the text, tail, and children of an element are not necessarily present when receiving
     the start event. Only the end event guarantees that the Element has been parsed completely.
     """
+    current_compound = {}
     for event, elem in ET.iterparse(unzipped_file, events=("start", "end")):
         prefix, has_namespace, postfix = elem.tag.partition('}')
         if has_namespace:
@@ -55,7 +56,8 @@ def parse_one_file(input_file):
         flags = [PC_count, inchi, inchikey, hydrogen_bond_acceptor, hydrogen_bond_donor,
                  rotatable_bond, iupac, logp, mass, molecular_formula, molecular_weight,
                  smiles, topological, monoisotopic_weight, complexity]
-        assert sum(flags) <= 1, "Bad parsing on file {}. Only one flag at most should be active.".format(input_file)
+        assert sum(flags) <= 1, "Bad parsing on file {}, doument {}. Only one flag at most should be active.".format(
+                                 input_file, current_compound)
         # all of the compound properties will be inside this element
         if((elem.tag == "PC-CompoundType_id_cid") & (event == 'end')):
             # Start a new compound record
@@ -82,12 +84,12 @@ def parse_one_file(input_file):
             compound_data["cid"] = elem.text
             compound_data["iupac"] = {}
             compound_data["smiles"] = {}
-            assert elem.text is not None, "File {} missing CID. Every document must have a CID.".format(input_file)
+            assert elem.text is not None, "File {} has document missing CID. Every document must have a CID.".format(input_file)
 
         elif((elem.tag == "PC-Compound") & (event == 'end')):
             # Document parsing is complete
             current_compound["pubchem"] = compound_data
-            assert current_compound.get("_id"), "Document {} is missing an _id".format(current_compound)
+            assert current_compound.get("_id"), "File {}, document {} is missing an _id".format(input_file, current_compound)
             # Convert numeric values to float or integer
             current_compound = value_convert_to_number(current_compound, skipped_keys=["_id", "pubchem.cid"])
             # yield the compound
