@@ -55,7 +55,7 @@ def parse_one_file(input_file):
         flags = [PC_count, inchi, inchikey, hydrogen_bond_acceptor, hydrogen_bond_donor,
                  rotatable_bond, iupac, logp, mass, molecular_formula, molecular_weight,
                  smiles, topological, monoisotopic_weight, complexity]
-        assert sum(flags) <= 1, "Bad parsing. Only one flag at most should be active."
+        assert sum(flags) <= 1, "Bad parsing on file {}. Only one flag at most should be active.".format(input_file)
         # all of the compound properties will be inside this element
         if((elem.tag == "PC-CompoundType_id_cid") & (event == 'end')):
             # Start a new compound record
@@ -82,7 +82,7 @@ def parse_one_file(input_file):
             compound_data["cid"] = elem.text
             compound_data["iupac"] = {}
             compound_data["smiles"] = {}
-            assert elem.text is not None, "Every document must have a CID."
+            assert elem.text is not None, "File {} missing CID. Every document must have a CID.".format(input_file)
 
         elif((elem.tag == "PC-Compound") & (event == 'end')):
             # Document parsing is complete
