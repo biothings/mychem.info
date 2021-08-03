@@ -28,7 +28,19 @@ class ChebiUploader(BaseDrugUploader):
                                  ('drugbank', 'chebi.xrefs.drugbank'),
                                  ('chebi', 'chebi.id')], copy_from_doc=True)
 
-    # See the comment on the ExcludeFieldsById for use of this class.
+    """
+    A document with an ID from `exclusion_ids` would have a long list for one or more of the following fields:
+
+    - `chebi.xrefs.intenz`
+    - `chebi.xrefs.rhea`
+    - `chebi.xrefs.uniprot`
+    - `chebi.xrefs.sabio_rk`
+    - `chebi.xrefs.patent`
+
+    `ExcludeFieldsById` acts like a filter to truncate the length of such long lists to 1,000.
+    
+    See the comment on the ExcludeFieldsById for use of this class.
+    """
     exclude_fields = ExcludeFieldsById(exclusion_ids, [
         "chebi.xrefs.intenz",
         "chebi.xrefs.rhea",
