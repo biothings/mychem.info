@@ -71,11 +71,11 @@ class PubChemDumper(FTPDumper):
                 if md5_files:
                     for md5_file in md5_files:
                         cmd = ["md5sum", "-c", md5_file]
-                        self.logger.debug("\tValidating md5 checksum for: ", md5_file)
+                        self.logger.debug("\tValidating md5 checksum for: %s", md5_file)
                         try:
                             subprocess.check_call(cmd)
                         except subprocess.SubprocessError:
-                            raise DumperException("Failed to validate: ", md5_file)
+                            raise DumperException("Failed to validate: {}".format(md5_file))
                 self.logger.debug("All %s files are validated.", len(md5_files))
             finally:
                 os.chdir(old)
