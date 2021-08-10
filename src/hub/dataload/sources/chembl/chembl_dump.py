@@ -45,7 +45,7 @@ class ChemblDumper(HTTPDumper):
     }
 
     SCHEDULE = "0 12 * * *"
-    MAX_PARALLEL_DUMP = HUB_MAX_WORKERS // 2
+    MAX_PARALLEL_DUMP = 5   # HUB_MAX_WORKERS // 2
 
     # number of documents in each download job, i.e. number of documents in each .part* file
     TO_DUMP_DOWNLOAD_SIZE = 1000
