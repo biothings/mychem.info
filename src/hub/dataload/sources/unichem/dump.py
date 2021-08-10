@@ -1,8 +1,7 @@
-from biothings.hub.dataload.dumper import FTPDumper, DumperException
+from biothings.hub.dataload.dumper import FTPDumper
 from biothings.utils.common import uncompressall
 from config import DATA_ARCHIVE_ROOT
-import os
-import time
+import os.path
 
 import biothings
 import config
@@ -17,6 +16,7 @@ class Unichem_biothings_sdkDumper(FTPDumper):
     CWD_DIR = '/pub/databases/chembl/UniChem/data/oracleDumps'
     SCHEDULE = "0 6 * * *"
     UNCOMPRESS = True
+    MAX_PARALLEL_DUMP = 1
 
     def get_newest_info(self):
         """Get the release number of the most recent dump directory"""

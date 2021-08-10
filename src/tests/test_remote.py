@@ -7,10 +7,10 @@
 
 """
 
-from biothings.tests.web import BiothingsDataTest
+from biothings.tests.web import BiothingsWebTest
 
 
-class MychemDataTestBase(BiothingsDataTest):
+class MychemWebTest(BiothingsWebTest):
 
     host = 'mychem.info'
 
@@ -24,7 +24,7 @@ class MychemDataTestBase(BiothingsDataTest):
     s = '基因'
 
 
-class TestMychemDataIntegrity(MychemDataTestBase):
+class TestMychemDataIntegrity(MychemWebTest):
 
     # -----------
     # via Query
@@ -139,7 +139,8 @@ class TestMychemDataIntegrity(MychemDataTestBase):
             assert foundone, "Expecting at least one result with q=%(q)s&fields=%(fields)s" % d
 
     def test_050(self):
-        C0242339 = self.request('query?q=drugcentral.drug_use.indication.umls_cui:C0242339').json()['hits'][0]
+        C0242339 = self.request(
+            'query?q=drugcentral.drug_use.indication.umls_cui:C0242339').json()['hits'][0]
         assert 'drugcentral' in C0242339
         assert 'drug_use' in C0242339['drugcentral']
         assert 'indication' in C0242339['drugcentral']['drug_use']
@@ -225,7 +226,7 @@ class TestMychemDataIntegrity(MychemDataTestBase):
             assert res['pubchem']['_license']
 
 
-class TestMychemWebFeatures(MychemDataTestBase):
+class TestMychemWebFeatures(MychemWebTest):
 
     def test_fields(self):
         res = self.request('drug/{}?fields=pubchem'.format(self.inchikey_id)).json()
@@ -246,7 +247,8 @@ class TestMychemWebFeatures(MychemDataTestBase):
         self.request('query?q=drugbank.name:acid&fields=drugbank.name&size=2000', expect=400)
 
     def test_facets(self):
-        res = self.request('query?q=drugbank.name:acid&size=0&facets=drugbank.weight.average').json()
+        res = self.request(
+            'query?q=drugbank.name:acid&size=0&facets=drugbank.weight.average').json()
         assert 'facets' in res and 'drugbank.weight.average' in res['facets']
 
     def test_fetch_all(self):
@@ -282,16 +284,16 @@ class TestMychemWebFeatures(MychemDataTestBase):
         self.request('metadata')
 
 
-class TestMychemSpecialCases(MychemDataTestBase):
+class TestMychemSpecialInput(TestMychemWebFeatures):
 
     def test_01(self):
         res = self.request('query?q=\xef\xbf\xbd\xef\xbf\xbd').json()
         assert res['hits'] == []
-        
+
     def test_02(self):
         # testing non-ascii character
         self.request('drug/' + self.inchikey_id +
-                        '\xef\xbf\xbd\xef\xbf\xbdmouse', expect=404)
+                     '\xef\xbf\xbd\xef\xbf\xbdmouse', expect=404)
 
     def test_10(self):
         self.request("query")
@@ -310,7 +312,8 @@ class TestMychemSpecialCases(MychemDataTestBase):
         assert len(res) == 1
 
     def test_21_unicode(self):
-        res = self.request("drug", method='POST', data={'ids': self.inchikey_id + ',' + self.s}).json()
+        res = self.request("drug", method='POST', data={
+                           'ids': self.inchikey_id + ',' + self.s}).json()
         assert res[1]['notfound']
         assert len(res) == 2
 
@@ -319,7 +322,8 @@ class TestMychemSpecialCases(MychemDataTestBase):
         assert res['hits'] == []
 
     def test_23_unicode(self):
-        res = self.request("query", method='POST', data={"q": self.s, "scopes": 'drugbank.id'}).json()
+        res = self.request("query", method='POST', data={
+                           "q": self.s, "scopes": 'drugbank.id'}).json()
         assert res[0]['notfound']
         assert len(res) == 1
 
