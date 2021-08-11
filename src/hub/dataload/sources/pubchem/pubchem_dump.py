@@ -68,6 +68,7 @@ class PubChemDumper(FTPDumper):
             os.chdir(self.new_data_folder)
             try:
                 md5_files = glob.glob("*.md5")
+                failed_files = []
                 if md5_files:
                     for md5_file in md5_files:
                         cmd = ["md5sum", "-c", md5_file]
@@ -75,8 +76,18 @@ class PubChemDumper(FTPDumper):
                         try:
                             subprocess.check_call(cmd)
                         except subprocess.SubprocessError:
-                            raise DumperException("Failed to validate: {}".format(md5_file))
-                self.logger.debug("All %s files are validated.", len(md5_files))
+                            self.logger.error("Failed to validate: {}".format(md5_file))
+                            failed_files.append(md5_file)
+                    if failed_files:
+                        err_msg = "Failed to validate {} md5 file(s):\n{}".format(
+                            len(failed_files),
+                            '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
+                        )
+                        raise DumperException(err_msg)
+                    else:
+                        self.logger.debug("All %s files are validated.", len(md5_files))
+                else:
+                    self.logger.debug("No *.md5 file(s) found! File validation is skipped.")
             finally:
                 os.chdir(old)
         else:
