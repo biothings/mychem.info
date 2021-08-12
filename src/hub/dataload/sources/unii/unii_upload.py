@@ -43,7 +43,7 @@ class UniiUploader(BaseDrugUploader):
     def post_update_data(self,*args,**kwargs):
         for field in ("unii.unii","unii.preferred_term"):
             self.logger.info("Indexing '%s'" % field)
-            self.collection.create_index(field,background=True) 
+            self.collection.create_index(field,background=True)
 
     @classmethod
     def get_mapping(klass):
@@ -110,6 +110,14 @@ class UniiUploader(BaseDrugUploader):
                         "unii_type": {
                                 "type": "text"
                                 },
+                        "pubchem": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                                },
+                        "mpns": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                                }
                         }
             }
         }
