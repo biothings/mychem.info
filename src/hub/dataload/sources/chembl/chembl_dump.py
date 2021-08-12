@@ -9,7 +9,7 @@ import config
 
 biothings.config_for_app(config)
 
-from config import DATA_ARCHIVE_ROOT, HUB_MAX_WORKERS
+from config import DATA_ARCHIVE_ROOT
 from biothings.hub.dataload.dumper import HTTPDumper
 from biothings.utils.common import iter_n
 
@@ -22,8 +22,8 @@ class ChemblDumper(HTTPDumper):
     SRC_VERSION_URL = "https://www.ebi.ac.uk/chembl/api/data/status.json"
 
     """
-    As the code is written, we have: 
-            
+    As the code is written, we have:
+
     - 1,961,462 "molecule" json objects
     - 5,134 "mechanism" json objects
     - 37,259 "drug_indication" json objects
@@ -45,6 +45,7 @@ class ChemblDumper(HTTPDumper):
     }
 
     SCHEDULE = "0 12 * * *"
+    SLEEP_BETWEEN_DOWNLOAD = 0.1
     MAX_PARALLEL_DUMP = 5   # HUB_MAX_WORKERS // 2
 
     # number of documents in each download job, i.e. number of documents in each .part* file
@@ -69,13 +70,13 @@ class ChemblDumper(HTTPDumper):
 
         data = self.load_json_from_file(self.__class__.SRC_DATA_URLS[src_data_name])
         return data["page_meta"]["total_count"]
-    
+
     def load_json_from_file(self, file) -> dict:
         """
         Read the content of `file` and return the json object
 
         Args:
-            file (str): could either be an URL ("remotefile") or a path to a local text file ("localfile") 
+            file (str): could either be an URL ("remotefile") or a path to a local text file ("localfile")
 
         Returns:
             object: the json object read from the `file`
@@ -83,7 +84,7 @@ class ChemblDumper(HTTPDumper):
 
         """
         Note that:
-        
+
         - `json.loads(string)` deserializes string
         - `json.load(file)` deserializes a file object
         """
@@ -134,19 +135,19 @@ class ChemblDumper(HTTPDumper):
 
             """
             Now we need to scroll the API endpoints. Let's get the total number of records
-            and generate URLs for each call to parallelize the downloads for each type of source data, 
+            and generate URLs for each call to parallelize the downloads for each type of source data,
             i.e. "molecule", "mechanism", "drug_indication", "target" and "binding_site".
-            
-            The partition size is set to 1000 json objects (represented by `TO_DUMP_DOWNLOAD_SIZE`). 
-            
-            E.g. suppose for "molecule" data we have a `total_count` of 2500 json objects, and then we'll have, 
+
+            The partition size is set to 1000 json objects (represented by `TO_DUMP_DOWNLOAD_SIZE`).
+
+            E.g. suppose for "molecule" data we have a `total_count` of 2500 json objects, and then we'll have,
             in the process of iteration:
-            
+
             - (part_index, part_start) = (0, 0)
             - (part_index, part_start) = (1, 1000)
             - (part_index, part_start) = (2, 2000)
-            
-            Therefore we would download 3 files, i.e. "molecule.part0", "molecule.part1", and "molecule.part2". 
+
+            Therefore we would download 3 files, i.e. "molecule.part0", "molecule.part1", and "molecule.part2".
             """
             part_size = self.__class__.TO_DUMP_DOWNLOAD_SIZE
             for src_data_name in self.__class__.SRC_DATA_URLS:
@@ -180,7 +181,7 @@ class ChemblDumper(HTTPDumper):
 
                 """
                 For each "molecule" json object, we only fetch the value associated with the "molecules" key.
-                This rule also applies to "mechanism", "drug_indication", "target" and "binding_site" 
+                This rule also applies to "mechanism", "drug_indication", "target" and "binding_site"
                 json objects.
                 """
                 data_key = src_data_name + "s"
