@@ -1,0 +1,15 @@
+{
+    "version": "0.1",
+    "__metadata__": {
+      "url": "https://www.accessdata.fda.gov/scripts/opdlisting/oopd/"
+    },
+    "dumper" : {
+        "data_url" : ["https://raw.githubusercontent.com/r76941156/fda_orphan_drug/main/data.json"],
+        "uncompress" : false
+    },
+    "uploader" : {
+        "parser" : "parser:load_data",
+        "on_duplicates" : "error",
+        "mapping" : "mapping:get_customized_mapping"
+    }
+}
