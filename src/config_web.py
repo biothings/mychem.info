@@ -11,9 +11,9 @@ import re
 # *****************************************************************************
 ES_HOST = 'localhost:9200'
 ES_INDICES = {
-    "chem": "test_fda_orphan_drug_20210908_pet9q8hy", #"mychem_current",
-    "drug": "test_fda_orphan_drug_20210908_pet9q8hy", #"mychem_current",
-    "compound": "test_fda_orphan_drug_20210908_pet9q8hy",  #"mychem_current"
+    "chem": "mychem_current",
+    "drug": "mychem_current",
+    "compound": "mychem_current"
 }
 ES_SCROLL_TIME = '10m'
 
