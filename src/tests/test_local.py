@@ -3,13 +3,15 @@ from biothings.tests.web import BiothingsWebAppTest
 
 class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
     TEST_DATA_DIR_NAME = 'TestAnnotationRegex'
-
+    
+    """
     def test_010_drugbank(self):
         q = 'db03107'
         res = self.request("chem", method="POST", data={"ids": q})
         res = res.json()
         assert len(res) == 1
         assert self.value_in_result(q, res, 'drugbank.id', True)
+    """
 
     def test_011_chembl(self):
         q = 'chembl297569'
@@ -53,12 +55,14 @@ class TestMyChemWebAppConfigAnnotationIdRegex(BiothingsWebAppTest):
         assert len(res) == 1
         assert self.value_in_result(q, res, 'pubchem.cid')
 
+    """
     def test_020_drugbank_ci(self):
         q = 'dB03107'
         res = self.request("chem", method="POST", data={"ids": q})
         res = res.json()
         assert len(res) == 1
         assert self.value_in_result(q, res, 'drugbank.id', True)
+    """
 
     def test_021_chembl_ci(self):
         q = 'CHEMBL297569'
