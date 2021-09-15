@@ -49,7 +49,9 @@ class PubChemDumper(FTPDumper):
         if force or self.new_release_available():
             # get list of files to download
             remote_files = self.client.nlst()
+            remote_files_set = set()
             for remote in remote_files:
+                remote_files_set.add(remote)
                 try:
                     local = os.path.join(self.new_data_folder, remote)
                     if not os.path.exists(local) or self.remote_is_better(remote, local):
@@ -58,9 +60,37 @@ class PubChemDumper(FTPDumper):
                     self.logger.debug("Recycling FTP client because: '%s'" % e)
                     self.release_client()
                     self.prepare_client()
+            self.to_delete = []  # reset anyways
+            base_dir = self.new_data_folder
+            for dirpath, dirnames, filenames in os.walk(base_dir, topdown=False):
+                # WARNING: this adds all directories for deletion as long as it is
+                # or will be empty, because we assume are NO DIRECTORY STRUCTURE
+                # on the remote and that's why NLST was used to populate
+                # `remote_files` in the first place. If that ever changes this is
+                # a trivial fix anyways.
+                to_remove = set()
+                for filename in filenames:
+                    real_path = os.path.join(dirpath, filename)
+                    rel_path = os.path.relpath(real_path, base_dir)
+                    if rel_path in remote_files_set:
+                        pass
+                    else:
+                        self.to_delete.append(rel_path)
+                        to_remove.add(filename)
+                if not (set(filenames) - to_remove):  # empty
+                    self.to_delete.append(os.path.relpath(dirpath, base_dir))
 
     def post_dump(self, *args, **kwargs):
         '''Validate downloaded files'''
+        if not self.ARCHIVE:
+            if hasattr(self, 'post_dump_delete_files'):
+                self.logger.debug("Invoking delete files function to remove files "
+                                  "not on remote")
+                self.post_dump_delete_files()
+            else:
+                self.logger.debug("Not invoking delete because parent class does not "
+                                  "have the method")
+
         self.logger.debug("Start validating downloaded files...")
         cmd = shutil.which('md5sum')
         if cmd:
