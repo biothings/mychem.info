@@ -6,11 +6,11 @@
     - Special Cases
 
 """
+import pytest
+from biothings.tests.web import BiothingsDataTest
 
-from biothings.tests.web import BiothingsWebTest
 
-
-class MychemWebTest(BiothingsWebTest):
+class MychemWebTest(BiothingsDataTest):
 
     host = 'mychem.info'
 
@@ -33,8 +33,14 @@ class TestMychemDataIntegrity(MychemWebTest):
     def test_010(self):
         self.query(q='imatinib')
 
-    def test_011(self):
+    @pytest.mark.skip("Drugbank has been removed")
+    def test_011_drugbank_name(self):
         self.query(q='drugbank.name:imatinib')
+
+    def test_012_chebi_name(self):
+        # the assumption for this test is that it looks like the one
+        # it is replacing (old 011 marked for skipping)
+        self.query(q='chebi.name:caffeine')
 
     """ Drugbank was removed as a datasource on the 09/08/21 release
     def test_012(self):
