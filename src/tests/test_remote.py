@@ -6,16 +6,16 @@
     - Special Cases
 
 """
+import pytest
+from biothings.tests.web import BiothingsDataTest
 
-from biothings.tests.web import BiothingsWebTest
 
-
-class MychemWebTest(BiothingsWebTest):
+class MychemWebTest(BiothingsDataTest):
 
     host = 'mychem.info'
 
     inchikey_id = 'ZRALSGWEFCBTJO-UHFFFAOYSA-N'
-    drugbank_id = 'DB00551'
+    # drugbank_id = 'DB00551'
     chembl_id = 'CHEMBL1308'
     chebi_id = 'CHEBI:6431'
     unii_id = '7AXV542LZ4'
@@ -33,9 +33,16 @@ class TestMychemDataIntegrity(MychemWebTest):
     def test_010(self):
         self.query(q='imatinib')
 
-    def test_011(self):
+    @pytest.mark.skip("Drugbank has been removed")
+    def test_011_drugbank_name(self):
         self.query(q='drugbank.name:imatinib')
 
+    def test_012_chebi_name(self):
+        # the assumption for this test is that it looks like the one
+        # it is replacing (old 011 marked for skipping)
+        self.query(q='chebi.name:caffeine')
+
+    """ Drugbank was removed as a datasource on the 09/08/21 release
     def test_012(self):
         monobenzone = self.query(q='drugbank.name:monobenzone')
         assert 'drugbank' in monobenzone['hits'][0]
@@ -88,6 +95,7 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert 'drugbank' in drugbank
         assert 'id' in drugbank['drugbank']
         assert drugbank['drugbank']['id'] == self.drugbank_id
+    """
 
     def test_031(self):
         chembl = self.request('drug/' + self.chembl_id + '?fields=chembl').json()
@@ -121,8 +129,8 @@ class TestMychemDataIntegrity(MychemWebTest):
 
     def test_040(self):
         alls = [
-            {"q": "DB01076", "fields": "drugbank.id"},
-            {"q": "Siltuximab", "fields": "drugbank.name"},
+            # {"q": "DB01076", "fields": "drugbank.id"},
+            # {"q": "Siltuximab", "fields": "drugbank.name"},
             {"q": "IBUPROFEN", "fields": "ndc.substancename"},
             {"q": "fospropofol", "fields": "aeolus.drug_name"},
             {"q": "TOOSENDANIN", "fields": "chembl.pref_name"},
@@ -194,7 +202,7 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert len(res) > 490
 
         # Check some specific keys
-        assert 'drugbank' in res
+        # assert 'drugbank' in res
         assert 'pubchem' in res
         assert 'ginas' in res
         assert 'aeolus' in res
@@ -212,9 +220,11 @@ class TestMychemDataIntegrity(MychemWebTest):
         if 'chembl' in res:
             assert '_license' in res['chembl']
             assert res['chembl']['_license']
+        """
         if 'drugbank' in res:
             assert '_license' in res['drugbank']
             assert res['drugbank']['_license']
+        """
         if 'drugcentral' in res:
             assert '_license' in res['drugcentral']
             assert res['drugcentral']['_license']
@@ -232,6 +242,7 @@ class TestMychemWebFeatures(MychemWebTest):
         res = self.request('drug/{}?fields=pubchem'.format(self.inchikey_id)).json()
         assert set(res) == set(['_id', '_version', 'pubchem'])
 
+    """
     def test_query_size_1(self):
         res = self.request('query?q=drugbank.name:acid&fields=drugbank.name').json()
         assert len(res['hits']) == 10  # default
@@ -260,17 +271,18 @@ class TestMychemWebFeatures(MychemWebTest):
         res2 = self.request('query?scroll_id=' + res['_scroll_id']).json()
         assert 'hits' in res2
 
-    def test_msgpack_1(self):
-        res = self.request('drug/' + self.inchikey_id).json()
-        res2 = self.msgpack_ok(self.request(
-            'drug/{}?format=msgpack'.format(self.inchikey_id)).content)
-        assert res
-        assert res2
 
     def test_msgpack_2(self):
         res = self.request('query?q=drugbank.id:{}&size=1'.format(self.drugbank_id)).json()
         res2 = self.msgpack_ok(self.request(
             'query?q=drugbank.id:{}&size=1&format=msgpack'.format(self.drugbank_id)).content)
+        assert res
+        assert res2
+    """
+    def test_msgpack_1(self):
+        res = self.request('drug/' + self.inchikey_id).json()
+        res2 = self.msgpack_ok(self.request(
+            'drug/{}?format=msgpack'.format(self.inchikey_id)).content)
         assert res
         assert res2
 
@@ -321,6 +333,7 @@ class TestMychemSpecialInput(TestMychemWebFeatures):
         res = self.request('query?q=' + self.s).json()
         assert res['hits'] == []
 
+    """
     def test_23_unicode(self):
         res = self.request("query", method='POST', data={
                            "q": self.s, "scopes": 'drugbank.id'}).json()
@@ -332,3 +345,4 @@ class TestMychemSpecialInput(TestMychemWebFeatures):
                            "q": self.drugbank_id + '+' + self.s, 'scopes': 'drugbank.id'}).json()
         assert res[1]['notfound']
         assert len(res) == 2
+    """
