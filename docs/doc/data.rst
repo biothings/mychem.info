@@ -107,7 +107,6 @@ _id field
 
 Each individual chemical object contains an "**_id**" field as the primary key.  Where possible, MyChem.info chemical objects use `InChIKey <https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey>`_ (a 27 character hash of the International Chemical Identifier) as their "**_id**".  If an InChIKey isn't available, any one of the following datasource IDs may be used:
 
-    * `DrugBank accession number <https://www.drugbank.ca/documentation>`_,
     * `ChEMBLID <https://www.ebi.ac.uk/chembl/faq#faq40>`_,
     * `ChEBI identifier <http://www.ebi.ac.uk/chebi/aboutChebiForward.do>`_,
     * `PubChem CID <https://pubchem.ncbi.nlm.nih.gov/search/help_search.html#Cid>`_,
