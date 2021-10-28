@@ -19,13 +19,13 @@ Obtaining the chemical annotation via our web service is as simple as calling th
 
     http://mychem.info/v1/chem/<chemid>
 
-**chemid** above is any one of several common chemical identifiers: `InChIKey <https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey>`_, `DrugBank accession number <https://www.drugbank.ca/documentation>`_, `ChEMBLID <https://www.ebi.ac.uk/chembl/faq#faq40>`_, `ChEBI identifier <http://www.ebi.ac.uk/chebi/aboutChebiForward.do>`_, `PubChem CID <https://pubchem.ncbi.nlm.nih.gov/search/help_search.html#Cid>`_, `UNII <https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/>`_.
+**chemid** above is any one of several common chemical identifiers: `InChIKey <https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey>`_, `ChEMBLID <https://www.ebi.ac.uk/chembl/faq#faq40>`_, `ChEBI identifier <http://www.ebi.ac.uk/chebi/aboutChebiForward.do>`_, `PubChem CID <https://pubchem.ncbi.nlm.nih.gov/search/help_search.html#Cid>`_, `UNII <https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/>`_.
 
 By default, this will return the complete chemical annotation object in JSON format. See `here <#returned-object>`_ for an example and :ref:`here <chemical_object>` for more details. If the input **chemid** is not valid, 404 (NOT FOUND) will be returned.
 
 Optionally, you can pass a "**fields**" parameter to return only the annotation you want (by filtering returned object fields)::
 
-    http://mychem.info/v1/chem/KTUFNOKKBVMGRW-UHFFFAOYSA-N?fields=drugbank
+    http://mychem.info/v1/chem/KTUFNOKKBVMGRW-UHFFFAOYSA-N?fields=chembl
 
 "**fields**" accepts any attributes (a.k.a fields) available from the chemical object. Multiple attributes should be separated by commas. If an attribute is not available for a specific chemical object, it will be ignored. Note that the attribute names are case-sensitive.
 
@@ -37,7 +37,7 @@ Query parameters
 
 fields
 """"""""
-    Optional, can be a comma-separated fields to limit the fields returned from the chemical object. If "fields=all", all available fields will be returned. Note that it supports dot notation as well, e.g., you can pass "drugbank.name". Default: "fields=all".
+    Optional, can be a comma-separated fields to limit the fields returned from the chemical object. If "fields=all", all available fields will be returned. Note that it supports dot notation as well, e.g., you can pass "chebi.name". Default: "fields=all".
 
 callback
 """""""""
@@ -90,7 +90,7 @@ ids
 fields
 """""""
     Optional, can be a comma-separated fields to limit the fields returned from the matching hits.
-    If “fields=all”, all available fields will be returned. Note that it supports dot notation as well, e.g., you can pass "drugbank" or "drugbank.name". Default: "all".
+    If “fields=all”, all available fields will be returned. Note that it supports dot notation as well, e.g., you can pass "chembl" or "chebi.name". Default: "all".
 
 email
 """"""
@@ -105,13 +105,13 @@ piece of code, still trivial of course. Here is a sample python snippe using `ht
     import httplib2
     h = httplib2.Http()
     headers = {'content-type': 'application/x-www-form-urlencoded'}
-    params = 'ids=SDUQYLNIPVEERB-QPPQHZFASA-N,SESFRYSPDFLNCH-UHFFFAOYSA-N&fields=drugbank.name'
+    params = 'ids=SDUQYLNIPVEERB-QPPQHZFASA-N,SESFRYSPDFLNCH-UHFFFAOYSA-N&fields=chebi.name'
     res, con = h.request('http://mychem.info/v1/chem', 'POST', params, headers=headers)
 
 or this example using `requests <http://docs.python-requests.org>`_ module::
 
     import requests
-    params = {'ids': 'SDUQYLNIPVEERB-QPPQHZFASA-N,SESFRYSPDFLNCH-UHFFFAOYSA-N', 'fields': 'drugbank.name'}
+    params = {'ids': 'SDUQYLNIPVEERB-QPPQHZFASA-N,SESFRYSPDFLNCH-UHFFFAOYSA-N', 'fields': 'chebi.name'}
     res = request.post('http://mychem.info/v1/chem', params)
     con = res.json()
 
@@ -125,22 +125,24 @@ Returned result (the value of "con" variable above) from above example code shou
 .. code-block :: json
 
     [
-      {
-        "_id": "SDUQYLNIPVEERB-QPPQHZFASA-N",
-        "query": "SDUQYLNIPVEERB-QPPQHZFASA-N",
-        "drugbank": {
-          "_license": "http://bit.ly/2PSfZTD",
-          "name": "Gemcitabine"
+        {
+            "query": "SDUQYLNIPVEERB-QPPQHZFASA-N",
+            "_id": "SDUQYLNIPVEERB-QPPQHZFASA-N",
+            "_version": 1,
+            "chebi": {
+                "_license": "http://bit.ly/2KAUCAm",
+                "name": "gemcitabine"
+            }
+        },
+        {
+            "query": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
+            "_id": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
+            "_version": 1,
+            "chebi": {
+                "_license": "http://bit.ly/2KAUCAm",
+                "name": "benzyl benzoate"
+            }
         }
-      },
-      {
-        "_id": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
-        "query": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
-        "drugbank": {
-          "_license": "http://bit.ly/2PSfZTD",
-          "name": "Benzyl Benzoate"
-        }
-      }
     ]
 
 .. raw:: html
