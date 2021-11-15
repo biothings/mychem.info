@@ -65,7 +65,7 @@ class DrugBankUploader(BaseDrugUploader):
     def post_update_data(self, *args, **kwargs):
         # pylint: disable=W0613
         """create indexes following upload"""
-        for idxname in ["drugbank.id", "drugbank.chebi", "drugbank.inchi"]:
+        for idxname in ["drugbank.id", "drugbank.chebi", "drugbank.xrefs.chebi", "drugbank.inchi"]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             self.collection.create_index([(idxname, pymongo.HASHED)], background=True)
