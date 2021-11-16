@@ -39,77 +39,47 @@ class AeolusUploader(BaseDrugUploader):
         mapping = {
             "aeolus": {
                 "properties": {
-                    "drug_id": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "drug_name": {
-                        "type": "text",
-                        "copy_to": ["all"]
-                    },
-                    "inchikey": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "no_of_outcomes": {
-                        "type": "integer",
-                    },
-                    "pt": {
-                        "type": "text",
-                    },
-                    "unii": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "drug_vocab": {
-                        "type": "text"
-                    },
-                    "drug_code": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "rxcui": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "relationships": {
+                    "indications": {
                         "properties": {
-                            "relatedSubstance": {
-                                "properties": {
-                                    "approvalID": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                    },
-                                    "refPname": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                    }
-                                }
-                            },
-                            "type": {
+                            "id": {
                                 "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
+                                "type": "keyword"
+                            },
+                            "meddra_code": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            },
+                            "count": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "text"
                             }
                         }
                     },
+                    "no_of_outcomes": {
+                        "type": "integer"
+                    },
+                    "inchikey": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "rxcui": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
                     "outcomes": {
                         "properties": {
-                            "meddra_code": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
-                            "case_count": {
-                                "type": "long"
-                            },
                             "id": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword"
+                            },
+                            "meddra_code": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword"
                             },
                             "name": {
                                 "type": "text"
-                            },
-                            "prr": {
-                                "type": "float"
                             },
                             "prr_95_ci": {
                                 "type": "float"
@@ -119,11 +89,33 @@ class AeolusUploader(BaseDrugUploader):
                             },
                             "ror_95_ci": {
                                 "type": "float"
+                            },
+                            "case_count": {
+                                "type": "long"
+                            },
+                            "prr": {
+                                "type": "float"
                             }
                         }
+                    },
+                    "drug_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "unii": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "drug_name": {
+                        "type": "text",
+                        "copy_to": [
+                            "all"
+                        ]
+                    },
+                    "pt": {
+                        "type": "text"
                     }
                 }
             }
         }
-
         return mapping
