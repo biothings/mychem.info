@@ -39,10 +39,6 @@ class AeolusUploader(BaseDrugUploader):
         mapping = {
             "aeolus": {
                 "properties": {
-                    "drug_rxcui": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword"
-                    },
                     "indications": {
                         "properties": {
                             "id": {
