@@ -77,7 +77,7 @@ def process_omop(file_path_omop):
         for _record in records:
             if _record['snomed_conceptid']:
                 _record['snomed_conceptid'] = int(_record['snomed_conceptid'])
-            omop_related[_record['relationship_name'].lower()].append({'umls_cui': _record['umls_cui'], 'concept_name': _record['concept_name'], 'snomed_full_name': _record['snomed_full_name'], 'cui_semantic_type': _record['cui_semantic_type'], 'snomed_concept_id': _record['snomed_conceptid']})
+            omop_related[_record['relationship_name'].lower().replace('-', '_').replace(' ', '_')].append({'umls_cui': _record['umls_cui'], 'concept_name': _record['concept_name'], 'snomed_full_name': _record['snomed_full_name'], 'cui_semantic_type': _record['cui_semantic_type'], 'snomed_concept_id': _record['snomed_conceptid']})
         drecord = {"_id": strucid, "drug_use": omop_related}
         d.append(drecord)
     return {x['_id']: x['drug_use'] for x in d}
