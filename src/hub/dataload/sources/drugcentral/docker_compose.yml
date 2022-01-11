@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  postgres:
+    container_name: postgres_10
+    image: postgres:10.12
+    healthcheck:
+        test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
+        timeout: 45s
+        interval: 10s
+        retries: 10
+    restart: always
+    ports:
+        - 5432:5432
+    environment:
+        - POSTGRES_USER=
+        - POSTGRES_PASSWORD=
+    volumes:
+        - /opt/postgres_docker/db_data:/var/lib/postgresql/data
