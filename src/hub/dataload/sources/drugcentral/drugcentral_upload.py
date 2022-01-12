@@ -224,7 +224,7 @@ class DrugCentralUploader(BaseDrugUploader):
                             "type": "keyword"
                         },
                         "snomed_concept_id": {
-                            "type": "integer"
+                            "type": "long"
                         },
                         "concept_name": {
                             "type": "text"
