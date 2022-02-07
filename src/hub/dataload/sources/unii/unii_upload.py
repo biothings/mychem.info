@@ -10,9 +10,9 @@ from hub.datatransform.keylookup import MyChemKeyLookup
 
 
 SRC_META = {
-        "url": 'https://fdasis.nlm.nih.gov/srs/',
+        "url": 'https://precision.fda.gov/uniisearch',
         "license": "public domain",
-        "license_url" : "https://www.nlm.nih.gov/copyright.html",
+        "license_url" : "https://www.nlm.nih.gov/web_policies.html",
         "license_url_short": "http://bit.ly/2Pg8Oo9"
         }
 
