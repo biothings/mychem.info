@@ -107,7 +107,7 @@ class UniiUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                                 },
-                        "unii_type": {
+                        "ingredient_type": {
                                 "type": "text"
                                 },
                         "pubchem": {
