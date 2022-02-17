@@ -16,7 +16,7 @@ A **200** status code indicates a successful query, and is accompanied by the qu
 
     In [1]: import requests
 
-    In [2]: r = requests.get('http://mychem.info/v1/query?q=_exists_:drugbank')
+    In [2]: r = requests.get('http://mychem.info/v1/query?q=_exists_:chebi')
 
     In [3]: r.status_code
     Out[3]: 200
@@ -34,7 +34,7 @@ A **400** status code indicates an improperly formed query, and is accompanied b
 
 .. code-block :: python
 
-    In [6]: r = requests.get('http://mychem.info/v1/query?q=_exists_:drugbank&size=u')
+    In [6]: r = requests.get('http://mychem.info/v1/query?q=_exists_:chebi&size=u')
 
     In [7]: r.status_code
     Out[7]: 400
@@ -53,7 +53,7 @@ A **404** status code indicates either an unrecognized URL, as in (*/query* is m
 
 .. code-block :: python
 
-    In [10]: r = requests.get('http://mychem.info/v1/quer?q=_exists_:drugbank')
+    In [10]: r = requests.get('http://mychem.info/v1/quer?q=_exists_:chebi')
 
     In [11]: r.status_code
     Out[11]: 404

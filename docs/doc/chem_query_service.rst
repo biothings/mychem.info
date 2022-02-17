@@ -29,7 +29,7 @@ q
 
 fields
 """"""
-    Optional, a comma-separated string to limit the fields returned from the matching chemical/drug hits. The supported field names can be found from any chemical object (e.g. `here <http://mychem.info/v1/chem/MNJVRJDLRVPLFE-UHFFFAOYSA-N>`_). Note that it supports dot notation, and wildcards as well, e.g., you can pass "drugbank", "drugbank.name", or "dbnsfp.products.*". If "fields=all", all available fields will be returned. Default: "all".
+    Optional, a comma-separated string to limit the fields returned from the matching chemical/drug hits. The supported field names can be found from any chemical object (e.g. `here <http://mychem.info/v1/chem/MNJVRJDLRVPLFE-UHFFFAOYSA-N>`_). Note that it supports dot notation, and wildcards as well, e.g., you can pass "chebi", "chebi.name", or "dbnsfp.products.*". If "fields=all", all available fields will be returned. Default: "all".
 
 size
 """"
@@ -43,8 +43,8 @@ from
 
 ::
 
-    q=drugbank.name:acid*&size=50                     first 50 hits
-    q=drugbank.name:acid*&size=50&from=50             the next 50 hits
+    q=chebi.name:acid*&size=50                     first 50 hits
+    q=chebi.name:acid*&size=50&from=50             the next 50 hits
 
 fetch_all
 """""""""
@@ -96,13 +96,13 @@ Fielded queries
 """""""""""""""
 ::
 
-    q=chebi.xref.uniprot:P80175               # for matching value on a specific field
+    q=chebi.xref.uniprot:P80175            # for matching value on a specific field
 
-    q=drugbank.name:(acid alcohol)            # multiple values for a field
-    q=drugbank.name:(acid OR alcohol)         # multiple values for a field using OR
+    q=chebi.name:(acid alcohol)            # multiple values for a field
+    q=chebi.name:(acid OR alcohol)         # multiple values for a field using OR
 
-    q=_exists_:pubchem                        # having pubchem field
-    q=NOT _exists_:drugbank                   # missing drugbank field
+    q=_exists_:pubchem                     # having pubchem field
+    q=NOT _exists_:chebi                   # missing chebi field
 
 
 .. Hint:: For a list of available fields, see :ref:`here <available_fields>`.
@@ -123,7 +123,7 @@ Wildcard queries
 """"""""""""""""
 Wildcard character "*" or "?" is supported in either simple queries or fielded queries::
 
-    q=drugbank.name:acid*
+    q=chebi.name:acid*
 
 .. note:: Wildcard character can not be the first character. It will be ignored.
 
@@ -134,40 +134,41 @@ If you want to return ALL results of a very large query, sometimes the paging me
 This is a two-step process that turns off database sorting to allow very fast retrieval of all query results.  To begin a scrolling query, you first call the query
 endpoint as you normally would, but with an extra parameter **fetch_all** = TRUE.  For example, a GET request to::
 
-    http://mychem.info/v1/query?q=_exists_:drugbank&fields=drugbank.name&fetch_all=TRUE
+    http://mychem.info/v1/query?q=_exists_:chebi&fields=chebi.name&fetch_all=TRUE
 
 Returns the following object:
 
 .. code-block:: json
 
 
+ {
+  "_scroll_id": "FGluY2x1ZGVfY29udGV4dF91dWlkDnF1ZXJ5VGhlbkZldGNoAxY4REs4cmRsRFI1YWcxNXFpZ1VoN3JnAAAAAABJG1EWNWM0Skl3WWlRdWVzQkpIWGcyYTUwQRZqVUhTRnd5ZFFkV0hvSEN3WXdSU0h3AAAAAAAQb00WUngzX0FxcmNRRktxd0tnWUdUZEtMQRZ2bWg5LUc2SFQyQ19FTjA5Rl8xNEFBAAAAAABLL-4WTEthWGpxUFVUa0tqSXFJNTItMnlQUQ==",
+  "took": 422,
+  "total": 145633,
+  "max_score": 1,
+  "hits": [
     {
-      "_scroll_id": "cXVlcnlUaGVuRmV0Y2g7MTA7Njg4ODAwOTI6SmU0ck9oMTZUUHFyRXlYSTNPS2pMZzs2ODg4MDA5MTpKZTRyT2gxNlRQcXJFeVhJM09LakxnOzY4ODgwMDkzOkplNHJPaDE2VFBxckV5WEkzT0tqTGc7Njg4ODAwOTQ6SmU0ck9oMTZUUHFyRXlYSTNPS2pMZzs2ODg4MDEwMDpKZTRyT2gxNlRQcXJFeVhJM09LakxnOzY4ODgwMDk2OkplNHJPaDE2VFBxckV5WEkzT0tqTGc7Njg4ODAwOTg6SmU0ck9oMTZUUHFyRXlYSTNPS2pMZzs2ODg4MDA5NzpKZTRyT2gxNlRQcXJFeVhJM09LakxnOzY4ODgwMDk5OkplNHJPaDE2VFBxckV5WEkzT0tqTGc7Njg4ODAwOTU6SmU0ck9oMTZUUHFyRXlYSTNPS2pMZzswOw==",
-      "max_score": 1.0,
-      "took": 2042,
-      "total": 11290,
-      "hits": [
-        {
-          "_id": "SDUQYLNIPVEERB-QPPQHZFASA-N",
-          "_score": 1.0,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Gemcitabine"
-          }
-        },
-        {
-          "_id": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
-          "_score": 1.0,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Benzyl Benzoate"
-          }
-        },
-        .
-        .
-        .
-      ],
-    }
+      "_id": "BTJXBZZBBNNTOV-UHFFFAOYSA-N",
+      "_score": 1,
+      "chebi": {
+        "_license": "http://bit.ly/2KAUCAm",
+        "name": "Linalyl benzoate"
+      }
+    },
+    {
+      "_id": "BUPRFDPUIJNOLS-UFYCRDLUSA-N",
+      "_score": 1,
+      "chebi": {
+        "_license": "http://bit.ly/2KAUCAm",
+        "name": "Tyr-Tyr-Met"
+      }
+    },
+    .
+    .
+    .
+   ]
+ }
+
 
 At this point, the first 1000 hits have been returned (of ~11,000 total), and a scroll has been set up for your query.  To get the next batch of 1000 unordered results, simply execute a GET request to the following address, supplying the _scroll_id from the first step into the **scroll_id** parameter in the second step::
 
@@ -182,9 +183,9 @@ Boolean operators and grouping
 
 You can use **AND**/**OR**/**NOT** boolean operators and grouping to form complicated queries::
 
-    q=_exists_:drugbank AND _exists_:pubchem                               AND operator
-    q=_exists_:drugbank AND NOT _exists_:pubchem                           NOT operator
-    q=_exists_:drugbank OR (_exists_:chebi AND _exists_:pubchem)           grouping with ()
+    q=_exists_:chebi AND _exists_:pubchem                               AND operator
+    q=_exists_:chebi AND NOT _exists_:pubchem                           NOT operator
+    q=_exists_:chebi OR (_exists_:uniprot AND _exists_:pubchem)           grouping with ()
 
 
 Escaping reserved characters
@@ -200,99 +201,154 @@ Returned object
 
 A GET request like this::
 
-    http://mychem.info/v1/query?q=drugbank.name:acid&fields=drugbank.name
+    http://mychem.info/v1/query?q=chebi.name:acid&fields=chebi.name
 
 should return hits as:
 
 .. code-block:: json
 
     {
-      "max_score": 7.929331,
-      "took": 102,
-      "total": 1063,
+      "took": 22,
+      "total": 13462,
+      "max_score": 4.1048613,
       "hits": [
         {
-          "_id": "BDAGIHXWWSANSR-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Formic Acid"
-          }
+          "_id": "ZFSLODLOARCGLH-UHFFFAOYSA-N",
+          "_score": 4.1048613,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "cyanuric acid"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "isocyanuric acid"
+            }
+          ]
         },
         {
-          "_id": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Acetylsalicylic acid"
-          }
+          "_id": "JRPHGDYSKGJTKZ-UHFFFAOYSA-N",
+          "_score": 4.066448,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "phosphoroselenoic acid"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "selenophosphoric acid"
+            }
+          ]
         },
         {
-          "_id": "KGBXLFKZBHKPEV-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Boric acid"
-          }
+          "_id": "GQHALSXZONOXGJ-WHJCQOFKSA-N",
+          "_score": 4.0196724,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "clavaminic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "clavaminic acid"
+            }
+          ]
         },
         {
-          "_id": "LPEPZBJOKDYZAD-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Flufenamic Acid"
-          }
+          "_id": "BONQGFBLZGPXMG-PIYBLCFFSA-N",
+          "_score": 4.0196724,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "dihydroclavaminic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "dihydroclavaminic acid"
+            }
+          ]
         },
         {
-          "_id": "JXMIBUGMYLQZGO-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Iotroxic acid"
-          }
+          "_id": "BPMFZUMJYQTVII-UHFFFAOYSA-N",
+          "_score": 4.0196724,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "guanidinoacetic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "guanidinoacetic acid"
+            }
+          ]
         },
         {
-          "_id": "HXQVQGWHFRNKMS-UHFFFAOYSA-M",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Ethylmercurithiosalicylic acid"
-          }
+          "_id": "MPNWPLYZGCKKFY-VDTYLAMSSA-N",
+          "_score": 4.0196724,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "amidinoproclavaminic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "amidinoproclavaminic acid"
+            }
+          ]
         },
         {
-          "_id": "LOAUVZALPPNFOQ-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Quinaldic Acid"
-          }
+          "_id": "NMCINKPVAOXDJH-VDTYLAMSSA-N",
+          "_score": 4.004429,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "proclavaminic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "proclavaminic acid"
+            }
+          ]
         },
         {
-          "_id": "LDKRAXXVBWHMRH-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Phosphonoacetohydroxamic Acid"
-          }
+          "_id": "UYADDEKIZFRINK-LURJTMIESA-N",
+          "_score": 4.004429,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "deoxyamidinoproclavaminic acid zwitterion"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "deoxyamidinoproclavaminic acid"
+            }
+          ]
         },
         {
-          "_id": "GWYFCOCPABKNJV-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Isovaleric Acid"
-          }
+          "_id": "ZNOVTXRBGFNYRX-STQMWFEESA-N",
+          "_score": 4.004429,
+          "chebi": [
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "levomefolic acid"
+            },
+            {
+              "_license": "http://bit.ly/2KAUCAm",
+              "name": "5-methyltetrahydrofolic acid"
+            }
+          ]
         },
         {
-          "_id": "HJZKOAYDRQLPME-UHFFFAOYSA-N",
-          "_score": 7.929331,
-          "drugbank": {
-            "_license": "http://bit.ly/2PSfZTD",
-            "name": "Oxidronic acid"
+          "_id": "WWVJUCNOSUHCFP-SDFLBUSUSA-N",
+          "_score": 4.004429,
+          "chebi": {
+            "_license": "http://bit.ly/2KAUCAm",
+            "name": "acid fuchsin (free acid form)"
           }
         }
       ]
     }
+
 
 "**total**" in the output gives the total number of matching hits, while the actual hits are returned under "**hits**" field. "**size**" parameter controls how many hits will be returned in one request (default is 10). Adjust "**size**" parameter and "**from**" parameter to retrieve the additional hits.
 
@@ -302,67 +358,66 @@ If you need to perform a faceted query, you can pass an optional "`facets <#face
 
 A GET request like this::
 
-    http://mychem.info/v1/query?q=drugbank.name:acid&fields=drugbank.name&facets=drugbank.targets.organism&size=0
+    http://mychem.info/v1/query?q=chebi.name:acid&fields=chebi.name&facets=chebi.xrefs.reactome&size=0
 
 should return hits as:
 
 .. code-block:: json
 
     {
+      "took": 112,
+      "total": 13462,
+      "max_score": null,
       "facets": {
-        "drugbank.targets.organism": {
-          "other": 1782,
+        "chebi.xrefs.reactome": {
           "_type": "terms",
-          "missing": 8,
-          "total": 1483,
           "terms": [
             {
-              "count": 545,
-              "term": "human"
+              "count": 19,
+              "term": "r-hsa-379048"
             },
             {
-              "count": 250,
-              "term": "strain"
+              "count": 19,
+              "term": "r-hsa-749448"
             },
             {
-              "count": 155,
-              "term": "escherichia"
+              "count": 19,
+              "term": "r-hsa-749452"
             },
             {
-              "count": 154,
-              "term": "coli"
+              "count": 15,
+              "term": "r-hsa-383313"
             },
             {
-              "count": 138,
-              "term": "k12"
+              "count": 13,
+              "term": "r-hsa-444191"
             },
             {
-              "count": 79,
-              "term": "atcc"
+              "count": 7,
+              "term": "r-hsa-194187"
             },
             {
-              "count": 54,
-              "term": "pseudomonas"
+              "count": 7,
+              "term": "r-hsa-1989746"
             },
             {
-              "count": 43,
-              "term": "dsm"
+              "count": 7,
+              "term": "r-hsa-5627891"
             },
             {
-              "count": 34,
-              "term": "bacillus"
+              "count": 7,
+              "term": "r-hsa-879585"
             },
             {
-              "count": 31,
-              "term": "sp"
+              "count": 7,
+              "term": "r-hsa-9031856"
             }
-          ]
+          ],
+          "other": 1562,
+          "missing": 7,
+          "total": 120
         }
-      },
-      "max_score": 0.0,
-      "took": 12,
-      "total": 1063,
-      "hits": []
+      }
     }
 
 
@@ -388,12 +443,12 @@ q
 
 scopes
 """"""
-    Optional, specify one or more fields (separated by comma) as the search "scopes", e.g., "scopes=drugbank".  The available "fields" can be passed to "**scopes**" parameter are
+    Optional, specify one or more fields (separated by comma) as the search "scopes", e.g., "scopes=chebi".  The available "fields" can be passed to "**scopes**" parameter are
     :ref:`listed here <available_fields>`. Default:
 
 fields
 """"""
-    Optional, a comma-separated string to limit the fields returned from the matching chem hits. The supported field names can be found from any chemical object. Note that it supports dot notation, and wildcards as well, e.g., you can pass "drugbank", "drugbank.name", or "dbnsfp.products.*". If "fields=all", all available fields will be returned. Default: "all".
+    Optional, a comma-separated string to limit the fields returned from the matching chem hits. The supported field names can be found from any chemical object. Note that it supports dot notation, and wildcards as well, e.g., you can pass "chebi", "chebi.name", or "dbnsfp.products.*". If "fields=all", all available fields will be returned. Default: "all".
 
 email
 """"""
@@ -408,14 +463,14 @@ piece of code. Here is a sample python snippet using `httplib2 <https://pypi.org
     import httplib2
     h = httplib2.Http()
     headers = {'content-type': 'application/x-www-form-urlencoded'}
-    params = 'q=CHEBI:175901,CHEBI:41237&scopes=chebi.id&fields=drugbank.name'
+    params = 'q=CHEBI:175901,CHEBI:41237&scopes=chebi.id&fields=chebi.name'
     res, con = h.request('http://mychem.info/v1/query', 'POST', params, headers=headers)
 
 or this example using `requests <http://docs.python-requests.org>`_ module::
 
     import requests
-    params = {'q': 'CHEBI:175901,CHEBI:41237', 'scopes': 'chebi.id', 'fields': 'drugbank.name'}
-    res = request.post('http://mychem.info/v1/query', params)
+    params = {'q': 'CHEBI:175901,CHEBI:41237', 'scopes': 'chebi.id', 'fields': 'chebi.name'}
+    res = requests.post('http://mychem.info/v1/query', params)
     con = res.json()
 
 Returned object
@@ -425,27 +480,27 @@ Returned result (the value of "con" variable above) from above example code shou
 
 .. code-block:: json
 
-
     [
       {
         "query": "CHEBI:175901",
-        "_score": 16.388842,
-        "drugbank": {
-          "_license": "http://bit.ly/2PSfZTD",
-          "name": "Gemcitabine"
-        },
-        "_id": "SDUQYLNIPVEERB-QPPQHZFASA-N"
+        "_id": "SDUQYLNIPVEERB-QPPQHZFASA-N",
+        "_score": 10.408574,
+        "chebi": {
+          "_license": "http://bit.ly/2KAUCAm",
+          "name": "gemcitabine"
+        }
       },
       {
         "query": "CHEBI:41237",
-        "_score": 16.388842,
-        "drugbank": {
-          "_license": "http://bit.ly/2PSfZTD",
-          "name": "Benzyl Benzoate"
-        },
-        "_id": "SESFRYSPDFLNCH-UHFFFAOYSA-N"
+        "_id": "SESFRYSPDFLNCH-UHFFFAOYSA-N",
+        "_score": 10.413283,
+        "chebi": {
+          "_license": "http://bit.ly/2KAUCAm",
+          "name": "benzyl benzoate"
+        }
       }
     ]
+
 
 .. Tip:: "query" field in returned object indicates the matching query term.
 

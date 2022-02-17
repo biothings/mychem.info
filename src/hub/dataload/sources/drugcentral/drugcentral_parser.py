@@ -2,12 +2,20 @@ import pandas as pd
 from collections import defaultdict
 from biothings.utils.dataload import dict_sweep, unlist
 import json
+import os
 import requests
 
-from . import file_path_pharma_class, file_path_faers, file_path_act, file_path_omop, file_path_approval, file_path_drug_dosage, file_path_structure, file_path_identifier,file_path_synonym
+try:
+    from biothings import config
+    logging = config.logger
+except ImportError:            # run locally as a standalone script
+    import logging
+    LOG_LEVEL=logging.INFO
+    logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s: %(message)s')
+
 
 def process_pharmacology_action(file_path_pharma_class):
-    df_drugcentral_pharma_class = pd.read_csv(file_path_pharma_class, sep=",", names=['_id', 'struc_id', 'role', 'description', 'code', 'source'])
+    df_drugcentral_pharma_class = pd.read_csv(file_path_pharma_class, sep=",", names=['_id', 'struc_id', 'role', 'description', 'code', 'source'], skiprows=1)
     df_drugcentral_pharma_class['source_name'] = df_drugcentral_pharma_class.apply(lambda row: row.source + '_' + row.role, axis=1)
     df_drugcentral_pharma_class = df_drugcentral_pharma_class.where((pd.notnull(df_drugcentral_pharma_class)), None)
     d = []
@@ -24,8 +32,8 @@ def process_faers(file_path_faers):
     """
     # TODO: JSON field naming needs to be confirmed
     """
-    df_drugcentral_faers = pd.read_csv(file_path_faers, sep=",", names=['_id', 'struc_id', 'meddra_term', 'meddra_code', 'level', 'llr', 'llr_threshold', 'drug_ae', 'drug_no_ae', 'no_drug_ae', 'no_drug_no_ar'])
-    df_drugcentral_faers = df_drugcentral_faers.where((pd.notnull(df_drugcentral_faers)), None)    
+    df_drugcentral_faers = pd.read_csv(file_path_faers, sep=",", names=['_id', 'struc_id', 'meddra_term', 'meddra_code', 'level', 'llr', 'llr_threshold', 'drug_ae', 'drug_no_ae', 'no_drug_ae', 'no_drug_no_ar'], skiprows=1)
+    df_drugcentral_faers = df_drugcentral_faers.where((pd.notnull(df_drugcentral_faers)), None)
     d = []
     for strucid, subdf in df_drugcentral_faers.groupby('struc_id'):
         records = subdf.to_dict(orient="records")
@@ -35,7 +43,7 @@ def process_faers(file_path_faers):
     return {x['_id']: x['fda_adverse_event'] for x in d}
 
 def process_act(file_path_act):
-    df_drugcentral_act = pd.read_csv(file_path_act, sep=",", names=["act_id", "struct_id", "target_id", "target_name", "target_class", "accession", "gene", "swissprot", "act_value", "act_unit", "act_type", "act_comment", "act_source", "relation", "moa", "moa_source", "act_source_url", "moa_source_url", "action_type", "first_in_class", "tdl", "act_ref_id", "moa_ref_id", "organism"])
+    df_drugcentral_act = pd.read_csv(file_path_act, sep=",", names=["act_id", "struct_id", "target_id", "target_name", "target_class", "accession", "gene", "swissprot", "act_value", "act_unit", "act_type", "act_comment", "act_source", "relation", "moa", "moa_source", "act_source_url", "moa_source_url", "action_type", "first_in_class", "tdl", "act_ref_id", "moa_ref_id", "organism"], skiprows=1)
     df_drugcentral_act = df_drugcentral_act.where((pd.notnull(df_drugcentral_act)), None)
     d = []
     for strucid, subdf in df_drugcentral_act.groupby('struct_id'):
@@ -68,7 +76,7 @@ def process_act(file_path_act):
     return {x['_id']: x['bioactivity'] for x in d}
 
 def process_omop(file_path_omop):
-    df_drugcentral_omop = pd.read_csv(file_path_omop, sep=",", names=['_id', 'struct_id', 'concept_id', 'relationship_name', 'concept_name', 'umls_cui', 'snomed_full_name', 'cui_semantic_type', 'snomed_conceptid'])
+    df_drugcentral_omop = pd.read_csv(file_path_omop, sep=",", names=['_id', 'struct_id', 'concept_id', 'relationship_name', 'concept_name', 'umls_cui', 'snomed_full_name', 'cui_semantic_type', 'snomed_conceptid'], skiprows=1)
     df_drugcentral_omop = df_drugcentral_omop.where((pd.notnull(df_drugcentral_omop)), None)
     d = []
     for strucid, subdf in df_drugcentral_omop.groupby('struct_id'):
@@ -77,13 +85,13 @@ def process_omop(file_path_omop):
         for _record in records:
             if _record['snomed_conceptid']:
                 _record['snomed_conceptid'] = int(_record['snomed_conceptid'])
-            omop_related[_record['relationship_name'].lower()].append({'umls_cui': _record['umls_cui'], 'concept_name': _record['concept_name'], 'snomed_full_name': _record['snomed_full_name'], 'cui_semantic_type': _record['cui_semantic_type'], 'snomed_concept_id': _record['snomed_conceptid']})
+            omop_related[_record['relationship_name'].lower().replace('-', '_').replace(' ', '_')].append({'umls_cui': _record['umls_cui'], 'concept_name': _record['concept_name'], 'snomed_full_name': _record['snomed_full_name'], 'cui_semantic_type': _record['cui_semantic_type'], 'snomed_concept_id': _record['snomed_conceptid']})
         drecord = {"_id": strucid, "drug_use": omop_related}
         d.append(drecord)
     return {x['_id']: x['drug_use'] for x in d}
 
 def process_approval(file_path_approval):
-    df_drugcentral_approval = pd.read_csv(file_path_approval, sep=",", names=['_id', 'struct_id', 'date', 'agency', 'company', 'orphan'])
+    df_drugcentral_approval = pd.read_csv(file_path_approval, sep=",", names=['_id', 'struct_id', 'date', 'agency', 'company', 'orphan'], skiprows=1)
     df_drugcentral_approval = df_drugcentral_approval.where((pd.notnull(df_drugcentral_approval)), None)
     d = []
     for strucid, subdf in df_drugcentral_approval.groupby('struct_id'):
@@ -94,7 +102,7 @@ def process_approval(file_path_approval):
     return {x['_id']: x['approval'] for x in d}
 
 def process_drug_dosage(file_path_drug_dosage):
-    df_drugcentral_drug_dosage = pd.read_csv(file_path_drug_dosage, sep=",", names=['_id', 'atc_code', 'dosage', 'unit', 'route', 'comment', 'struct_id'])
+    df_drugcentral_drug_dosage = pd.read_csv(file_path_drug_dosage, sep=",", names=['_id', 'atc_code', 'dosage', 'unit', 'route', 'comment', 'struct_id'], skiprows=1)
     df_drugcentral_drug_dosage = df_drugcentral_drug_dosage.where((pd.notnull(df_drugcentral_drug_dosage)), None)
     d = []
     for strucid, subdf in df_drugcentral_drug_dosage.groupby('struct_id'):
@@ -106,7 +114,7 @@ def process_drug_dosage(file_path_drug_dosage):
 
 
 def process_synonym(file_path_synonym):
-    df_drugcentral_synonym = pd.read_csv(file_path_synonym, sep=",", names=["_id", "struct_id", 'synonym', 'pref', 'parent', 's2'])
+    df_drugcentral_synonym = pd.read_csv(file_path_synonym, sep=",", names=["_id", "struct_id", 'synonym', 'pref', 'parent', 's2'], skiprows=1)
     df_drugcentral_synonym = df_drugcentral_synonym.where((pd.notnull(df_drugcentral_synonym)), None)
     d = []
     for strucid, subdf in df_drugcentral_synonym.groupby('struct_id'):
@@ -121,25 +129,25 @@ def process_synonym(file_path_synonym):
     return {x['_id']: x['synonyms'] for x in d}
 
 def process_structure(file_path_structure):
-    df_drugcentral_structure = pd.read_csv(file_path_structure, sep="\t")
+    df_drugcentral_structure = pd.read_csv(file_path_structure, sep=",", names=["_id", "inchi", "inchikey", "smiles", "cas_rn", "inn"], skiprows=1)
     df_drugcentral_structure = df_drugcentral_structure.where((pd.notnull(df_drugcentral_structure)), None)
     d = []
-    for strucid, subdf in df_drugcentral_structure.groupby('ID'):
+    for strucid, subdf in df_drugcentral_structure.groupby('_id'):
         records = subdf.to_dict(orient="records")
-        drug_dosage_related = [{k.lower(): v for k, v in record.items() if k not in {'ID'}} for record in records]
+        drug_dosage_related = [{k.lower(): v for k, v in record.items() if k not in {'_id'}} for record in records]
         drecord = {"_id": strucid, "structures": drug_dosage_related[0]}
         d.append(drecord)
     return {x['_id']: x['structures'] for x in d}
 
 def process_identifier(file_path_identifier):
-    df_drugcentral_identifier = pd.read_csv(file_path_identifier, sep=",", names=["_id", "identifier", "id_type", "struct_id", "parent"])
+    df_drugcentral_identifier = pd.read_csv(file_path_identifier, sep=",", names=["_id", "identifier", "id_type", "struct_id", "parent"], skiprows=1)
     df_drugcentral_identifier = df_drugcentral_identifier.where((pd.notnull(df_drugcentral_identifier)), None)
     d = []
     for strucid, subdf in df_drugcentral_identifier.groupby('struct_id'):
         records = subdf.to_dict(orient="records")
         identifier_related = defaultdict(list)
         for _record in records:
-            identifier_related[_record['id_type'].lower()].append(_record['identifier'])             
+            identifier_related[_record['id_type'].lower()].append(_record['identifier'])
         drecord = {"_id": strucid, "external_ref": identifier_related}
         d.append(drecord)
     return {x['_id']: x['external_ref'] for x in d}
@@ -151,23 +159,43 @@ def to_list(_key):
         return _key
 
 def xrefs_2_inchikey(xrefs_dict):
-    xrefs_key_list = ['unii', 'drugbank_id', 'chembl_id', 'chebi', 'pubchem_cid']
-    mychem_filed_dict = {'unii': 'unii.unii:', 'chebi': 'chebi.chebi_id:"', 'pubchem_cid': 'pubchem.cid:"CID','chembl_id': 'chembl.molecule_chembl_id:"', 'drugbank_id': 'drugbank.accession_number:"'}
+    # Keyword list is ordered by search priority
+    xrefs_key_list = ['umlscui', 'chembl_id', 'pubchem_cid', 'chebi', 'drugbank_id', 'unii']
+    mychem_field_dict = {
+        'umlscui': 'umls.cui:"',
+        'chembl_id': 'chembl.molecule_chembl_id:"',
+        'pubchem_cid': 'pubchem.cid:"CID',
+        'chebi': 'chebi.chebi_id:"',
+        'drugbank_id': 'drugbank.accession_number:"',
+        'unii': 'unii.unii:"'
+        }
     mychem_query = 'http://mychem.info/v1/query?q='
-    result = None
+    results_dict = {}
+    results = []
     for _key in xrefs_key_list:
         if _key in xrefs_dict:
             for _xrefs in to_list(xrefs_dict[_key]):
-                query_url = mychem_query + mychem_filed_dict[_key] + _xrefs + '"'
+                query_url = mychem_query + mychem_field_dict[_key] + _xrefs + '"'
+                logging.info("Querying mychem.info: {}".format(query_url))
                 json_doc = requests.get(query_url).json()
                 if 'hits' in json_doc and json_doc['hits']:
-                    if len(json_doc['hits']) == 1:
-                        result = json_doc['hits'][0]['_id']
-                    else:
-                        result = json_doc['hits'][0]['_id']
-    return result
+                    for hit in json_doc['hits']:
+                        logging.info("Hit: {}".format(hit['_id']))
+                        results.append(hit['_id'])
+    return list(set(results))
 
-def load_data():
+def load_data(data_folder):
+    file_path_pharma_class = os.path.join(data_folder, 'pharma_class.csv')
+    file_path_faers = os.path.join(data_folder, 'faers.csv')
+    file_path_act = os.path.join(data_folder, 'act_table_full.csv')
+    file_path_omop = os.path.join(data_folder, 'omop_relationship.csv')
+    file_path_approval = os.path.join(data_folder, 'approval.csv')
+    file_path_drug_dosage = os.path.join(data_folder, 'drug_dosage.csv')
+    file_path_synonym = os.path.join(data_folder, 'synonyms.csv')
+    file_path_structure = os.path.join(data_folder, 'structures.smiles.csv')
+    file_path_identifier = os.path.join(data_folder, 'identifiers.csv')
+
+    # Process files
     pharmacology_class = process_pharmacology_action(file_path_pharma_class)
     faers = process_faers(file_path_faers)
     act = process_act(file_path_act)
@@ -177,8 +205,11 @@ def load_data():
     synonyms = process_synonym(file_path_synonym)
     structures = process_structure(file_path_structure)
     identifiers = process_identifier(file_path_identifier)
-    for struc_id in set(list(pharmacology_class.keys()) + list(faers.keys()) + list(act.keys()) + list(omop.keys()) + list(approval.keys()) + list(drug_dosage.keys()) + list(identifiers.keys()) + list(synonyms.keys()) + list(structures.keys())):
-    #for disease_id in set(list(d_go_bp.keys()) + list(d_go_mf.keys()) + list(d_go_cc.keys()) + list(d_pathway.keys())):
+
+    for struc_id in set(list(pharmacology_class.keys()) + list(faers.keys()) + list(act.keys()) + list(omop.keys()) +
+                        list(approval.keys()) + list(drug_dosage.keys()) + list(identifiers.keys()) +
+                        list(synonyms.keys()) + list(structures.keys())):
+        # If we have an inchikey, use that as the primary ID
         if structures.get(struc_id, {}).get('inchikey', {}):
             _doc = {
                 '_id': structures.get(struc_id, {}).get('inchikey', {}),
@@ -194,25 +225,63 @@ def load_data():
                     "xrefs": identifiers.get(struc_id, {})
                 }
             }
+            _doc = (dict_sweep(unlist(_doc), [None]))
+            yield _doc
         else:
-            _id = xrefs_2_inchikey(identifiers.get(struc_id, {}))
-            if not _id:
+            # Try to convert the identifiers in xrefs to _id
+            xrefs = identifiers.get(struc_id, {})
+            logging.info("Missing inchikey for structure {}".format(struc_id))
+            _ids = xrefs_2_inchikey(xrefs)
+            if len(_ids) == 0:
+                # Default to DrugCentral ID
+                logging.info("Could not find an _id for {}".format(struc_id))
                 _id = 'DrugCentral:' + str(struc_id)
-            _doc = {
-                '_id': _id,
-                'drugcentral': {
-                    "pharmacology_class": pharmacology_class.get(struc_id, {}),
-                    "fda_adverse_event": faers.get(struc_id, {}),
-                    "bioactivity": act.get(struc_id, {}),
-                    "drug_use": omop.get(struc_id, {}),
-                    "approval": approval.get(struc_id, {}),
-                    "drug_dosage": drug_dosage.get(struc_id, {}),
-                    "synonyms": synonyms.get(struc_id, {}),
-                    "structures": structures.get(struc_id, {}),
-                    "xrefs": identifiers.get(struc_id, {})
+                _doc = {
+                    '_id': _id,
+                    'drugcentral': {
+                        "pharmacology_class": pharmacology_class.get(struc_id, {}),
+                        "fda_adverse_event": faers.get(struc_id, {}),
+                        "bioactivity": act.get(struc_id, {}),
+                        "drug_use": omop.get(struc_id, {}),
+                        "approval": approval.get(struc_id, {}),
+                        "drug_dosage": drug_dosage.get(struc_id, {}),
+                        "synonyms": synonyms.get(struc_id, {}),
+                        "structures": structures.get(struc_id, {}),
+                        "xrefs": identifiers.get(struc_id, {})
+                    }
                 }
-            }
-        _doc = (dict_sweep(unlist(_doc), [None]))
-        yield _doc
+                _doc = (dict_sweep(unlist(_doc), [None]))
+                yield _doc
+            else:
+                logging.info("Found ids {}".format(_ids))
+                for _id in _ids:
+                    _doc = {
+                        '_id': _id,
+                        'drugcentral': {
+                            "pharmacology_class": pharmacology_class.get(struc_id, {}),
+                            "fda_adverse_event": faers.get(struc_id, {}),
+                            "bioactivity": act.get(struc_id, {}),
+                            "drug_use": omop.get(struc_id, {}),
+                            "approval": approval.get(struc_id, {}),
+                            "drug_dosage": drug_dosage.get(struc_id, {}),
+                            "synonyms": synonyms.get(struc_id, {}),
+                            "structures": structures.get(struc_id, {}),
+                            "xrefs": identifiers.get(struc_id, {})
+                        }
+                    }
+                    _doc = (dict_sweep(unlist(_doc), [None]))
+                    yield _doc
 
 
+if __name__ == "__main__":
+
+    import json
+
+    for d in load_data('/home/ravila/data/mychem/datasources/drugcentral'):
+        pass
+        #if d['_id'] == "OMPJBNCRMGITSC-UHFFFAOYSA-N":
+        #    print("++++++++++++++++++++++++++++")
+            #print(json.dumps(d, indent=2))
+        #    print(json.dumps(d['_id'], indent=2))
+        #    print(json.dumps(d['drugcentral'].get('structures'), indent=2))
+        #    print(json.dumps(d['drugcentral'].get('xrefs'), indent=2))

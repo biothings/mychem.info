@@ -1,6 +1,4 @@
 import pandas as pd
-import json
-
 from biothings.utils.dataload import int_convert
 
 
@@ -18,12 +16,12 @@ def load_data(input_file):
     unii['_id'].fillna(unii.unii, inplace=True)
 
     dupes = set(unii._id) - set(unii._id.drop_duplicates(False))
-    records = [{k:v for k,v in record.items() if pd.notnull(v)} for record in unii.to_dict("records") if record['_id'] not in dupes]
+    records = [{k: v for k, v in record.items() if pd.notnull(v)} for record in unii.to_dict("records") if record['_id'] not in dupes]
     records = [{'_id': record['_id'], 'unii': record} for record in records]
     # take care of a couple cases with identical inchikeys
     for dupe in dupes:
         dr = unii.query("_id == @dupe").to_dict("records")
-        dr = [{k:v for k,v in record.items() if pd.notnull(v)} for record in dr]
+        dr = [{k: v for k, v in record.items() if pd.notnull(v)} for record in dr]
         records.append({'_id': dupe, 'unii': dr})
     for record in records:
         if isinstance(record['unii'], dict):
@@ -37,3 +35,24 @@ def load_data(input_file):
 
         yield record
 
+
+if __name__ == "__main__":
+    """For standalone debugging"""
+
+    from glob import glob
+    import json
+    import sys
+
+    # Add config directory to path
+    sys.path.append("../../../../")
+
+    from unii_dump import UniiDumper
+
+    dumper = UniiDumper()
+    dumper.get_latest_release()
+    dumper.create_todump_list()
+
+    input_file = glob(dumper.new_data_folder + "/*Records*.txt")[0]
+
+    for rec in load_data(input_file):
+        print(json.dumps(rec, indent=2))

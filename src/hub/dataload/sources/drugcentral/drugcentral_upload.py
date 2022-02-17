@@ -1,12 +1,15 @@
+import biothings.hub.dataload.storage as storage
 from hub.dataload.uploader import BaseDrugUploader
-from biothings.utils.mongo import get_src_conn
-
 from hub.datatransform.keylookup import MyChemKeyLookup
+
+from .drugcentral_parser import load_data
 
 
 class DrugCentralUploader(BaseDrugUploader):
 
     name = "drugcentral"
+    # Using root merger storage because some documents may map to the same _id.
+    storage_class = storage.RootKeyMergerStorage
 
     __metadata__ = {
             "src_meta" : {
@@ -17,6 +20,7 @@ class DrugCentralUploader(BaseDrugUploader):
                 }
             }
 
+    # Keylookup is a callable object
     keylookup = MyChemKeyLookup(
             [('inchikey', 'drugcentral.structures.inchikey'),
              ('unii', 'drugcentral.xref.unii'),
@@ -31,448 +35,466 @@ class DrugCentralUploader(BaseDrugUploader):
             )
 
     def load_data(self, data_folder):
-        # read data from the source collection
-        src_col = self.db[self.src_col_name]
-        def load_data():
-            yield from src_col.find()
-
-        # perform keylookup on source collection
-        return self.keylookup(load_data)()
+        # Commented out keylookup call, as overlapping work is performed by the parser.
+        #drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
+        drugcentral_docs = load_data(data_folder)
+        return drugcentral_docs
 
     @classmethod
     def get_mapping(klass):
         mapping = {
-                "drugcentral": {
+            "drugcentral": {
+                "properties": {
+                "pharmacology_class": {
                     "properties": {
-                        "structures": {
-                            "properties": {
-                                "smiles": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "cas_rn": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "inn": {
-                                    "type": "text",
-                                    'copy_to': ['all'],
-                                    },
-                                "inchi": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "inchikey": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    }
-                                }
-                            },
-                        "fda_adverse_event": {
-                            "properties": {
-                                "llr": {
-                                    "type": "float"
-                                    },
-                                "meddra_term": {
-                                    "type": "text"
-                                    },
-                                "llr_threshold": {
-                                    "type": "float"
-                                    },
-                                "drug_ae": {
-                                    "type": "integer"
-                                    },
-                                "level": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "drug_no_ae": {
-                                    "type": "integer"
-                                    },
-                                "no_drug_no_ar": {
-                                    "type": "integer"
-                                    },
-                                "meddra_code": {
-                                    "type": "integer"
-                                    },
-                                "no_drug_ae": {
-                                    "type": "integer"
-                                    }
-                                }
-                            },
-                        "drug_dosage": {
-                                "properties": {
-                                    "unit": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                    "route": {
-                                        "type": "text"
-                                        },
-                                    "dosage": {
-                                        "type": "float"
-                                        }
-                                    }
-                                },
-                        "pharmacology_class": {
-                                "properties": {
-                                    "chebi": {
-                                        "properties": {
-                                            "description": {
-                                                "type": "text"
-                                                },
-                                            "code": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                }
-                                            }
-                                        },
-                                    "fda_epc": {
-                                        "properties": {
-                                            "description": {
-                                                "type": "text"
-                                                },
-                                            "code": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                }
-                                            }
-                                        },
-                                    "fda_pe": {
-                                        "properties": {
-                                            "description": {
-                                                "type": "text"
-                                                },
-                                            "code": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                }
-                                            }
-                                        },
-                                    "fda_chemical/ingredient": {
-                                        "properties": {
-                                            "description": {
-                                                "type": "text"
-                                                },
-                                            "code": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                }
-                                            }
-                                        },
-                                    "fda_moa": {
-                                        "properties": {
-                                            "description": {
-                                                "type": "text"
-                                                },
-                                            "code": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                }
-                                            }
-                                        },
-                                    "mesh_pa": {
-                                            "properties": {
-                                                "description": {
-                                                    "type": "text"
-                                                    },
-                                                "code": {
-                                                    "normalizer": "keyword_lowercase_normalizer",
-                                                    "type": "keyword",
-                                                    }
-                                                }
-                                            }
-                                    }
+                    "mesh_pa": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
                     },
-                    "approval": {
-                            "properties": {
-                                "agency": {
-                                    "type": "text"
-                                    },
-                                "date": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "company": {
-                                    "type": "text"
-                                    },
-                                "orphan": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    }
-                                }
-                            },
-                    "drug_use": {
-                            "properties": {
-                                "reduce risk": {
-                                    "properties": {
-                                        "snomed_full_name": {
-                                            "type": "text"
-                                            },
-                                        "cui_semantic_type": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "concept_name": {
-                                            "type": "text"
-                                            },
-                                        "umls_cui": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "snomed_concept_id": {
-                                            "type": "long"
-                                            }
-                                        }
-                                    },
-                                "indication": {
-                                    "properties": {
-                                        "snomed_full_name": {
-                                            "type": "text"
-                                            },
-                                        "cui_semantic_type": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "concept_name": {
-                                            "type": "text"
-                                            },
-                                        "umls_cui": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "snomed_concept_id": {
-                                            "type": "long"
-                                            }
-                                        }
-                                    },
-                                "contraindication": {
-                                    "properties": {
-                                        "snomed_full_name": {
-                                            "type": "text"
-                                            },
-                                        "cui_semantic_type": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "concept_name": {
-                                            "type": "text"
-                                            },
-                                        "umls_cui": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "snomed_concept_id": {
-                                            "type": "long"
-                                            }
-                                        }
-                                    },
-                                "symptomatic treatment": {
-                                        "properties": {
-                                            "snomed_full_name": {
-                                                "type": "text"
-                                                },
-                                            "cui_semantic_type": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "concept_name": {
-                                                "type": "text"
-                                                },
-                                            "umls_cui": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "snomed_concept_id": {
-                                                "type": "long"
-                                                }
-                                            }
-                                        },
-                                "off-label use": {
-                                        "properties": {
-                                            "snomed_full_name": {
-                                                "type": "text"
-                                                },
-                                            "cui_semantic_type": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "concept_name": {
-                                                "type": "text"
-                                                },
-                                            "umls_cui": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "snomed_concept_id": {
-                                                "type": "long"
-                                                }
-                                            }
-                                        },
-                                "diagnosis": {
-                                        "properties": {
-                                            "snomed_full_name": {
-                                                "type": "text"
-                                                },
-                                            "cui_semantic_type": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "concept_name": {
-                                                "type": "text"
-                                                },
-                                            "umls_cui": {
-                                                "normalizer": "keyword_lowercase_normalizer",
-                                                "type": "keyword",
-                                                },
-                                            "snomed_concept_id": {
-                                                "type": "long"
-                                                }
-                                            }
-                                        }
-                                }
+                    "fda_moa": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
                     },
-                    "bioactivity": {
-                            "properties": {
-                                "organism": {
-                                    "type": "text"
-                                    },
-                                "target_class": {
-                                    "type": "text"
-                                    },
-                                "action_type": {
-                                    "type": "text"
-                                    },
-                                "moa": {
-                                    "type": "float"
-                                    },
-                                "target_name": {
-                                    "type": "text"
-                                    },
-                                "act_type": {
-                                    "type": "text"
-                                    },
-                                "moa_source": {
-                                    "type": "text"
-                                    },
-                                "uniprot": {
-                                    "properties": {
-                                        "uniprot_id": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "swissprot_entry": {
-                                            "normalizer": "keyword_lowercase_normalizer",
-                                            "type": "keyword",
-                                            },
-                                        "gene_symbol": {
-                                            "type": "text"
-                                            }
-                                        }
-                                    },
-                                "act_source": {
-                                    "type": "text"
-                                    },
-                                "act_value": {
-                                    "type": "float"
-                                    }
-                                }
-                            },
-                    "synonyms": {
-                            "type": "text",
-                            'copy_to': ['all'],
-                            },
-                    "xrefs": {
-                            "properties": {
-                                "pubchem_cid": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "nui": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "nddf": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "pdb_chem_id": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "kegg_drug": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "secondary_cas_rn": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "vandf": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "ndfrt": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "chembl_id": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "drugbank_id": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "inn_id": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "mmsl": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "snomedct_us": {
-                                    "normalizer": "keyword_lowercase_normalizer",
-                                    "type": "keyword",
-                                    },
-                                "mesh_supplemental_record_ui": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "unii": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "umlscui": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "chebi": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "mesh_descriptor_ui": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "vuid": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "iuphar_ligand_id": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        },
-                                "rxnorm": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                        }
-                                }
+                    "fda_epc": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "chebi": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "fda_cs": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "fda_pe": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "fda_ext": {
+                        "properties": {
+                        "description": {
+                            "type": "text"
+                        },
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        }
+                        }
+                    },
+                    "fda_chemical/ingredient": {
+                        "properties": {
+                        "code": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "description": {
+                            "type": "text"
+                        }
+                        }
                     }
+                    }
+                },
+                "fda_adverse_event": {
+                    "properties": {
+                    "meddra_code": {
+                        "type": "integer"
+                    },
+                    "level": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "llr": {
+                        "type": "float"
+                    },
+                    "llr_threshold": {
+                        "type": "float"
+                    },
+                    "drug_ae": {
+                        "type": "integer"
+                    },
+                    "drug_no_ae": {
+                        "type": "integer"
+                    },
+                    "no_drug_ae": {
+                        "type": "integer"
+                    },
+                    "no_drug_no_ar": {
+                        "type": "integer"
+                    },
+                    "meddra_term": {
+                        "type": "text"
+                    }
+                    }
+                },
+                "drug_use": {
+                    "properties": {
+                    "indication": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "long"
+                        },
+                        "concept_name": {
+                            "type": "text"
+                        },
+                        "snomed_full_name": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "contraindication": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "long"
+                        },
+                        "concept_name": {
+                                "type": "text"
+                                },
+                        "snomed_full_name": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "off_label_use": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "long"
+                        },
+                        "concept_name": {
+                            "type": "text"
+                        },
+                        "snomed_full_name": {
+                            "type": "text"
+                        }
+                        }
+                    },
+                    "symptomatic_treatment": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "concept_name": {
+                            "type": "text"
+                        },
+                        "snomed_full_name": {
+                            "type": "text"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "integer"
+                        }
+                        }
+                    },
+                    "reduce_risk": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "concept_name": {
+                            "type": "text"
+                        },
+                        "snomed_full_name": {
+                            "type": "text"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "integer"
+                        }
+                        }
+                    },
+                    "diagnosis": {
+                        "properties": {
+                        "umls_cui": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "concept_name": {
+                            "type": "text"
+                        },
+                        "snomed_full_name": {
+                            "type": "text"
+                        },
+                        "cui_semantic_type": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "snomed_concept_id": {
+                            "type": "long"
+                        }
+                        }
+                    }
+                    }
+                },
+                "drug_dosage": {
+                    "properties": {
+                    "dosage": {
+                        "type": "float"
+                    },
+                    "unit": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "route": {
+                        "type": "text"
+                    }
+                    }
+                },
+                "structures": {
+                    "properties": {
+                    "cas_rn": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inchi": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inchikey": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "smiles": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inn": {
+                        "type": "text",
+                        "copy_to": [
+                        "all"
+                        ]
+                    }
+                    }
+                },
+                "xrefs": {
+                    "properties": {
+                    "kegg_drug": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "secondary_cas_rn": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "umlscui": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "chebi": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "chembl_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "mesh_supplemental_record_ui": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "pubchem_cid": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "inn_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "unii": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "drugbank_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "rxnorm": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "nddf": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "snomedct_us": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "vandf": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "mmsl": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "nui": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "mesh_descriptor_ui": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "pdb_chem_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "vuid": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "iuphar_ligand_id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    }
+                    }
+                },
+                "approval": {
+                    "properties": {
+                    "date": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "agency": {
+                        "type": "text"
+                    },
+                    "orphan": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "company": {
+                        "type": "text"
+                    }
+                    }
+                },
+                "bioactivity": {
+                    "properties": {
+                    "uniprot": {
+                        "properties": {
+                        "uniprot_id": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "gene_symbol": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        },
+                        "swissprot_entry": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword"
+                        }
+                        }
+                    },
+                    "moa": {
+                        "type": "float"
+                    },
+                    "act_value": {
+                        "type": "float"
+                    },
+                    "act_type": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
+                    "moa_source": {
+                        "type": "text"
+                    },
+                    "action_type": {
+                        "type": "text"
+                    },
+                    "act_source": {
+                        "type": "text"
+                    },
+                    "target_class": {
+                        "type": "text"
+                    },
+                    "target_name": {
+                        "type": "text"
+                    },
+                    "organism": {
+                        "type": "text"
+                    }
+                    }
+                },
+                "synonyms": {
+                    "type": "text"
+                }
                 }
             }
-        }
+            }
 
         return mapping
 

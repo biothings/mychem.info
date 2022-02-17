@@ -48,19 +48,15 @@ Dictionaries are created for each chemical based on their ``standardinchikey`` i
 DrugBank
 --------
 
-The following `drugbank` fields are subject to truncation::
-
-    drugbank.products
-    drugbank.mixtures
-    drugbank.drug_interactions
-
-
-The value of each fields above can be a large list (up to ~10K items). For the purpose of reducing the total size of a single chemical/drug object, we removed the above fields if their values contain more than 1000 items.
-
-This truncation affects only 7 objects (as of 2018-11-28, `full list here <https://github.com/biothings/mychem.info/blob/master/src/hub/dataload/sources/drugbank/exclusion_ids.py>`_), comparing to total 11,290 objects containing `drugbank` data (~0.06%).
+Due to licensing restrictions, we removed DrugBank data from MyChem.info on 09/08/2021.
 
 .. DrugCentral
 .. -----------
+
+FDA Orphan Drug Designations
+----------------------------
+
+This datasource was added to MyChem.info on 09/08/2020. The data comes from a JSON file `hosted here <https://raw.githubusercontent.com/r76941156/fda_orphan_drug/main/data.json>`_
 
 .. ginas
 .. -----

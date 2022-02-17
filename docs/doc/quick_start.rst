@@ -1,7 +1,7 @@
 Quick start
 -----------
 
-`MyChem.info <http://mychem.info>`_ provides two simple web services: one for querying chemical compound or drug objects and the other for chemical/drug annotation retrieval by common IDs (e.g. inchikey, chebiID, drugbankID etc.). Both return results in `JSON <http://json.org>`_ format.
+`MyChem.info <http://mychem.info>`_ provides two simple web services: one for querying chemical compound or drug objects and the other for chemical/drug annotation retrieval by common IDs (e.g. inchikey, chebiID, pubchem ID etc.). Both return results in `JSON <http://json.org>`_ format.
 
 Chemical/drug query service
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,8 +17,8 @@ Examples
 ::
 
     http://mychem.info/v1/query?q=imatinib
-    http://mychem.info/v1/query?q=_exists_:drugbank
-    http://mychem.info/v1/query?q=drugbank.targets.uniprot:A9UF02&fields=drugbank
+    http://mychem.info/v1/query?q=_exists_:chebi
+    http://mychem.info/v1/query?q=_exists_:drugcentral.bioactivity.uniprot.uniprot_id&fields=drugcentral.bioactivity.uniprot
 
 
 .. Hint:: View nicely formatted JSON result in your browser with this handy add-on: `JSON formatter <https://chrome.google.com/webstore/detail/bcjindcccaagfpapjjmafapmmgkkhgoa>`_ for Chrome or `JSONView <https://addons.mozilla.org/en-US/firefox/addon/jsonview/>`_ for Firefox.
@@ -44,7 +44,6 @@ URL
 ``<chem_id>`` can be any one of the following common chemical/drug identifiers:
 
     * `InChIKey <https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey>`_,
-    * `DrugBank accession number <https://www.drugbank.ca/documentation>`_,
     * `ChEMBLID <https://www.ebi.ac.uk/chembl/faq#faq40>`_,
     * `ChEBI identifier <http://www.ebi.ac.uk/chebi/aboutChebiForward.do>`_,
     * `PubChem CID <https://pubchem.ncbi.nlm.nih.gov/search/help_search.html#Cid>`_,
@@ -58,7 +57,6 @@ Examples
     http://mychem.info/v1/chem/CHEBI:45783?fields=chebi
     http://mychem.info/v1/chem/CHEMBL941?fields=chembl
     http://mychem.info/v1/chem/BKJ8M8G5HI?fields=unii
-    http://mychem.info/v1/chem/DB00619?fields=drugbank
 
 
 To learn more
