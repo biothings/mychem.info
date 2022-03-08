@@ -40,7 +40,7 @@ class UniiDumper(HTTPDumper):
                 )
             res.raise_for_status()
             data_url = res.json()['url']
-            local = os.path.join(self.new_data_folder, self.release)
+            local = os.path.join(self.new_data_folder, self.release + ".zip")
             self.to_dump.append({"remote": data_url, "local": local})
 
     def post_dump(self, *args, **kwargs):
