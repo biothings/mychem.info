@@ -1,4 +1,4 @@
-git+git://github.com/biothings/biothings.api#egg=biothings[web_extra]
+git+https://github.com/biothings/biothings.api#egg=biothings[web_extra]
 
 # for dotstring utilities
 git+https://github.com/greg-k-taylor/dotstring.git@v0.1.2#egg=dotstring
