@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 
 import bs4
 import dateutil.parser as dtparser
@@ -24,7 +25,7 @@ class UniiDumper(HTTPDumper):
         # Parse the html for the text in the first 'div' element under the archive accordion
         html = bs4.BeautifulSoup(res.text, 'lxml')
         archive = html.find("div", attrs={"class": "usa-accordion__content usa-prose"})
-        version = archive.find("div", attrs={"class": "styles__StyledDownloadLink-sc-pyispm-6 cdoIOb"}).text
+        version = archive.find("div", attrs={"class": re.compile("styles__StyledDownloadLink-*")}).text
         try:
             latest = datetime.date.strftime(dtparser.parse(version), "%Y-%m-%d")
             return latest
