@@ -22,8 +22,6 @@ ES_SCROLL_TIME = '10m'
 # *****************************************************************************
 
 ANNOTATION_ID_REGEX_LIST = [
-    # Drugbank datasource was removed in 0.10.x
-    # (re.compile(r'db[0-9]+', re.I), 'drugbank.id'),
     (re.compile(r'chembl[0-9]+', re.I), 'chembl.molecule_chembl_id'),
     (re.compile(r'chebi\:[0-9]+', re.I), ['chebi.id', 'chebi.secondary_chebi_id']),
     (re.compile(r'[A-Z0-9]{10}'), 'unii.unii'),
