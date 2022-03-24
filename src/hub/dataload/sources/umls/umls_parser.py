@@ -1,8 +1,8 @@
-from collections import defaultdict
-from biothings_client import get_client
 import os
-import copy
 import time
+from collections import defaultdict
+
+from biothings_client import get_client
 
 CHEM_CLIENT = get_client('chem')
 # list of UMLS semantic types belonging to chemical is based on
@@ -124,6 +124,15 @@ def unlist(l):
 def load_data(data_folder):
     mrsat_file = os.path.join(data_folder, 'MRSTY.RRF')
     mrconso_file = os.path.join(data_folder, 'MRCONSO.RRF')
+    if not os.path.exists(mrsat_file):
+        raise FileNotFoundError(
+            """Could not find 'MRSTY.RRF' in {}.
+            Please download UMLS Metathesaurus files manually and extract to folder.
+            """.format(data_folder))
+    if not os.path.exists(mrconso_file):
+        raise FileNotFoundError(
+            """Could not find 'MRCONSO.RRF' in {}.
+            Please download manually and extract to folder.""".format(data_folder))
     chem_umls = fetch_chemical_umls_cuis(mrsat_file)
     cui_map, mesh_ids, names = parse_umls(mrconso_file, chem_umls)
     name_mapping = query_drug_name(names)
@@ -169,3 +178,20 @@ def load_data(data_folder):
                 })
                 id_set.add(cui)
     return res
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    # Add config directory to path
+    sys.path.append("../../../../")
+
+    from umls_dump import UMLSDumper
+
+    dumper = UMLSDumper()
+    dumper.get_latest_release()
+    dumper.create_todump_list()
+
+    for rec in load_data(dumper.new_data_folder):
+        print(json.dumps(rec, indent=2))
