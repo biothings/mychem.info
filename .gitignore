@@ -15,6 +15,7 @@ src/config_prod.py
 src/run/*.pickle
 src/run/done/*.pickle
 src/bin/ssh_host*
+src/biothings/
 
 src/.idea
 
