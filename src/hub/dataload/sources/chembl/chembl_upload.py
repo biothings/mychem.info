@@ -259,7 +259,10 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                     },
                     "molecule_chembl_id": {
                         "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword"
+                        "type": "keyword",
+                        "copy_to": [
+                            "all"
+                        ]
                     },
                     "molecule_properties": {
                         "properties": {
