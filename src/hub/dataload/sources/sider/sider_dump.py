@@ -19,7 +19,7 @@ class SiderDumper(FTPDumper):
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
     FTP_HOST = 'xi.embl.de'
     CWD_DIR = '/SIDER'
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
 
     def get_release(self):
         # only dir with dates
