@@ -46,7 +46,23 @@ class PubChemDumper(FTPDumper):
 
     def create_todump_list(self, force=False):
         self.get_release()
-        if force or self.new_release_available():
+        failed_list = os.join(self.new_data_folder, "failed_dump.list")
+        if self.new_release_available():
+            # It's a new release, so make sure we remove failed file list and dump all.
+            if os.path.exists(failed_list):
+                os.remove(failed_list)
+        # Check if any files failed in a previous dump
+        if force and os.path.exists(failed_list):
+            with open(failed_list, 'r') as f:
+                failed_files = f.read().splitlines()
+                self.logger.info("Found %s failed files in previous dump, will dump them again", len(failed_files))
+                for f in failed_files:
+                    # Store the filename without the .md5 extension
+                    filename = os.path.splitext(f)[0]
+                    failed_files.append(filename)
+            to_dump = [{'remote': f, 'local': os.path.join(self.new_data_folder, f)} for f in failed_files]
+            self.to_dump = to_dump
+        elif force or self.new_release_available():
             # get list of files to download
             remote_files = self.client.nlst()
             remote_files_set = set()
@@ -97,7 +113,11 @@ class PubChemDumper(FTPDumper):
             old = os.path.abspath(os.curdir)
             os.chdir(self.new_data_folder)
             try:
-                md5_files = glob.glob("*.md5")
+                if os.path.exists(os.join(self.new_data_folder, "failed_dump.list")):
+                    with open(os.join(self.new_data_folder, "failed_dump.list"), 'r') as f:
+                        md5_files = f.read().splitlines()
+                else:
+                    md5_files = glob.glob("*.md5")
                 failed_files = []
                 if md5_files:
                     for md5_file in md5_files:
@@ -113,6 +133,8 @@ class PubChemDumper(FTPDumper):
                             len(failed_files),
                             '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
                         )
+                        with open(os.join(self.new_data_folder, "failed_dump.list"), 'w') as f:
+                            f.write('\n'.join(os.path.basename(failed_files)))
                         raise DumperException(err_msg)
                     else:
                         self.logger.debug("All %s files are validated.", len(md5_files))
