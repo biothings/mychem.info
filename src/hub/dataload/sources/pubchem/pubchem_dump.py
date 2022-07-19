@@ -46,7 +46,7 @@ class PubChemDumper(FTPDumper):
 
     def create_todump_list(self, force=False):
         self.get_release()
-        failed_list = os.join(self.new_data_folder, "failed_dump.list")
+        failed_list = os.path.join(self.new_data_folder, "failed_dump.list")
         if self.new_release_available():
             # It's a new release, so make sure we remove failed file list and dump all.
             if os.path.exists(failed_list):
@@ -113,8 +113,10 @@ class PubChemDumper(FTPDumper):
             old = os.path.abspath(os.curdir)
             os.chdir(self.new_data_folder)
             try:
-                if os.path.exists(os.join(self.new_data_folder, "failed_dump.list")):
-                    with open(os.join(self.new_data_folder, "failed_dump.list"), 'r') as f:
+                failed_list = os.path.join(self.new_data_folder, "failed_dump.list")
+                if os.path.exists(failed_list):
+                    # If we have a failed dump list, only check md5sum of files that failed
+                    with open(failed_list, 'r') as f:
                         md5_files = f.read().splitlines()
                 else:
                     md5_files = glob.glob("*.md5")
@@ -133,7 +135,7 @@ class PubChemDumper(FTPDumper):
                             len(failed_files),
                             '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
                         )
-                        with open(os.join(self.new_data_folder, "failed_dump.list"), 'w') as f:
+                        with open(failed_list, 'w') as f:
                             f.write('\n'.join(os.path.basename(failed_files)))
                         raise DumperException(err_msg)
                     else:
