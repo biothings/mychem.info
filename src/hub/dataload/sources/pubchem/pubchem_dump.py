@@ -6,7 +6,6 @@ import shutil
 import subprocess
 
 import biothings
-from pytest import fail
 import config
 biothings.config_for_app(config)
 
