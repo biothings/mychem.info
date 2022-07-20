@@ -6,6 +6,7 @@ import shutil
 import subprocess
 
 import biothings
+from pytest import fail
 import config
 biothings.config_for_app(config)
 
@@ -56,12 +57,9 @@ class PubChemDumper(FTPDumper):
             with open(failed_list, 'r') as f:
                 failed_files = f.read().splitlines()
                 self.logger.info("Found %s failed files in previous dump, will dump them again", len(failed_files))
-                for f in failed_files:
-                    # Store the filename without the .md5 extension
-                    filename = os.path.splitext(f)[0]
-                    failed_files.append(filename)
-            to_dump = [{'remote': f, 'local': os.path.join(self.new_data_folder, f)} for f in failed_files]
-            self.to_dump = to_dump
+                # Also store the filename without the .md5 extension
+                failed_files += [f[:-4] for f in failed_files]
+                self.to_dump = [{'remote': f, 'local': os.path.join(self.new_data_folder, f)} for f in failed_files]
         elif force or self.new_release_available():
             # get list of files to download
             remote_files = self.client.nlst()
@@ -140,6 +138,9 @@ class PubChemDumper(FTPDumper):
                         raise DumperException(err_msg)
                     else:
                         self.logger.debug("All %s files are validated.", len(md5_files))
+                        # Delete failed dump list if it exists
+                        if os.path.exists(failed_list):
+                            os.remove(failed_list)
                 else:
                     self.logger.debug("No *.md5 file(s) found! File validation is skipped.")
             finally:
