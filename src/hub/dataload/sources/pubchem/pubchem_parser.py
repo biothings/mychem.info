@@ -89,7 +89,7 @@ def parse_one_file(input_file):
         elif((elem.tag == "PC-Compound") & (event == 'end')):
             # Document parsing is complete
             current_compound["pubchem"] = compound_data
-            # Fall through to using cid if inchikey is not present
+            # Fall back to using cid if inchikey is not present
             if current_compound.get("_id") is None:
                 current_compound["_id"] = current_compound["pubchem"]["cid"]
             # This shouldn't happen, but just in case
