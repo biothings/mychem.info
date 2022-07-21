@@ -18,6 +18,7 @@ src/bin/ssh_host*
 src/biothings/
 
 src/.idea
+*.crt
 
 # Emacs
 *~

@@ -89,6 +89,10 @@ def parse_one_file(input_file):
         elif((elem.tag == "PC-Compound") & (event == 'end')):
             # Document parsing is complete
             current_compound["pubchem"] = compound_data
+            # Fall back to using cid if inchikey is not present
+            if current_compound.get("_id") is None:
+                current_compound["_id"] = current_compound["pubchem"]["cid"]
+            # This shouldn't happen, but just in case
             assert current_compound.get("_id"), "File {}, document {} is missing an _id".format(input_file, current_compound)
             # Convert numeric values to float or integer
             current_compound = value_convert_to_number(current_compound, skipped_keys=["_id", "pubchem.cid"])
