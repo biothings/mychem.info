@@ -133,7 +133,7 @@ class PubChemDumper(FTPDumper):
                             '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
                         )
                         with open(failed_list, 'w') as f:
-                            f.write('\n'.join(os.path.basename(failed_files)))
+                            f.write('\n'.join([os.path.basename(f) for f in failed_files]))
                         raise DumperException(err_msg)
                     else:
                         self.logger.debug("All %s files are validated.", len(md5_files))
