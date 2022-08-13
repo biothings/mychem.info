@@ -16,7 +16,6 @@ class UniiDumper(HTTPDumper):
 
     SCHEDULE = "0 12 * * *"
     HOMEPAGE_URL = "https://precision.fda.gov/uniisearch/archive"
-    DATA_BASE_URL = "https://qnyqxh695c.execute-api.us-east-1.amazonaws.com/production/v1/get-file/"
 
     def get_latest_release(self):
         res = self.client.get(self.__class__.HOMEPAGE_URL)
@@ -25,7 +24,16 @@ class UniiDumper(HTTPDumper):
         # Parse the html for the text in the first 'div' element under the archive accordion
         html = bs4.BeautifulSoup(res.text, 'lxml')
         archive = html.find("div", attrs={"class": "usa-accordion__content usa-prose"})
-        version = archive.find("div", attrs={"class": re.compile("styles__StyledDownloadLink-*")}).text
+        ################################################################################################
+        # Try to find the version number.
+        # If something is broken, it is  most likely this regex.
+        # The  class of the element changes often with website updates.
+        ################################################################################################
+        link_element = archive.find("a", attrs={"class": re.compile("styles__Styled*")})
+        if link_element:
+            version = link_element.text
+        else:
+            raise DumperException("Could not parse the version number from website.")
         try:
             latest = datetime.date.strftime(dtparser.parse(version), "%Y-%m-%d")
             return latest
@@ -35,12 +43,7 @@ class UniiDumper(HTTPDumper):
     def create_todump_list(self, force=False, **kwargs):
         self.release = self.get_latest_release()
         if force or not self.src_doc or (self.src_doc and self.src_doc.get("download", {}).get("release") < self.release):
-            # if new release, generate link that points to that latest release
-            res = self.client.get(
-                self.__class__.DATA_BASE_URL + "{}/UNII_Data_{}.zip".format(self.release, self.release.replace("-", ""))
-                )
-            res.raise_for_status()
-            data_url = res.json()['url']
+            data_url = self.__class__.HOMEPAGE_URL + "/{}/UNII_Data_{}.zip".format(self.release, self.release.replace("-", ""))
             local = os.path.join(self.new_data_folder, self.release + ".zip")
             self.to_dump.append({"remote": data_url, "local": local})
 
