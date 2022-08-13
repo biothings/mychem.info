@@ -128,7 +128,7 @@ class PubChemDumper(FTPDumper):
                             self.logger.error("Failed to validate: {}".format(md5_file))
                             failed_files.append(md5_file)
                     if failed_files:
-                        err_msg = "Failed to validate {} md5 file(s):\n{}".format(
+                        err_msg = "Failed to validate {} md5 file(s):\n{}\nPlease re-run dumper to re-try.".format(
                             len(failed_files),
                             '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
                         )
