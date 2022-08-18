@@ -59,7 +59,7 @@ class ChebiUploader(BaseDrugUploader):
         assert os.path.exists(obo_input_file), "Can't find input file '%s'" % obo_input_file
 
         # get others source collection for inchi key conversion
-        drugbank_col = get_src_db()["drugbank"]
+        drugbank_col = get_src_db()["drugbank_fulldata_archived"]
         assert drugbank_col.count() > 0, \
             "'drugbank' collection is empty (required for inchikey conversion). Please run 'drugbank' uploader first"
         chembl_col = get_src_db()["chembl"]

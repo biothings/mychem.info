@@ -24,7 +24,7 @@ graph_mychem.add_edge('inchi', 'chembl',
 
 graph_mychem.add_edge('inchi', 'drugbank',
                       object=MongoDBEdge(
-                          'drugbank', 'drugbank.inchi', 'drugbank.id'),
+                          'drugbank_fulldata_archived', 'drugbank_fulldata_archived.inchi', 'drugbank_fulldata_archived.id'),
                       weight=1.1)
 
 graph_mychem.add_edge('inchi', 'pubchem',
@@ -39,7 +39,7 @@ graph_mychem.add_edge('chembl', 'inchikey',
 
 graph_mychem.add_edge('drugbank', 'inchikey',
                       object=MongoDBEdge(
-                          'drugbank', 'drugbank.id', 'drugbank.inchi_key'),
+                          'drugbank_fulldata_archived', 'drugbank_fulldata_archived.id', 'drugbank_fulldata_archived.inchi_key'),
                       weight=1.1)
 
 graph_mychem.add_edge('pubchem', 'inchikey',
@@ -48,26 +48,26 @@ graph_mychem.add_edge('pubchem', 'inchikey',
                       weight=1.2)
 
 graph_mychem.add_edge('pharmgkb', 'drugbank',
-                      object=MongoDBEdge('pharmgkb', 'pharmgkb.id', 'pharmgkb.xrefs.drugbank'))
+                      object=MongoDBEdge('pharmgkb', 'pharmgkb.id', 'pharmgkb.xrefs.drugbank_fulldata_archived'))
 
 # self-loops to check looked-up values exist in official collection
 graph_mychem.add_edge('drugbank', 'drugbank',
-                      object=MongoDBEdge('drugbank', 'drugbank.id', 'drugbank.id'))
+                      object=MongoDBEdge('drugbank_fulldata_archived', 'drugbank_fulldata_archived.id', 'drugbank_fulldata_archived.id'))
 
 ###############################################################################
 # NDC Nodes and Edges
 ###############################################################################
-# ndc -> drugbank -> inchikey
-# shortcut edge, one lookup for ndc to inchikey by way of drugbank
+# ndc -> drugbank_fulldata_archived -> inchikey
+# shortcut edge, one lookup for ndc to inchikey by way of drugbank_fulldata_archived
 graph_mychem.add_node('ndc')
 
 graph_mychem.add_edge('ndc', 'inchikey',
-                      object=MongoDBEdge('drugbank', 'drugbank.products.ndc_product_code', 'drugbank.inchi_key'))
+                      object=MongoDBEdge('drugbank_fulldata_archived', 'drugbank_fulldata_archived.products.ndc_product_code', 'drugbank_fulldata_archived.inchi_key'))
 
 ###############################################################################
 # Chebi Nodes and Edges
 ###############################################################################
-# chebi -> drugbank -> inchikey
+# chebi -> drugbank_fulldata_archived -> inchikey
 # chebi -> chembl -> inchikey
 graph_mychem.add_node('chebi')
 graph_mychem.add_edge('chebi', 'inchikey',
@@ -76,7 +76,7 @@ graph_mychem.add_edge('chebi', 'inchikey',
                       weight=1.1)
 graph_mychem.add_edge('chebi', 'drugbank',
                       object=MongoDBEdge(
-                          'drugbank', 'drugbank.xrefs.chebi', 'drugbank.id'),
+                          'drugbank_fulldata_archived', 'drugbank_fulldata_archived.xrefs.chebi', 'drugbank_fulldata_archived.id'),
                       weight=1.0)
 graph_mychem.add_edge('chebi', 'chembl',
                       object=MongoDBEdge(
@@ -89,8 +89,8 @@ graph_mychem.add_edge('chebi', 'chembl',
 #                      object=RegExEdge('^CHEBI:', ''))
 # graph_mychem.add_edge('chebi-short', 'chebi',
 #                      object=RegExEdge('^', 'CHEBI:'))
-# graph_mychem.add_edge('chebi-short', 'drugbank',
-#                      object=MongoDBEdge('drugbank', 'drugbank.chebi', 'drugbank.drugbank_id'))
+# graph_mychem.add_edge('chebi-short', 'drugbank_fulldata_archived',
+#                      object=MongoDBEdge('drugbank_fulldata_archived', 'drugbank_fulldata_archived.chebi', 'drugbank_fulldata_archived.drugbank_fulldata_archived_id'))
 # graph_mychem.add_edge('chebi-short', 'chembl',
 #                      object=MongoDBEdge('chembl', 'chembl.chebi_par_id', 'chembl.molecule_chembl_id'))
 
