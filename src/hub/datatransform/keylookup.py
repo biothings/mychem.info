@@ -42,6 +42,10 @@ graph_mychem.add_edge('drugbank', 'inchikey',
                           'drugbank_fulldata_archived', 'drugbank_fulldata_archived.id', 'drugbank_fulldata_archived.inchi_key'),
                       weight=1.1)
 
+graph_mychem.add_edge('drugbank', 'inchikey',
+                      object=MongoDBEdge('drugbank', 'drugbank.id', 'drugbank.inchikey'),
+                      weight=1.1)
+
 graph_mychem.add_edge('pubchem', 'inchikey',
                       object=MongoDBEdge(
                           'pubchem', 'pubchem.cid', 'pubchem.inchi_key'),
