@@ -2,8 +2,6 @@
 # HUB VARS  #
 #############
 
-DATA_HUB_DB_DATABASE = "drug_hubdb"                   # db containing the following (internal use)
-
 # Hub name/icon url/version, for display purpose
 HUB_NAME = "MyChem"
 HUB_ICON = "http://biothings.io/static/img/mychem-logo-shiny.svg"
