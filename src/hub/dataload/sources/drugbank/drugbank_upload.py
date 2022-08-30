@@ -53,8 +53,7 @@ class DrugBankUploader(BaseDrugUploader):
         ]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
-            self.collection.create_index([(idxname, pymongo.HASHED)],
-                                         background=True)
+            self.collection.create_index(keys=idxname, background=True)
 
     @classmethod
     def get_mapping(cls):
