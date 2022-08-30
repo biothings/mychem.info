@@ -165,7 +165,7 @@ def load_data(data_folder):
                         id_set.add(_id)
                         found = True
                 continue
-        if found == False:
+        if not found:
             new_info = {
                 "cui": unlist([item['cui'] for item in info]),
                 'mesh': unlist([item['mesh'] for item in info]),
