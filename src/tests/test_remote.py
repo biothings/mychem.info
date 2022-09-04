@@ -141,9 +141,10 @@ class TestMychemDataIntegrity(MychemWebTest):
             res = self.request('query?q=%(q)s&fields=%(fields)s&dotfield=true' % d).json()
             foundone = False
             for e in res["hits"]:
-                if d["fields"] in e and e[d["fields"]] == d["q"]:
-                    foundone = True
-                    break
+                if d["fields"] in e:
+                    if d["q"] in e[d["fields"]]:
+                        foundone = True
+                        break
             assert foundone, "Expecting at least one result with q=%(q)s&fields=%(fields)s" % d
 
     def test_050(self):
