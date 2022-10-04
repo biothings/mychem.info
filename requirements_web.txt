@@ -1,1 +1,1 @@
-git+https://github.com/biothings/biothings.api@0.11.1#egg=biothings[web_extra]
+git+https://github.com/biothings/biothings.api#egg=biothings[web_extra]==0.11.1
