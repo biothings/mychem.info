@@ -8,7 +8,7 @@ import biothings.hub.dataload.storage as storage
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
-from .chembl_parser import NonMoleculeFileLoader, load_molecule_file
+from .chembl_parser import AuxiliaryFilesLoader, load_chembl_data
 
 
 SRC_META = {
@@ -48,16 +48,16 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         """
         molecule_files = glob.glob(os.path.join(self.data_folder, self.__class__.MOLECULE_PATTERN))
 
-        non_molecule_file_loader = NonMoleculeFileLoader()
-        non_molecule_file_loader.load(self.data_folder)
+        aux_files_loader = AuxiliaryFilesLoader()
+        aux_files_loader.load(self.data_folder)
 
-        return [(molecule_file, non_molecule_file_loader) for molecule_file in molecule_files]
+        return [(molecule_file, aux_files_loader) for molecule_file in molecule_files]
 
     def load_data(self, molecule_file, non_molecule_file_loader):
         """load data from an input file"""
         self.logger.info("Load data from file '%s'" % molecule_file)
 
-        return self.keylookup(load_molecule_file, debug=True)(molecule_file, non_molecule_file_loader)
+        return self.keylookup(load_chembl_data, debug=True)(molecule_file, non_molecule_file_loader)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following an update"""

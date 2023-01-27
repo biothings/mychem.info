@@ -67,7 +67,7 @@ class MoleculeCrossReferenceListTransformer(JsonListTransformer):
     @classmethod
     def transform_to_dict(cls, xref_list):
         """
-        Group the cross references field based on the source
+        Group the cross-references field based on the source
         Also change the field name
         """
         xref_output = defaultdict(list)
@@ -166,19 +166,23 @@ class DrugIndicationReferenceListUtil:
         """
         Iterate the input list of references, transform and yield each reference.
 
-        Four types of references found in drug indications are:
+        Four types of references are found in drug indications:
 
             ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
 
         I only found comma-separated references in "ClinicalTrials" type, e.g.
 
-            {'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
-             'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
+            {
+                'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
+                'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'
+            }
 
         Commas are also found in some "FDA" references but serves as part of the file names, e.g.
 
-            {'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
-             'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'}
+            {
+                'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
+                'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'
+            }
 
         Commas are not found in the other two types of references.
 
@@ -205,7 +209,7 @@ class MechanismReferenceListUtil:
         """
         Iterate the input list of references, transform and yield each reference.
 
-        Sixteen types of references found in mechanism json objects:
+        Sixteen types of references are found in mechanism json objects:
 
             ref_types = [
                 "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
@@ -273,7 +277,7 @@ class TargetAdapter(JsonFilesAdapter):
                  'target_type': 'PROTEIN FAMILY'}
             ]
 
-        after transformation we have:
+        after transformation, we have:
 
             return_dict = {
                 'CHEMBL3885640': {'target_name': 'Sodium/potassium-transporting ATPase subunit alpha-2/alpha-3',
@@ -321,7 +325,7 @@ class BindingSiteAdapter(JsonFilesAdapter):
                 {'site_id': 10279, 'site_name': 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'}
             ]
 
-        after transformation we have:
+        after transformation, we have:
 
             return_dict = {
                 10278 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain',
@@ -444,7 +448,7 @@ class DrugIndicationAdapter(JsonFilesAdapter):
 
             Uniqueness does not hold for just a couple `max_phase_for_ind` entries for certain
             `<molecule_chembl_id, mesh_id>` combinations, and we decide to use `max(max_phase_for_ind)` in these cases.
-            Uniqueness tests be by running the following code:
+            A sample uniqueness test is like below:
 
             ```python
             import pandas as pd
@@ -642,7 +646,7 @@ class MoleculeUtil:
         return ret_dict
 
 
-class NonMoleculeFileLoader:
+class AuxiliaryFilesLoader:
     def __init__(self):
         self.drug_indication_dict = None
         self.mechanism_dict = None
@@ -679,13 +683,13 @@ class NonMoleculeFileLoader:
         return self.mechanism_dict
 
 
-def load_molecule_file(molecule_file, non_molecule_file_loader: NonMoleculeFileLoader):
+def load_chembl_data(molecule_file, aux_files_loader: AuxiliaryFilesLoader):
     molecule_data = json.load(open(molecule_file))['molecules']
     molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
     for molecule in molecule_list:
-        drug_indications = non_molecule_file_loader.get_drug_indications().get(
+        drug_indications = aux_files_loader.get_drug_indications().get(
             molecule["chembl"]["molecule_chembl_id"], None)
-        drug_mechanisms = non_molecule_file_loader.get_drug_mechanisms().get(
+        drug_mechanisms = aux_files_loader.get_drug_mechanisms().get(
             molecule["chembl"]["molecule_chembl_id"], None)
 
         if drug_indications is not None:
