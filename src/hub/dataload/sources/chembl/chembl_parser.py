@@ -1,6 +1,4 @@
-import os
 import json
-import glob
 import urllib.parse
 from abc import ABC, abstractmethod
 from itertools import chain, groupby
@@ -646,23 +644,27 @@ class MoleculeUtil:
         return ret_dict
 
 
-class AuxiliaryFilesLoader:
-    def __init__(self):
+class AuxiliaryDataLoader:
+    def __init__(self,
+                 drug_indication_filepaths,
+                 mechanism_filepaths,
+                 target_filepaths,
+                 binding_site_filepaths):
+        self.drug_indication_filepaths = drug_indication_filepaths
+        self.mechanism_filepaths = mechanism_filepaths
+        self.target_filepaths = target_filepaths
+        self.binding_site_filepaths = binding_site_filepaths
+
         self.drug_indication_dict = None
         self.mechanism_dict = None
         self.target_dict = None
         self.binding_site_dict = None
 
-    def load(self, data_folder):
-        drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
-        mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
-        target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
-        binding_site_json_files = glob.iglob(os.path.join(data_folder, "binding_site.*.json"))
-
-        self.drug_indication_dict = DrugIndicationAdapter.read_files(drug_indication_json_files)
-        self.mechanism_dict = MechanismAdapter.read_files(mechanism_json_files)
-        self.target_dict = TargetAdapter.read_files(target_json_files)
-        self.binding_site_dict = BindingSiteAdapter.read_files(binding_site_json_files)
+    def load(self):
+        self.drug_indication_dict = DrugIndicationAdapter.read_files(self.drug_indication_filepaths)
+        self.mechanism_dict = MechanismAdapter.read_files(self.mechanism_filepaths)
+        self.target_dict = TargetAdapter.read_files(self.target_filepaths)
+        self.binding_site_dict = BindingSiteAdapter.read_files(self.binding_site_filepaths)
 
         # Join `binding_site::binding_site_name` to `mechanism`
         # Join `target::target_type`, `target::target_organism` and `target::target_name` to `mechanism`
@@ -676,20 +678,32 @@ class AuxiliaryFilesLoader:
                 for key in target_keys:
                     mechanism[key] = target[key]
 
-    def get_drug_indications(self):
+    def get_drug_indications(self) -> dict:
         return self.drug_indication_dict
 
-    def get_drug_mechanisms(self):
+    def get_drug_mechanisms(self) -> dict:
         return self.mechanism_dict
 
 
-def load_chembl_data(molecule_file, aux_files_loader: AuxiliaryFilesLoader):
-    molecule_data = json.load(open(molecule_file))['molecules']
-    molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
+class MoleculeDataLoader:
+    def __init__(self, molecule_filepath):
+        self.molecule_filepath = molecule_filepath
+        self.molecule_list = None
+
+    def load(self):
+        molecule_data = json.load(open(self.molecule_filepath))['molecules']
+        self.molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
+
+    def get_molecules(self) -> list:
+        return self.molecule_list
+
+
+def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
+    molecule_list = mol_data_loader.get_molecules()
     for molecule in molecule_list:
-        drug_indications = aux_files_loader.get_drug_indications().get(
+        drug_indications = aux_data_loader.get_drug_indications().get(
             molecule["chembl"]["molecule_chembl_id"], None)
-        drug_mechanisms = aux_files_loader.get_drug_mechanisms().get(
+        drug_mechanisms = aux_data_loader.get_drug_mechanisms().get(
             molecule["chembl"]["molecule_chembl_id"], None)
 
         if drug_indications is not None:
