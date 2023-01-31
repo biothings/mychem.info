@@ -68,21 +68,25 @@ class MoleculeCrossReferenceListTransformer(JsonListTransformer):
         Group the cross-references field based on the source
         Also change the field name
         """
-        xref_output = defaultdict(list)
-        for _record in xref_list:
+        xref_dict = defaultdict(list)
+        for entry in xref_list:
             # note that the 'xref' field names are from the chembl datasource, not the parser
-            if 'xref_src' in _record and _record['xref_src'] == 'PubChem':
-                assert _record['xref_name'].startswith('SID: ')
-                xref_output['pubchem'].append({'sid': int(_record['xref_id'])})
-            elif 'xref_src' in _record and _record['xref_src'] == 'Wikipedia':
-                xref_output['wikipedia'].append({'url_stub': _record['xref_id']})
-            elif 'xref_src' in _record and _record['xref_src'] == 'TG-GATEs':
-                xref_output['tg-gates'].append({'name': _record['xref_name'], 'id': int(_record['xref_id'])})
-            elif 'xref_src' in _record and _record['xref_src'] == 'DailyMed':
-                xref_output['dailymed'].append({'name': _record['xref_name']})
-            elif 'xref_src' in _record and _record['xref_src'] == 'DrugCentral':
-                xref_output['drugcentral'].append({'name': _record['xref_name'], 'id': int(_record['xref_id'])})
-        return xref_output
+            if "xref_src" not in entry:
+                continue
+
+            xref_src = entry["xref_src"]
+            if xref_src == 'PubChem':
+                assert entry['xref_name'].startswith('SID: ')
+                xref_dict['pubchem'].append({'sid': int(entry['xref_id'])})
+            elif xref_src == 'Wikipedia':
+                xref_dict['wikipedia'].append({'url_stub': entry['xref_id']})
+            elif xref_src == 'TG-GATEs':
+                xref_dict['tg-gates'].append({'name': entry['xref_name'], 'id': int(entry['xref_id'])})
+            elif xref_src == 'DailyMed':
+                xref_dict['dailymed'].append({'name': entry['xref_name']})
+            elif xref_src == 'DrugCentral':
+                xref_dict['drugcentral'].append({'name': entry['xref_name'], 'id': int(entry['xref_id'])})
+        return xref_dict
 
 
 class ReferenceUtil:
@@ -599,49 +603,53 @@ class DrugIndicationAdapter(JsonFilesAdapter):
 
 class MoleculeUtil:
     @classmethod
-    def reformat(cls, dictionary):
-        ret_dict = dict()
-        _flag = 0
-        for key in list(dictionary):
-            if key == 'molecule_chembl_id':
-                ret_dict['_id'] = dictionary[key]
-            if key == 'molecule_structures' and type(dictionary['molecule_structures']) == dict:
-                ret_dict['chembl'] = dictionary
-                _flag = 1
-                for x, y in iter(dictionary['molecule_structures'].items()):
-                    if x == 'standard_inchi_key':
-                        ret_dict['chembl'].update(dictionary)
-                        ret_dict['chembl'].update({'inchi_key': y})
-                    if x == 'canonical_smiles':
-                        ret_dict['chembl']['smiles'] = y
-                    if x == 'standard_inchi':
-                        ret_dict['chembl']['inchi'] = y
+    def reformat(cls, molecule_entry: dict):
+        doc = dict()
 
-        if _flag == 0:
-            ret_dict['chembl'] = dictionary
-        if 'cross_references' in ret_dict['chembl'] and ret_dict['chembl']['cross_references']:
-            ret_dict['chembl']['xrefs'] = MoleculeCrossReferenceListTransformer.transform_to_dict(
-                ret_dict['chembl']['cross_references'])
+        doc["_id"] = molecule_entry.get("molecule_chembl_id", None)
+        if doc["_id"] is None:
+            return None
 
-        del ret_dict['chembl']['molecule_structures']
-        del ret_dict['chembl']['cross_references']
+        # Copy all the content in `molecule_entry` to the "chembl" field
+        doc["chembl"] = molecule_entry
 
-        ret_dict = unlist(ret_dict)
+        # Preserve "inchi", "inchi_key", and "smile" values from the "molecule_structures" sub-field;
+        # then discard the whole "molecule_structures" sub-field from the "chembl" field
+        molecule_structures = molecule_entry.get("molecule_structures", None)
+        if molecule_structures and type(molecule_structures) == dict:
+            inchi_key = molecule_structures.get("standard_inchi_key", None)
+            if inchi_key is not None:
+                doc["chembl"]["inchi_key"] = inchi_key
+
+            smiles = molecule_structures.get("canonical_smiles", None)
+            if smiles is not None:
+                doc["chembl"]["smiles"] = smiles
+
+            inchi = molecule_structures.get("standard_inchi", None)
+            if inchi is not None:
+                doc["chembl"]["inchi"] = inchi
+        doc["chembl"].pop("molecule_structures", None)
+
+        # Convert "cross_references" field into "xrefs" field;
+        # then discard "cross_references" field
+        cross_references = molecule_entry.get("cross_references", None)
+        if cross_references and type(molecule_structures) == list:
+            doc["chembl"]["xrefs"] = MoleculeCrossReferenceListTransformer.transform_to_dict(cross_references)
+        doc["chembl"].pop("cross_references", None)
 
         # Add "CHEBI:" prefix, standardize the way representing CHEBI IDs
-        if 'chebi_par_id' in ret_dict['chembl'] and ret_dict['chembl']['chebi_par_id']:
-            ret_dict['chembl']['chebi_par_id'] = 'CHEBI:' + str(ret_dict['chembl']['chebi_par_id'])
+        chebi_par_id = molecule_entry.get("chebi_par_id", None)
+        if chebi_par_id:
+            doc["chembl"]["chebi_par_id"] = "CHEBI:" + str(chebi_par_id)
         else:
-            # clean, could be a None
-            ret_dict['chembl'].pop("chebi_par_id", None)
+            doc["chembl"].pop("chebi_par_id", None)  # clean, could be a None
 
-        ret_dict = dict_sweep(ret_dict, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available",
-                                              "unknown", "null"])
-        ret_dict = value_convert_to_number(ret_dict, skipped_keys=["chebi_par_id", "first_approval"])
-        ret_dict = boolean_convert(ret_dict, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
-                                              "therapeutic_flag", "med_chem_friendly",
-                                              "molecule_properties.ro3_pass"])
-        return ret_dict
+        doc = unlist(doc)
+        doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null"])
+        doc = value_convert_to_number(doc, skipped_keys=["chebi_par_id", "first_approval"])
+        doc = boolean_convert(doc, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
+                                    "therapeutic_flag", "med_chem_friendly", "molecule_properties.ro3_pass"])
+        return doc
 
 
 class AuxiliaryDataLoader:
@@ -691,8 +699,8 @@ class MoleculeDataLoader:
         self.molecule_list = None
 
     def load(self):
-        molecule_data = json.load(open(self.molecule_filepath))['molecules']
-        self.molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
+        molecule_data = json.load(open(self.molecule_filepath))
+        self.molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data['molecules']]
 
     def get_molecules(self) -> list:
         return self.molecule_list
