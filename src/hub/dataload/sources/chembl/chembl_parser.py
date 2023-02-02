@@ -1,3 +1,4 @@
+import re
 import json
 import urllib.parse
 from itertools import chain, groupby
@@ -103,7 +104,8 @@ class TargetReader(ChemblJsonFileReader):
 
     # Keys to the preserved fields in each target entry
     ENTRY_PRIMARY_KEY = "target_chembl_id"
-    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, "pref_name", "target_type", "organism"}
+    ENTRY_TARGET_COMPONENT_KEY = "target_components"
+    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_TARGET_COMPONENT_KEY, "pref_name", "target_type", "organism"}
 
     # we need to rename some field keys indicated by the following map
     REKEYING_MAP = {
@@ -112,6 +114,9 @@ class TargetReader(ChemblJsonFileReader):
         "organism": "target_organism"
     }
 
+    # See https://www.uniprot.org/help/accession_numbers
+    UNIPROT_ACCESSION_PATTERN = re.compile(r"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}")
+
     @classmethod
     def transform_entry(cls, entry: dict):
         entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
@@ -119,11 +124,23 @@ class TargetReader(ChemblJsonFileReader):
             if key not in cls.ENTRY_PRESERVED_KEYS:
                 del entry[key]
 
+            if key == cls.ENTRY_TARGET_COMPONENT_KEY:
+                entry[key] = cls.get_uniprot_accessions_from_target_components(entry[key])
+
             if key in cls.REKEYING_MAP:
                 new_key = cls.REKEYING_MAP[key]
                 entry[new_key] = entry.pop(key)
 
         return entry
+
+    @classmethod
+    def get_uniprot_accessions_from_target_components(cls, target_component_list: List[dict]) -> List[str]:
+        # `component["accession"]` may be None (e.g. with "CHEMBL2364096"), so we exclude such values here.
+        accessions = (component["accession"] for component in target_component_list if component["accession"])
+        # `accession` may be a Ensembl Gene ID (e.g. "CHEMBL1615321" has "ENSG00000207827")
+        # so here we only select the uniprot accessions matching the regex
+        uniprot_accessions = filter(lambda accession: cls.UNIPROT_ACCESSION_PATTERN.match(accession), accessions)
+        return list(uniprot_accessions)
 
     @classmethod
     def to_dict(cls, entries: Iterator[dict]):
@@ -650,16 +667,17 @@ class AuxiliaryDataLoader:
         self.binding_site_dict = BindingSiteReader.to_dict(binding_sites)
 
         # Join `binding_site::binding_site_name` to `mechanism`
-        # Join `target::target_type`, `target::target_organism` and `target::target_name` to `mechanism`
-        target_keys = ["target_type", 'target_organism', 'target_name']
+        # Join `target::target_type`, `target::target_organism`, `target::target_name`, and `target::target_components` to `mechanism`
         for _, mechanism_list in self.mechanism_dict.items():
             for mechanism in mechanism_list:
-                mechanism["binding_site_name"] = self.binding_site_dict.get(mechanism["site_id"], None)
+                binding_site_name = self.binding_site_dict.get(mechanism["site_id"], None)
+                if binding_site_name is not None:
+                    mechanism["binding_site_name"] = binding_site_name
                 del mechanism["site_id"]
 
-                target = self.target_dict.get(mechanism["target_chembl_id"], defaultdict(lambda: None))
-                for key in target_keys:
-                    mechanism[key] = target[key]
+                target = self.target_dict.get(mechanism["target_chembl_id"], None)
+                if target is not None:
+                    mechanism.update(target)
 
     def get_drug_indication_map(self) -> dict:
         return self.drug_indication_dict
