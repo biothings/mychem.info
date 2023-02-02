@@ -2,6 +2,7 @@ import json
 import urllib.parse
 from itertools import chain, groupby
 from collections import defaultdict
+from typing import List
 from collections.abc import Iterator  # replacing typing.Iterable
 
 from biothings.utils.dataload import dict_sweep, unlist, value_convert_to_number
@@ -10,7 +11,7 @@ from biothings.utils.dataload import boolean_convert
 
 class ChemblJsonFileReader:
     @classmethod
-    def read_file(cls, path: str, key: str, transform_func=None):
+    def read_file(cls, path: str, key: str, transform_func=None) -> Iterator[dict]:
         file_data = json.load(open(path))
         entries = file_data[key]
         if transform_func:
@@ -18,37 +19,9 @@ class ChemblJsonFileReader:
         return entries
 
     @classmethod
-    def read_multi_files(cls, paths: Iterator[str], key: str, transform_func=None):
+    def read_multi_files(cls, paths: Iterator[str], key: str, transform_func=None) -> Iterator[dict]:
         entries = chain.from_iterable(cls.read_file(p, key, transform_func) for p in paths)
         return entries
-
-
-class MoleculeCrossReferenceListTransformer:
-    @classmethod
-    def transform_to_dict(cls, xref_list):
-        """
-        Group the cross-references field based on the source
-        Also change the field name
-        """
-        xref_dict = defaultdict(list)
-        for entry in xref_list:
-            # note that the 'xref' field names are from the chembl datasource, not the parser
-            if "xref_src" not in entry:
-                continue
-
-            xref_src = entry["xref_src"]
-            if xref_src == 'PubChem':
-                assert entry['xref_name'].startswith('SID: ')
-                xref_dict['pubchem'].append({'sid': int(entry['xref_id'])})
-            elif xref_src == 'Wikipedia':
-                xref_dict['wikipedia'].append({'url_stub': entry['xref_id']})
-            elif xref_src == 'TG-GATEs':
-                xref_dict['tg-gates'].append({'name': entry['xref_name'], 'id': int(entry['xref_id'])})
-            elif xref_src == 'DailyMed':
-                xref_dict['dailymed'].append({'name': entry['xref_name']})
-            elif xref_src == 'DrugCentral':
-                xref_dict['drugcentral'].append({'name': entry['xref_name'], 'id': int(entry['xref_id'])})
-        return xref_dict
 
 
 class ReferenceUtil:
@@ -58,7 +31,7 @@ class ReferenceUtil:
     """
 
     @classmethod
-    def create_clinical_trials_reference(cls, ref_id):
+    def create_clinical_trials_reference(cls, ref_id) -> dict:
         """
         Create a new ClinicalTrials from ref_id, used when splitting comma-separated ClinicalTrials references
         into multiple references.
@@ -89,7 +62,7 @@ class ReferenceUtil:
         return ref
 
     @classmethod
-    def reformat(cls, ref):
+    def transform_reference(cls, ref: dict) -> dict:
         """
         For a downloaded reference object, transform in the following two ways:
 
@@ -122,76 +95,6 @@ class ReferenceUtil:
         ref[ref["type"]] = ref["id"]
 
         return ref
-
-
-class DrugIndicationReferenceListUtil:
-    @classmethod
-    def iter_reformat(cls, ref_list):
-        """
-        Iterate the input list of references, transform and yield each reference.
-
-        Four types of references are found in drug indications:
-
-            ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
-
-        I only found comma-separated references in "ClinicalTrials" type, e.g.
-
-            {
-                'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
-                'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'
-            }
-
-        Commas are also found in some "FDA" references but serves as part of the file names, e.g.
-
-            {
-                'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
-                'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'
-            }
-
-        Commas are not found in the other two types of references.
-
-        So here I only split comma-separated references in "ClinicalTrials"
-
-        Args:
-            ref_list (list): a list of reference json objects
-
-        Returns:
-            the transformed references
-        """
-
-        for ref in ref_list:
-            if ref["ref_type"] == "ClinicalTrials" and "," in ref["ref_id"]:
-                for ref_id in ref["ref_id"].split(","):
-                    yield ReferenceUtil.create_clinical_trials_reference(ref_id)
-            else:
-                yield ReferenceUtil.reformat(ref)
-
-
-class MechanismReferenceListUtil:
-    @classmethod
-    def iter_reformat(cls, ref_list):
-        """
-        Iterate the input list of references, transform and yield each reference.
-
-        Sixteen types of references are found in mechanism json objects:
-
-            ref_types = [
-                "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
-                "FDA", "DOI", "KEGG", "PubChem", "IUPHAR", "PMC", "InterPro",
-                "ClinicalTrials", "Patent", "UniProt"
-            ]
-
-        Comma-separated references are not found in mechanisms json object so far.
-
-        Args:
-            ref_list (list): a list of reference json objects
-
-        Returns:
-            the transformed references
-        """
-
-        for ref in ref_list:
-            yield ReferenceUtil.reformat(ref)
 
 
 class TargetReader(ChemblJsonFileReader):
@@ -312,10 +215,35 @@ class MechanismReader(ChemblJsonFileReader):
             if key not in cls.ENTRY_PRESERVED_KEYS:
                 del entry[key]
 
-            if key == "mechanism_refs":
-                entry[key] = list(MechanismReferenceListUtil.iter_reformat(entry[key]))
+            if key == cls.ENTRY_REFERENCE_KEY:
+                entry[key] = list(cls.transform_reference_list(entry[key]))
 
         return entry
+
+    @classmethod
+    def transform_reference_list(cls, ref_list: List[dict]) -> Iterator[dict]:
+        """
+        Iterate the input list of references, transform and yield each reference.
+
+        Sixteen types of references are found in mechanism json objects:
+
+            ref_types = [
+                "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
+                "FDA", "DOI", "KEGG", "PubChem", "IUPHAR", "PMC", "InterPro",
+                "ClinicalTrials", "Patent", "UniProt"
+            ]
+
+        Comma-separated references are not found in mechanisms json object so far.
+
+        Args:
+            ref_list (list): a list of reference json objects
+
+        Returns:
+            the transformed references
+        """
+
+        for ref in ref_list:
+            yield ReferenceUtil.transform_reference(ref)
 
     @classmethod
     def to_dict(cls, entries: Iterator[dict]):
@@ -338,7 +266,7 @@ class DrugIndicationReader(ChemblJsonFileReader):
     # Top key to the entry list in the JSON file
     CONTENT_KEY = "drug_indications"
 
-    ENTRY_PRIMARY_KEY = "molecule_chembl_id",
+    ENTRY_PRIMARY_KEY = "molecule_chembl_id"
     ENTRY_SECONDARY_KEY = "mesh_id"
     ENTRY_REFERENCE_KEY = "indication_refs"  # key to the reference list (which needs special transformation)
     ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_SECONDARY_KEY, ENTRY_REFERENCE_KEY,
@@ -351,9 +279,50 @@ class DrugIndicationReader(ChemblJsonFileReader):
                 del entry[key]
 
             if key == cls.ENTRY_REFERENCE_KEY:
-                entry[key] = list(DrugIndicationReferenceListUtil.iter_reformat(entry[key]))
+                entry[key] = list(cls.transform_reference_list(entry[key]))
 
         return entry
+
+    @classmethod
+    def transform_reference_list(cls, ref_list: List[dict]) -> Iterator[dict]:
+        """
+        Iterate the input list of references, transform and yield each reference.
+
+        Four types of references are found in drug indications:
+
+            ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
+
+        I only found comma-separated references in "ClinicalTrials" type, e.g.
+
+            {
+                'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
+                'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'
+            }
+
+        Commas are also found in some "FDA" references but serves as part of the file names, e.g.
+
+            {
+                'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
+                'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'
+            }
+
+        Commas are not found in the other two types of references.
+
+        So here I only split comma-separated references in "ClinicalTrials"
+
+        Args:
+            ref_list (list): a list of reference json objects
+
+        Returns:
+            the transformed references
+        """
+
+        for ref in ref_list:
+            if ref["ref_type"] == "ClinicalTrials" and "," in ref["ref_id"]:
+                for ref_id in ref["ref_id"].split(","):
+                    yield ReferenceUtil.create_clinical_trials_reference(ref_id)
+            else:
+                yield ReferenceUtil.transform_reference(ref)
 
     @classmethod
     def to_dict(cls, entries: Iterator[dict]):
@@ -564,21 +533,24 @@ class DrugIndicationReader(ChemblJsonFileReader):
         return ret_dict
 
 
-class MoleculeUtil:
+class MoleculeReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "molecules"
+
     @classmethod
-    def reformat(cls, molecule_entry: dict):
+    def transform_entry(cls, entry: dict):
         doc = dict()
 
-        doc["_id"] = molecule_entry.get("molecule_chembl_id", None)
+        doc["_id"] = entry.get("molecule_chembl_id", None)
         if doc["_id"] is None:
             return None
 
         # Copy all the content in `molecule_entry` to the "chembl" field
-        doc["chembl"] = molecule_entry
+        doc["chembl"] = entry
 
         # Preserve "inchi", "inchi_key", and "smile" values from the "molecule_structures" sub-field;
         # then discard the whole "molecule_structures" sub-field from the "chembl" field
-        molecule_structures = molecule_entry.get("molecule_structures", None)
+        molecule_structures = entry.get("molecule_structures", None)
         if molecule_structures and type(molecule_structures) == dict:
             inchi_key = molecule_structures.get("standard_inchi_key", None)
             if inchi_key is not None:
@@ -595,24 +567,49 @@ class MoleculeUtil:
 
         # Convert "cross_references" field into "xrefs" field;
         # then discard "cross_references" field
-        cross_references = molecule_entry.get("cross_references", None)
-        if cross_references and type(molecule_structures) == list:
-            doc["chembl"]["xrefs"] = MoleculeCrossReferenceListTransformer.transform_to_dict(cross_references)
+        cross_references = entry.get("cross_references", None)
+        if cross_references and type(cross_references) == list:
+            doc["chembl"]["xrefs"] = cls.transform_cross_reference_list(cross_references)
         doc["chembl"].pop("cross_references", None)
 
         # Add "CHEBI:" prefix, standardize the way representing CHEBI IDs
-        chebi_par_id = molecule_entry.get("chebi_par_id", None)
+        chebi_par_id = entry.get("chebi_par_id", None)
         if chebi_par_id:
             doc["chembl"]["chebi_par_id"] = "CHEBI:" + str(chebi_par_id)
         else:
             doc["chembl"].pop("chebi_par_id", None)  # clean, could be a None
 
         doc = unlist(doc)
-        doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null"])
         doc = value_convert_to_number(doc, skipped_keys=["chebi_par_id", "first_approval"])
         doc = boolean_convert(doc, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
                                     "therapeutic_flag", "med_chem_friendly", "molecule_properties.ro3_pass"])
         return doc
+
+    @classmethod
+    def transform_cross_reference_list(cls, xref_list: List[dict]) -> dict:
+        """
+        Group the cross-references field based on the source
+        Also change the field name
+        """
+        xref_dict = defaultdict(list)
+        for xref in xref_list:
+            # note that the 'xref' field names are from the chembl datasource, not the parser
+            if "xref_src" not in xref:
+                continue
+
+            xref_src = xref["xref_src"]
+            if xref_src == 'PubChem':
+                assert xref['xref_name'].startswith('SID: ')
+                xref_dict['pubchem'].append({'sid': int(xref['xref_id'])})
+            elif xref_src == 'Wikipedia':
+                xref_dict['wikipedia'].append({'url_stub': xref['xref_id']})
+            elif xref_src == 'TG-GATEs':
+                xref_dict['tg-gates'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+            elif xref_src == 'DailyMed':
+                xref_dict['dailymed'].append({'name': xref['xref_name']})
+            elif xref_src == 'DrugCentral':
+                xref_dict['drugcentral'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+        return xref_dict
 
 
 class AuxiliaryDataLoader:
@@ -664,50 +661,71 @@ class AuxiliaryDataLoader:
                 for key in target_keys:
                     mechanism[key] = target[key]
 
-    def get_drug_indications(self) -> dict:
+    def get_drug_indication_map(self) -> dict:
         return self.drug_indication_dict
 
-    def get_drug_mechanisms(self) -> dict:
+    def get_drug_mechanism_map(self) -> dict:
         return self.mechanism_dict
 
 
 class MoleculeDataLoader:
     def __init__(self, molecule_filepath):
         self.molecule_filepath = molecule_filepath
-        self.molecule_list = None
+        self.molecule_entries = None
 
     def load(self):
-        molecule_data = json.load(open(self.molecule_filepath))
-        self.molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data['molecules']]
+        self.molecule_entries = MoleculeReader.read_file(path=self.molecule_filepath,
+                                                         key=MoleculeReader.CONTENT_KEY,
+                                                         transform_func=MoleculeReader.transform_entry)
 
-    def get_molecules(self) -> list:
-        return self.molecule_list
+    def get_molecules(self) -> Iterator[dict]:
+        return self.molecule_entries
 
 
 def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
-    molecule_list = mol_data_loader.get_molecules()
-    for molecule in molecule_list:
-        drug_indications = aux_data_loader.get_drug_indications().get(
-            molecule["chembl"]["molecule_chembl_id"], None)
-        drug_mechanisms = aux_data_loader.get_drug_mechanisms().get(
-            molecule["chembl"]["molecule_chembl_id"], None)
+    molecules = mol_data_loader.get_molecules()
+    if molecules is None:
+        mol_data_loader.load()
+        molecules = mol_data_loader.get_molecules()
+
+    drug_indication_map = aux_data_loader.get_drug_indication_map()
+    drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
+    if (drug_indication_map is None) or (drug_mechanism_map is None):
+        aux_data_loader.load()
+        drug_indication_map = aux_data_loader.get_drug_indication_map()
+        drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
+
+    for doc in molecules:
+        chembl_id = doc["chembl"]["molecule_chembl_id"]
+        drug_indications = drug_indication_map.get(chembl_id, None)
+        drug_mechanisms = drug_mechanism_map.get(chembl_id, None)
 
         if drug_indications is not None:
             # Join `molecule::first_approval` to `drug_indication::first_approval`
-            first_approval = molecule["chembl"].get("first_approval", None)
+            first_approval = doc["chembl"].get("first_approval", None)
             if first_approval:
                 for indication in drug_indications:
                     indication["first_approval"] = first_approval
 
-            molecule["chembl"]["drug_indications"] = drug_indications
+            doc["chembl"]["drug_indications"] = drug_indications
 
         if drug_mechanisms is not None:
-            molecule["chembl"]["drug_mechanisms"] = drug_mechanisms
+            doc["chembl"]["drug_mechanisms"] = drug_mechanisms
+
+        doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []])
 
         try:
-            _id = molecule["chembl"]['inchi_key']
-            molecule["_id"] = _id
+            _id = doc["chembl"]["inchi_key"]
+            doc["_id"] = _id
         except KeyError:
+            """
+            Ignore the error when the document has no "inchi_key". 
+            
+            We allow such a document to be uploaded, and `ChemblUploader.keylookup` will later set `doc["molecule_chembl_id"]` as its "_id".
+            
+            There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL". 
+            It can be verified on the EMBL-EBI site that those entities have no inchi representation.
+            """
             pass
 
-        yield molecule
+        yield doc
