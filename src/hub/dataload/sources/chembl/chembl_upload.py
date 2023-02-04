@@ -8,7 +8,7 @@ import biothings.hub.dataload.storage as storage
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
-from .chembl_parser import NonMoleculeFileLoader, load_molecule_file
+from .chembl_parser import AuxiliaryDataLoader, MoleculeDataLoader, load_chembl_data
 
 
 SRC_META = {
@@ -27,7 +27,12 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
     storage_class = storage.RootKeyMergerStorage
     __metadata__ = {"src_meta": SRC_META}
 
-    MOLECULE_PATTERN = "molecule.*.json"
+    MOLECULE_FILENAME_PATTERN = "molecule.*.json"
+    DRUG_INDICATION_FILENAME_PATTERN = "drug_indication.*.json"
+    MECHANISM_FILENAME_PATTERN = "mechanism.*.json"
+    TARGET_FILENAME_PATTERN = "target.*.json"
+    BINDING_SITE_FILENAME_PATTERN = "binding_site.*.json"
+
     keylookup = MyChemKeyLookup(
         [("inchikey", "chembl.inchi_key"),
          ("inchi", "chembl.inchi"),
@@ -36,8 +41,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
          ("drugcentral", "chembl.xrefs.drugcentral.id"),
          ("drugname", "chembl.pref_name")],
         # TODO:  handle duplicate keys from pubchem
-        # - we use RootKeyMergerStorage, but the num. duplicates
-        # - is too high (>10000)
+        # we use RootKeyMergerStorage, but the num. duplicates is too high (>10000)
         # ("pubchem", "chembl.xrefs.pubchem.sid"),
         copy_from_doc=True)
 
@@ -46,18 +50,28 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         this method will be called by self.update_data() and then generate arguments for self.load.data() method,
         allowing parallelization
         """
-        molecule_files = glob.glob(os.path.join(self.data_folder, self.__class__.MOLECULE_PATTERN))
+        molecule_filepaths = glob.glob(os.path.join(self.data_folder, self.MOLECULE_FILENAME_PATTERN))
+        mol_data_loaders = [MoleculeDataLoader(molecule_filepath=filepath) for filepath in molecule_filepaths]
+        for mol_data_loader in mol_data_loaders:
+            mol_data_loader.load()
 
-        non_molecule_file_loader = NonMoleculeFileLoader()
-        non_molecule_file_loader.load(self.data_folder)
+        drug_indication_filepaths = glob.iglob(os.path.join(self.data_folder, self.DRUG_INDICATION_FILENAME_PATTERN))
+        mechanism_filepaths = glob.iglob(os.path.join(self.data_folder, self.MECHANISM_FILENAME_PATTERN))
+        target_filepaths = glob.iglob(os.path.join(self.data_folder, self.TARGET_FILENAME_PATTERN))
+        binding_site_filepaths = glob.iglob(os.path.join(self.data_folder, self.BINDING_SITE_FILENAME_PATTERN))
+        aux_data_loader = AuxiliaryDataLoader(drug_indication_filepaths=drug_indication_filepaths,
+                                              mechanism_filepaths=mechanism_filepaths,
+                                              target_filepaths=target_filepaths,
+                                              binding_site_filepaths=binding_site_filepaths)
+        aux_data_loader.load()
 
-        return [(molecule_file, non_molecule_file_loader) for molecule_file in molecule_files]
+        return [(mol_data_loader, aux_data_loader) for mol_data_loader in mol_data_loaders]
 
-    def load_data(self, molecule_file, non_molecule_file_loader):
+    def load_data(self, mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
         """load data from an input file"""
-        self.logger.info("Load data from file '%s'" % molecule_file)
+        self.logger.info("Load data from file '%s'" % mol_data_loader.molecule_filepath)
 
-        return self.keylookup(load_molecule_file, debug=True)(molecule_file, non_molecule_file_loader)
+        return self.keylookup(load_chembl_data, debug=True)(mol_data_loader, aux_data_loader)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following an update"""
@@ -70,7 +84,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         """
         for idxname in ["chembl.chebi_par_id", "chembl.molecule_chembl_id", "chembl.inchi"]:
             self.logger.info("Indexing '%s'" % idxname)
-            # background=true or it'll lock the whole database...
+            # background=true, or it'll lock the whole database...
             self.collection.create_index(idxname, background=True)
 
     @classmethod
