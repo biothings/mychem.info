@@ -288,7 +288,8 @@ class MechanismReader(ChemblJsonFileReader):
 
     @classmethod
     def to_dict(cls, entries: Iterator[dict]):
-        def primary_key_fn(entry: dict): return entry[cls.ENTRY_PRIMARY_KEY]
+        def primary_key_fn(entry: dict):
+            return entry[cls.ENTRY_PRIMARY_KEY]
 
         # Sorting is necessary here because `itertools.groupby()` does not combine non-consecutive groups
         #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
@@ -457,8 +458,11 @@ class DrugIndicationReader(ChemblJsonFileReader):
         ```
         """
 
-        def primary_key_fn(entry): return entry[cls.ENTRY_PRIMARY_KEY]
-        def secondary_key_fn(entry): return entry[cls.ENTRY_SECONDARY_KEY]
+        def primary_key_fn(entry):
+            return entry[cls.ENTRY_PRIMARY_KEY]
+
+        def secondary_key_fn(entry):
+            return entry[cls.ENTRY_SECONDARY_KEY]
 
         def merge_mesh_subgroups(_group):
             """
@@ -489,40 +493,35 @@ class DrugIndicationReader(ChemblJsonFileReader):
                 Corner cases of `efo_id` and `efo_term`:
 
                 1. We found some `mesh_id` mapped to None values of `efo_id` and `efo_term`.
-                2. ChEMBL UI will merge duplicated `efo_id` and `efo_term` entries while keeping duplicated 
-                references.
+                2. ChEMBL UI will merge duplicated `efo_id` and `efo_term` entries while keeping duplicated references.
 
                 --------------------------------------
 
-                Example 1: 
+                Example 1:
 
                     molecule_chembl_id : 'CHEMBL1201631'
                     mesh_id : 'D007006'
-                    efo_id : [None, None, None, 
-                              'HP:0000044', 
-                              'HP:0000044', 
-                              'HP:0000044']
-                    efo_term: [None, None, None, 
+                    efo_id : [None, None, None, 'HP:0000044',  'HP:0000044',  'HP:0000044']
+                    efo_term: [None, None, None,
                                'Hypogonadotrophic hypogonadism \
                                {http://www.co-ode.org/patterns#createdBy=\
                                "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
                                'Hypogonadotrophic hypogonadism \
                                {http://www.co-ode.org/patterns#createdBy=\
                                "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
-                               'Hypogonadotrophic hypogonadism 
+                               'Hypogonadotrophic hypogonadism \
                                {http://www.co-ode.org/patterns#createdBy=\
                                "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}']
 
                 However, `indication_refs` exist for such None entries of `efo_id` and `efo_terms`.
 
-                See https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel 
-                for more details.
+                See https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel for more details.
 
                 No idea why ChEMBL has data like this.
 
                 --------------------------------------
 
-                Example 2: 
+                Example 2:
 
                     molecule_chembl_id : 'CHEMBL1201631'
                     mesh_id : 'D020528',
@@ -531,7 +530,7 @@ class DrugIndicationReader(ChemblJsonFileReader):
                                'chronic progressive multiple sclerosis',
                                'chronic progressive multiple sclerosis']
 
-                On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel, 
+                On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel,
                 mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references 
                 """
 
@@ -545,13 +544,11 @@ class DrugIndicationReader(ChemblJsonFileReader):
                     efo: [{efo_id: 'EFO:0008520', efo_term: 'primary progressive multiple sclerosis'},
                           {efo_id: 'EFO:0008522', efo_term: 'secondary progressive multiple sclerosis'},
                           {efo_id: 'EFO:0003840', efo_term: 'chronic progressive multiple sclerosis'}]
-                          
+
                 Addendum: Chunlei suggested trim the "efo_" prefixes in the sub-field names:
 
                     efo: [{id: ..., term: ...}]
                 """
-                # ret_dict["efo"] = [{"efo_id": t[0], "efo_term": t[1]} for t in
-                #                    {*zip(efo_id_list, efo_term_list)}]
                 indication["efo"] = [{"id": t[0], "term": t[1]} for t in {*zip(efo_id_list, efo_term_list)}]
 
                 indication_refs = chain.from_iterable([entry["indication_refs"] for entry in subgroup])
@@ -592,7 +589,7 @@ class MoleculeReader(ChemblJsonFileReader):
         # Preserve "inchi", "inchi_key", and "smile" values from the "molecule_structures" sub-field;
         # then discard the whole "molecule_structures" sub-field from the "chembl" field
         molecule_structures = entry.get("molecule_structures", None)
-        if molecule_structures and type(molecule_structures) == dict:
+        if molecule_structures and isinstance(molecule_structures, dict):
             inchi_key = molecule_structures.get("standard_inchi_key", None)
             if inchi_key is not None:
                 doc["chembl"]["inchi_key"] = inchi_key
@@ -609,7 +606,7 @@ class MoleculeReader(ChemblJsonFileReader):
         # Convert "cross_references" field into "xrefs" field;
         # then discard "cross_references" field
         cross_references = entry.get("cross_references", None)
-        if cross_references and type(cross_references) == list:
+        if cross_references and isinstance(cross_references, list):
             doc["chembl"]["xrefs"] = cls.transform_cross_reference_list(cross_references)
         doc["chembl"].pop("cross_references", None)
 
@@ -756,17 +753,16 @@ def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: Auxil
 
         doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []])
 
+        """
+        "inchi_key" is the primary key for cross-datasource merging in MyChem.
+        
+        However we still allow uploading documents without "inchi_key", and `ChemblUploader.keylookup` will set `doc["molecule_chembl_id"]` as their "_id".
+
+        There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL".
+        It can be verified on the EMBL-EBI site that those entities have no inchi representation.
+        """
         if "inchi_key" in doc["chembl"]:
-            # inchi_key is the primary key for cross-datasource merging in MyChem
             _id = doc["chembl"]["inchi_key"]
             doc["_id"] = _id
-        else:
-            """
-            We allow documents without "inchi_key" to be uploaded, and `ChemblUploader.keylookup` will later set `doc["molecule_chembl_id"]` as their "_id".
-            
-            There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL". 
-            It can be verified on the EMBL-EBI site that those entities have no inchi representation.
-            """
-            pass
 
         yield doc
