@@ -114,6 +114,9 @@ class TargetReader(ChemblJsonFileReader):
         "organism": "target_organism"
     }
 
+    # Fix species prefix to "ENG" (Homo sapiens; Human) and feature prefix to "G" (gene)
+    # See https://uswest.ensembl.org/info/genome/stable_ids/prefixes.html
+    HUMAN_ENSEMBL_GENE_PATTERN = re.compile(r"ENSG[0-9]{11}")
     # See https://www.uniprot.org/help/accession_numbers
     UNIPROT_ACCESSION_PATTERN = re.compile(r"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}")
 
@@ -125,7 +128,7 @@ class TargetReader(ChemblJsonFileReader):
                 del entry[key]
 
             if key == cls.ENTRY_TARGET_COMPONENT_KEY:
-                entry[key] = cls.get_uniprot_accessions_from_target_components(entry[key])
+                entry[key] = cls.get_accessions_from_target_components(entry[key])
 
             if key in cls.REKEYING_MAP:
                 new_key = cls.REKEYING_MAP[key]
@@ -134,13 +137,34 @@ class TargetReader(ChemblJsonFileReader):
         return entry
 
     @classmethod
-    def get_uniprot_accessions_from_target_components(cls, target_component_list: List[dict]) -> List[str]:
+    def get_accessions_from_target_components(cls, target_component_list: List[dict]) -> dict:
+        # See https://github.com/biothings/mychem.info/issues/151#issuecomment-1414407414 and comments below for the accession json structure
+
         # `component["accession"]` may be None (e.g. with "CHEMBL2364096"), so we exclude such values here.
-        accessions = (component["accession"] for component in target_component_list if component["accession"])
-        # `accession` may be a Ensembl Gene ID (e.g. "CHEMBL1615321" has "ENSG00000207827")
-        # so here we only select the uniprot accessions matching the regex
-        uniprot_accessions = filter(lambda accession: cls.UNIPROT_ACCESSION_PATTERN.match(accession), accessions)
-        return list(uniprot_accessions)
+        # "CHEMBL4662965" has accession "ENSG00000198670 ", so we apply `.rstrip()` here. ("CHEMBL4662965" is the only case so far)
+        #   See https://github.com/chembl/GLaDOS/issues/1311
+        accessions = (component["accession"].rstrip() for component in target_component_list if component["accession"])
+
+        # `accession` may be an Ensembl Gene ID (e.g. "CHEMBL1615321" has "ENSG00000207827"), or a UniProt accession ID
+        uniprot_accessions = []
+        ensembl_accessions = []
+        for accession in accessions:
+            if cls.UNIPROT_ACCESSION_PATTERN.fullmatch(accession):
+                uniprot_accessions.append(accession)
+            elif cls.HUMAN_ENSEMBL_GENE_PATTERN.fullmatch(accession):
+                ensembl_accessions.append(accession)
+            else:
+                # Ignore the error for now. Currently, there is only one outlier, "ENSG000001127154" from "CHEMBL4630576".
+                #   See https://github.com/chembl/GLaDOS/issues/1310
+                # raise ValueError(f"Cannot recognize accession {accession}, neither UNIPROT nor Human ENSEMBL Gene.")
+                pass
+
+        ret_dict = dict()
+        if uniprot_accessions:
+            ret_dict["uniprot"] = uniprot_accessions
+        if ensembl_accessions:
+            ret_dict["ensembl_gene"] = ensembl_accessions
+        return ret_dict
 
     @classmethod
     def to_dict(cls, entries: Iterator[dict]):
@@ -732,14 +756,13 @@ def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: Auxil
 
         doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []])
 
-        try:
+        if "inchi_key" in doc["chembl"]:
+            # inchi_key is the primary key for cross-datasource merging in MyChem
             _id = doc["chembl"]["inchi_key"]
             doc["_id"] = _id
-        except KeyError:
+        else:
             """
-            Ignore the error when the document has no "inchi_key". 
-            
-            We allow such a document to be uploaded, and `ChemblUploader.keylookup` will later set `doc["molecule_chembl_id"]` as its "_id".
+            We allow documents without "inchi_key" to be uploaded, and `ChemblUploader.keylookup` will later set `doc["molecule_chembl_id"]` as their "_id".
             
             There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL". 
             It can be verified on the EMBL-EBI site that those entities have no inchi representation.
