@@ -13,15 +13,13 @@ class Unichem_biothings_sdkDumper(FTPDumper):
     SRC_NAME = "unichem"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
     FTP_HOST = 'ftp.ebi.ac.uk'
-    CWD_DIR = '/pub/databases/chembl/UniChem/data/oracleDumps'
+    CWD_DIR = '/pub/databases/chembl/UniChem/legacy/oracleDumps'
     SCHEDULE = "0 6 * * *"
     UNCOMPRESS = True
     MAX_PARALLEL_DUMP = 1
 
     def get_newest_info(self):
         """Get the release number of the most recent dump directory"""
-        # change working directory to directory listing all dump directories
-        self.client.cwd("/pub/databases/chembl/UniChem/data/oracleDumps")
         # get list of directories
         releases = self.client.nlst()
         # remove alpha characters from direcotry names, leaving only numbers
@@ -54,7 +52,7 @@ class Unichem_biothings_sdkDumper(FTPDumper):
             # add file to dump list if forced download, if path to local file doesnt exist,
             # or if there is a new release available
             if force or not os.path.exists(local_file) or self.new_release_available():
-                path = "/pub/databases/chembl/UniChem/data/oracleDumps/UDRI" + self.release + "/" + fn
+                path = f"{self.CWD_DIR}/UDRI{self.release}/{fn}"
                 self.to_dump.append({"remote": path, "local": local_file})
 
     def post_dump(self, *args, **kwargs):

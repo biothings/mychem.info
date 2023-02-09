@@ -7,10 +7,10 @@
 
 """
 import pytest
-from biothings.tests.web import BiothingsDataTest
+from biothings.tests.web import BiothingsWebTest
 
 
-class MychemWebTest(BiothingsDataTest):
+class MychemWebTest(BiothingsWebTest):
 
     host = 'mychem.info'
 
