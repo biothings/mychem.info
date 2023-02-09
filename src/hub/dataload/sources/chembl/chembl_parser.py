@@ -652,53 +652,60 @@ class MoleculeReader(ChemblJsonFileReader):
 
 class AuxiliaryDataLoader:
     def __init__(self,
-                 drug_indication_filepaths,
-                 mechanism_filepaths,
-                 target_filepaths,
-                 binding_site_filepaths):
-        self.drug_indication_filepaths = drug_indication_filepaths
-        self.mechanism_filepaths = mechanism_filepaths
-        self.target_filepaths = target_filepaths
-        self.binding_site_filepaths = binding_site_filepaths
+                 drug_indication_filepaths: Iterator[str],
+                 mechanism_filepaths: Iterator[str],
+                 target_filepaths: Iterator[str],
+                 binding_site_filepaths: Iterator[str]):
+        self.drug_indication_filepaths = list(drug_indication_filepaths)
+        self.mechanism_filepaths = list(mechanism_filepaths)
+        self.target_filepaths = list(target_filepaths)
+        self.binding_site_filepaths = list(binding_site_filepaths)
 
         self.drug_indication_dict = None
         self.mechanism_dict = None
-        self.target_dict = None
-        self.binding_site_dict = None
 
-    def load(self):
+        # These two dictionaries are for augmenting drug indications and mechanisms, not necessary to hold as members.
+        # In addition, commenting them out also saves time in pickling the object.
+        # The pickling is carried out by https://github.com/biothings/biothings.api/blob/master/biothings/utils/manager.py#L28
+        # self.target_dict = None
+        # self.binding_site_dict = None
+
+    def eagerly_load(self):
         drug_indications = DrugIndicationReader.read_multi_files(paths=self.drug_indication_filepaths,
                                                                  key=DrugIndicationReader.CONTENT_KEY,
                                                                  transform_func=DrugIndicationReader.transform_entry)
-        self.drug_indication_dict = DrugIndicationReader.to_dict(drug_indications)
+        drug_indication_dict = DrugIndicationReader.to_dict(drug_indications)
 
         mechanisms = MechanismReader.read_multi_files(paths=self.mechanism_filepaths,
                                                       key=MechanismReader.CONTENT_KEY,
                                                       transform_func=MechanismReader.transform_entry)
-        self.mechanism_dict = MechanismReader.to_dict(mechanisms)
+        mechanism_dict = MechanismReader.to_dict(mechanisms)
 
         targets = TargetReader.read_multi_files(paths=self.target_filepaths,
                                                 key=TargetReader.CONTENT_KEY,
                                                 transform_func=TargetReader.transform_entry)
-        self.target_dict = TargetReader.to_dict(targets)
+        target_dict = TargetReader.to_dict(targets)
 
         binding_sites = BindingSiteReader.read_multi_files(paths=self.binding_site_filepaths,
                                                            key=BindingSiteReader.CONTENT_KEY,
                                                            transform_func=BindingSiteReader.transform_entry)
-        self.binding_site_dict = BindingSiteReader.to_dict(binding_sites)
+        binding_site_dict = BindingSiteReader.to_dict(binding_sites)
 
         # Join `binding_site::binding_site_name` to `mechanism`
         # Join `target::target_type`, `target::target_organism`, `target::target_name`, and `target::target_components` to `mechanism`
-        for _, mechanism_list in self.mechanism_dict.items():
+        for _, mechanism_list in mechanism_dict.items():
             for mechanism in mechanism_list:
-                binding_site_name = self.binding_site_dict.get(mechanism["site_id"], None)
+                binding_site_name = binding_site_dict.get(mechanism["site_id"], None)
                 if binding_site_name is not None:
                     mechanism["binding_site_name"] = binding_site_name
                 del mechanism["site_id"]
 
-                target = self.target_dict.get(mechanism["target_chembl_id"], None)
+                target = target_dict.get(mechanism["target_chembl_id"], None)
                 if target is not None:
                     mechanism.update(target)
+
+        self.drug_indication_dict = drug_indication_dict
+        self.mechanism_dict = mechanism_dict
 
     def get_drug_indication_map(self) -> dict:
         return self.drug_indication_dict
@@ -708,31 +715,22 @@ class AuxiliaryDataLoader:
 
 
 class MoleculeDataLoader:
-    def __init__(self, molecule_filepath):
+    def __init__(self, molecule_filepath: str):
         self.molecule_filepath = molecule_filepath
-        self.molecule_entries = None
-
-    def load(self):
-        self.molecule_entries = MoleculeReader.read_file(path=self.molecule_filepath,
-                                                         key=MoleculeReader.CONTENT_KEY,
-                                                         transform_func=MoleculeReader.transform_entry)
 
     def get_molecules(self) -> Iterator[dict]:
-        return self.molecule_entries
+        return MoleculeReader.read_file(path=self.molecule_filepath,
+                                        key=MoleculeReader.CONTENT_KEY,
+                                        transform_func=MoleculeReader.transform_entry)
 
 
 def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
     molecules = mol_data_loader.get_molecules()
-    if molecules is None:
-        mol_data_loader.load()
-        molecules = mol_data_loader.get_molecules()
 
     drug_indication_map = aux_data_loader.get_drug_indication_map()
     drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
     if (drug_indication_map is None) or (drug_mechanism_map is None):
-        aux_data_loader.load()
-        drug_indication_map = aux_data_loader.get_drug_indication_map()
-        drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
+        raise ValueError("'aux_data_loader' is not eagerly loaded. Call '.eagerly_load()' in advance.")
 
     for doc in molecules:
         chembl_id = doc["chembl"]["molecule_chembl_id"]

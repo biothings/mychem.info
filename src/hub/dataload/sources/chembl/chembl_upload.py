@@ -52,8 +52,6 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         """
         molecule_filepaths = glob.glob(os.path.join(self.data_folder, self.MOLECULE_FILENAME_PATTERN))
         mol_data_loaders = [MoleculeDataLoader(molecule_filepath=filepath) for filepath in molecule_filepaths]
-        for mol_data_loader in mol_data_loaders:
-            mol_data_loader.load()
 
         drug_indication_filepaths = glob.iglob(os.path.join(self.data_folder, self.DRUG_INDICATION_FILENAME_PATTERN))
         mechanism_filepaths = glob.iglob(os.path.join(self.data_folder, self.MECHANISM_FILENAME_PATTERN))
@@ -63,7 +61,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                                               mechanism_filepaths=mechanism_filepaths,
                                               target_filepaths=target_filepaths,
                                               binding_site_filepaths=binding_site_filepaths)
-        aux_data_loader.load()
+        aux_data_loader.eagerly_load()
 
         return [(mol_data_loader, aux_data_loader) for mol_data_loader in mol_data_loaders]
 
@@ -212,6 +210,18 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                             },
                             "target_chembl_id": {
                                 "type": "keyword"
+                            },
+                            "target_components": {
+                                "properties": {
+                                    "uniprot": {
+                                        "normalizer": "keyword_lowercase_normalizer",
+                                        "type": "keyword"
+                                    },
+                                    "ensembl_gene": {
+                                        "normalizer": "keyword_lowercase_normalizer",
+                                        "type": "keyword"
+                                    }
+                                }
                             },
                             "target_name": {
                                 "type": "text"
