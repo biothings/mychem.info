@@ -11,6 +11,8 @@ from biothings.utils.dataload import boolean_convert
 
 
 class ChemblJsonFileReader:
+    EMPTY_VALUES = [None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []]
+
     @classmethod
     def read_file(cls, path: str, key: str, transform_func=None) -> Iterator[dict]:
         file_data = json.load(open(path))
@@ -23,6 +25,11 @@ class ChemblJsonFileReader:
     def read_multi_files(cls, paths: Iterator[str], key: str, transform_func=None) -> Iterator[dict]:
         entries = chain.from_iterable(cls.read_file(p, key, transform_func) for p in paths)
         return entries
+
+    @classmethod
+    def sweep_emtpy_values(cls, doc: dict) -> dict:
+        doc = dict_sweep(doc, vals=cls.EMPTY_VALUES)
+        return doc
 
 
 class ReferenceUtil:
@@ -200,7 +207,7 @@ class TargetReader(ChemblJsonFileReader):
         for _, entry in ret_dict.items():
             del entry[cls.ENTRY_PRIMARY_KEY]
 
-        return ret_dict
+        return cls.sweep_emtpy_values(ret_dict)
 
 
 class BindingSiteReader(ChemblJsonFileReader):
@@ -236,7 +243,8 @@ class BindingSiteReader(ChemblJsonFileReader):
                 10279 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'
             }
         """
-        return {entry["site_id"]: entry["site_name"] for entry in entries}
+        ret_dict = {entry["site_id"]: entry["site_name"] for entry in entries}
+        return cls.sweep_emtpy_values(ret_dict)
 
 
 class MechanismReader(ChemblJsonFileReader):
@@ -301,7 +309,7 @@ class MechanismReader(ChemblJsonFileReader):
             for mechanism in mechanism_list:
                 del mechanism[cls.ENTRY_PRIMARY_KEY]
 
-        return ret_dict
+        return cls.sweep_emtpy_values(ret_dict)
 
 
 class DrugIndicationReader(ChemblJsonFileReader):
@@ -568,7 +576,7 @@ class DrugIndicationReader(ChemblJsonFileReader):
             indications = list(merge_mesh_subgroups(indication_group))
             ret_dict[primary_key] = indications
 
-        return ret_dict
+        return cls.sweep_emtpy_values(ret_dict)
 
 
 class MoleculeReader(ChemblJsonFileReader):
@@ -618,6 +626,7 @@ class MoleculeReader(ChemblJsonFileReader):
             doc["chembl"].pop("chebi_par_id", None)  # clean, could be a None
 
         doc = unlist(doc)
+        doc = cls.sweep_emtpy_values(doc)
         doc = value_convert_to_number(doc, skipped_keys=["chebi_par_id", "first_approval"])
         doc = boolean_convert(doc, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
                                     "therapeutic_flag", "med_chem_friendly", "molecule_properties.ro3_pass"])
@@ -695,14 +704,17 @@ class AuxiliaryDataLoader:
         # Join `target::target_type`, `target::target_organism`, `target::target_name`, and `target::target_components` to `mechanism`
         for _, mechanism_list in mechanism_dict.items():
             for mechanism in mechanism_list:
-                binding_site_name = binding_site_dict.get(mechanism["site_id"], None)
-                if binding_site_name is not None:
-                    mechanism["binding_site_name"] = binding_site_name
-                del mechanism["site_id"]
+                # Both "site_id" and "target_chembl_id" fields may be `None` and got swept
+                if "site_id" in mechanism:
+                    binding_site_name = binding_site_dict.get(mechanism["site_id"], None)
+                    if binding_site_name is not None:
+                        mechanism["binding_site_name"] = binding_site_name
+                    del mechanism["site_id"]
 
-                target = target_dict.get(mechanism["target_chembl_id"], None)
-                if target is not None:
-                    mechanism.update(target)
+                if "target_chembl_id" in mechanism:
+                    target = target_dict.get(mechanism["target_chembl_id"], None)
+                    if target is not None:
+                        mechanism.update(target)
 
         self.drug_indication_dict = drug_indication_dict
         self.mechanism_dict = mechanism_dict
@@ -748,8 +760,6 @@ def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: Auxil
 
         if drug_mechanisms is not None:
             doc["chembl"]["drug_mechanisms"] = drug_mechanisms
-
-        doc = dict_sweep(doc, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []])
 
         """
         "inchi_key" is the primary key for cross-datasource merging in MyChem.
