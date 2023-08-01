@@ -102,7 +102,7 @@ def print_list():
     # Call the load_data function with the folder path as an argument
     try:
         data_generator = load_data(data_folder)
-        data_list = list(data_generator)  
+        data_list = list(data_generator)
         pharm_classes_list = []
         for item in data_list:
             if 'pharm_classes' in item['ndc']:
@@ -129,7 +129,6 @@ def print_list():
 
         with open("moa_values.txt", "w") as moa_file:
             moa_file.write("\n".join(unique_moa))
-   
     except FileNotFoundError:
         print(f"Error: Could not find the specified folder '{data_folder}'.")
 
