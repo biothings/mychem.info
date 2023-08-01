@@ -107,7 +107,6 @@ def print_list():
         for item in data_list:
             if 'pharm_classes' in item['ndc']:
                 pharm_classes_list.append(item['ndc']['pharm_classes'])
-               
                 cs_list = []
                 moa_list = []
 
