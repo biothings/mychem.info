@@ -15,7 +15,7 @@
 #       require their own modules to run. Check their
 #       __METADATA__ setting for required modules.
 
--e git+https://github.com/biothings/biothings.api.git@0.11.x#egg=biothings[hub]
+-e git+https://github.com/biothings/biothings.api.git@0.12.x#egg=biothings[hub]
 
 xmltodict==0.11.0 # drugbank parsing
 beautifulsoup4==4.11.1 # drugbank dumper
