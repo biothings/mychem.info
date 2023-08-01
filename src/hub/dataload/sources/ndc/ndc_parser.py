@@ -1,4 +1,4 @@
-import csv, os, logging
+import csv, os
 from biothings.utils.dataload import dict_sweep, unlist
 
 def package_restr_dict(dictionary):
@@ -93,14 +93,14 @@ def load_data(data_folder):
         #print(doc)
         yield doc
 
-def print_list():   
+def print_list():
      # Get the path to the parent directory of the current script (i.e., src directory)
     src_dir = os.path.dirname(os.path.abspath(__file__))
     # Go several levels up to access the data_folder
     data_folder = os.path.abspath(os.path.join(src_dir, "..","..","..","..","..", "data_folder"))
 
     # Call the load_data function with the folder path as an argument
-    try:        
+    try:
         data_generator = load_data(data_folder)
         data_list = list(data_generator)
         
