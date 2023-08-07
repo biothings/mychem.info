@@ -71,6 +71,11 @@ def load_packages(_file):
         yield _dict
 
 def load_data(data_folder):
+    print(load_data)
+    pharm_classes_list = []
+    cs_list = []
+    moa_list = []  
+
     package_file = os.path.join(data_folder,"package.txt")
     product_file = os.path.join(data_folder,"product.txt")
     assert os.path.exists(package_file), "Package file doesn't exist..."
@@ -90,47 +95,49 @@ def load_data(data_folder):
                 doc["ndc"]["package"].append(pack)
             if len(doc["ndc"]["package"]) == 1:
                 doc["ndc"]["package"] = doc["ndc"]["package"].pop() # to dict
-        #print(doc)
-        yield doc
-
-def print_list():
-     # Get the path to the parent directory of the current script (i.e., src directory)
-    src_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go several levels up to access the data_folder
-    data_folder = os.path.abspath(os.path.join(src_dir, "..","..","..","..","..", "data_folder"))
-
-    # Call the load_data function with the folder path as an argument
-    try:
-        data_generator = load_data(data_folder)
-        data_list = list(data_generator)
-        pharm_classes_list = []
-        for item in data_list:
-            if 'pharm_classes' in item['ndc']:
-                pharm_classes_list.append(item['ndc']['pharm_classes'])
-                cs_list = []
-                moa_list = []
-
-        # Iterate through each element to check if it ends with "CS" or "MoA"
-        for element in pharm_classes_list:
-            element_list = element.split(', ')
-            for item in element_list:
-                if item.endswith('[CS]'):
-                    cs_list.append(item)
-                if item.endswith('[MoA]'):
-                    moa_list.append(item)
-
-        # Convert lists to sets to get unique values
-        unique_cs = set(cs_list)
-        unique_moa = set(moa_list)
-
-        # Print the resulting unique lists
-        with open("cs_values.txt", "w") as cs_file:
-            cs_file.write("\n".join(unique_cs))
-
-        with open("moa_values.txt", "w") as moa_file:
-            moa_file.write("\n".join(unique_moa))
-    except FileNotFoundError:
-        print(f"Error: Could not find the specified folder '{data_folder}'.")
 
 
-print_list()
+        for item in doc:                
+                ndc_data = doc.get('ndc', {})
+                # Check if 'pharm_classes' exists in the 'ndc' dictionary
+                if isinstance(ndc_data, dict) and 'pharm_classes' in ndc_data:
+                    # Get the 'pharm_classes' value
+                    pharm_classes = ndc_data['pharm_classes']
+                else:
+                    print("Pharm Classes not found in the data.")
+          
+                # Extract 'cs' and 'moa' from each item
+                if isinstance(pharm_classes, str):
+                    element_list = pharm_classes.split(', ')
+
+                for element in element_list:
+                    if element.strip().lower().endswith('[cs]'):
+                        cs_value = element.split('[cs]')[0].strip()
+                        if cs_value not in cs_list:
+                            cs_list.append(cs_value)
+
+                        
+                    if element.strip().lower().endswith('[moa]'):
+                        moa_value = element.split('[moa]')[0].strip()
+                        if moa_value not in moa_list:
+                            moa_list.append(moa_value)
+
+
+    if cs_list != []:
+        doc["ndc"]["pharm_classes"] = {
+        "CS": list(cs_list)
+    }                 
+
+    if moa_list != []:
+        doc["ndc"]["pharm_classes"] = {
+        "MOA": list(moa_list)
+    }       
+
+    yield doc
+
+
+src_dir = os.path.dirname(os.path.abspath(__file__))
+d_folder = os.path.abspath(os.path.join(src_dir, "..","..","..","..","..", "data_folder"))
+
+for processed_data_item in load_data(d_folder):
+    pass
