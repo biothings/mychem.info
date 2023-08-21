@@ -3,7 +3,8 @@ Sider Uploader
 """
 # pylint: disable=E0401, E0611
 import os
-from biothings.hub.datatransform.datatransform import IDStruct, nested_lookup
+from biothings.hub.datatransform import IDStruct
+from biothings.hub.datatransform import nested_lookup
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
 from .sider_parser import load_data
