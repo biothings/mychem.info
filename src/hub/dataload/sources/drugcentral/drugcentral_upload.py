@@ -473,7 +473,8 @@ class DrugCentralUploader(BaseDrugUploader):
                         "type": "text"
                     },
                     "action_type": {
-                        "type": "text"
+                        "normalizer": "keyword_lowercase_normalizer",
+			"type": "keyword"
                     },
                     "act_source": {
                         "type": "text"
