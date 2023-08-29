@@ -2,13 +2,17 @@ import os
 import os.path
 import sys
 import time
+
+import biothings
 import bs4
 
-import biothings, config
+import config
+
 biothings.config_for_app(config)
 
-from config import DATA_ARCHIVE_ROOT
 from biothings.hub.dataload.dumper import HTTPDumper
+
+from config import DATA_ARCHIVE_ROOT
 
 
 class DrugBankDumper(HTTPDumper):
@@ -17,9 +21,9 @@ class DrugBankDumper(HTTPDumper):
     will just monitor new versions and report when a new one is available
     """
 
-    SRC_NAME = "drugbank"
+    SRC_NAME = "drugbank_open"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
-    AUTO_UPLOAD = False # it's still manual, so upload won't have the 
+    AUTO_UPLOAD = False # it's still manual, so upload won't have the
 
     SCHEDULE = "0 12 * * *"
     VERSIONS_URL = "https://www.drugbank.ca/releases"
@@ -40,4 +44,3 @@ class DrugBankDumper(HTTPDumper):
                     extra={"notify":True})
             local = os.path.join(self.new_data_folder,"releases")
             self.to_dump.append({"remote":self.VERSIONS_URL, "local":local})
-
