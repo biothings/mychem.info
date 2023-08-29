@@ -103,6 +103,9 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                                     }
                                 }
                             },
+			    "first_approval": {
+				"type": "integer"
+ 			    },
                             "indication_refs": {
                                 "properties": {
                                     "id": {
