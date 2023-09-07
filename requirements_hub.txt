@@ -23,3 +23,4 @@ lxml # bs4 html parsing (note: no version avail to set it fixed)
 pandas>=1.0.1 # sider parser
 obonet==1.0.0 # chebi parser
 networkx==2.5 # chebi parser (dependency of obonet)
+psycopg2==2.9.7 # postgresql dumper
