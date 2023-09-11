@@ -39,7 +39,7 @@ class DrugCentralDumper(BaseDumper):
     @property
     def cursor(self):
         # Return the cursor if it exists, otherwise create it
-        if self.client:
+        if not self._cursor and self.client:
             self._cursor = self.client.cursor()
         return self._cursor
 
