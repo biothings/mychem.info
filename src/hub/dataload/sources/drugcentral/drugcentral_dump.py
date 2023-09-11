@@ -8,14 +8,12 @@ import config
 
 biothings.config_for_app(config)
 
-from biothings.hub.dataload.dumper import FilesystemDumper
+from biothings.hub.dataload.dumper import BaseDumper
 
 from config import DATA_ARCHIVE_ROOT
 
 
-class DrugCentralDumper(FilesystemDumper):
-    FS_OP = "mv"
-
+class DrugCentralDumper(BaseDumper):
     SRC_NAME = "drugcentral"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
@@ -35,6 +33,20 @@ class DrugCentralDumper(FilesystemDumper):
             host=self.HOST,
             port=self.PORT,
         )
+        # Create a cursor
+        self._cursor = self.client.cursor()
+
+    @property
+    def cursor(self):
+        # Return the cursor if it exists, otherwise create it
+        if self.client:
+            self._cursor = self.client.cursor()
+        return self._cursor
+
+    def unprepare(self):
+        # Set the state of the cursor to None
+        self._cursor = None
+        return super().unprepare()
 
     def release_client(self):
         # Disconnect from the database
@@ -42,98 +54,76 @@ class DrugCentralDumper(FilesystemDumper):
         self.client.close()
         self.client = None
 
-    def get_data(self, cursor):
-        def fetch_data_and_write_to_csv(table_name, columns=None, file_name=None):
-            # Define the columns to select and the file name
-            select_columns = columns if columns else "*"
-            csv_file_name = file_name if file_name else f"{table_name}.csv"
+    def download(self, remotefile, localfile):
+        # Download the data from the database and write it to a CSV file
 
-            # Execute the query
-            cursor.execute(f"SELECT {select_columns} FROM {table_name}")
+        # Create the local folders if they don't exist
+        self.prepare_local_folders(localfile)
 
-            # Get the column names
-            column_names = [desc[0] for desc in cursor.description]
+        table_name, columns = remotefile.get("table_name"), remotefile.get("columns")
 
-            # Open the CSV file and write the column names
-            with open(os.path.join(csv_file_name), "w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(column_names)
+        cursor = self.cursor
+        cursor.execute(f"SELECT {columns} FROM {table_name}")
 
-                # Write the rows one by one
+        column_names = [desc[0] for desc in cursor.description]
+
+        # Open the CSV file and write the column names
+        with open(os.path.join(localfile), "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(column_names)
+
+            # Write the rows one by one
+            row = cursor.fetchone()
+            while row:
+                writer.writerow(row)
                 row = cursor.fetchone()
-                while row:
-                    writer.writerow(row)
-                    row = cursor.fetchone()
 
-        # List of tables and their corresponding CSV file names and columns to select
-        tables = [
-            {"table_name": "pharma_class"},
-            {"table_name": "faers"},
-            {"table_name": "act_table_full"},
-            {"table_name": "omop_relationship"},
-            {"table_name": "approval"},
-            {"table_name": "atc_ddd", "file_name": "drug_dosage.csv"},
-            {"table_name": "synonyms"},
-            {
-                "table_name": "structures",
-                "columns": "id, inchi, inchikey, smiles, cas_reg_no, name",
-                "file_name": "structures.smiles.csv",
-            },
-            {"table_name": "identifier", "file_name": "identifiers.csv"},
-        ]
-
-        # Fetch data from each table and write it to a CSV file
-        for table in tables:
-            fetch_data_and_write_to_csv(**table)
-
-    def get_latest_release(self, cursor):
+    def get_latest_release(self):
+        # Get the latest release from the dbversion table
+        cursor = self.cursor
         cursor.execute("SELECT * FROM dbversion")
         # dbversion contains a tuple with the version number and the date, we only need the date
         _, version_date = cursor.fetchone()
         return version_date.strftime("%Y-%m-%d")
 
-    def create_todump_list(self, force=False, **kwargs):
-        cursor = self.client.cursor()
-        # Fetch the latest release from the dbversion table
-        self.release = self.get_latest_release(cursor)
+    def create_todump_list(self, force=False):
+        # Create a list of tables to dump
+        self.release = self.get_latest_release()
 
-        # Define the data directory
         data_dir = os.path.join(self.__class__.SRC_ROOT_FOLDER, self.release)
 
-        # Check if a new release is available
         if force or not os.path.exists(data_dir):
             self.logger.info("New release '%s' found" % self.release)
 
-            # Create the data directory
-            if not os.path.exists(data_dir):
-                os.makedirs(data_dir)
-
-            # Fetch the data and write it to CSV files
-            self.get_data(cursor)
-
-            # List of file_names and their corresponding CSV file names
-            file_names = [
-                "pharma_class",
-                "faers",
-                "act_table_full",
-                "omop_relationship",
-                "approval",
-                "drug_dosage",
-                "synonyms",
-                "structures.smiles",
-                "identifiers",
+            tables = [
+                {"table_name": "pharma_class"},
+                {"table_name": "faers"},
+                {"table_name": "act_table_full"},
+                {"table_name": "omop_relationship"},
+                {"table_name": "approval"},
+                {"table_name": "atc_ddd", "file_name": "drug_dosage.csv"},
+                {"table_name": "synonyms"},
+                {
+                    "table_name": "structures",
+                    "columns": "id, inchi, inchikey, smiles, cas_reg_no, name",
+                    "file_name": "structures.smiles.csv",
+                },
+                {"table_name": "identifier", "file_name": "identifiers.csv"},
             ]
 
-            # Append each CSV file path to the self.to_dump list
-            for file_name in file_names:
-                remote_file = f"{file_name}.csv"
-                local_file = os.path.join(data_dir, f"{file_name}.csv")
+            for table in tables:
+                remote_info = {
+                    "table_name": table.get("table_name"),
+                    "columns": table.get("columns", "*"),
+                }
+                local_file = os.path.join(
+                    data_dir, table.get("file_name", f"{table['table_name']}.csv")
+                )
                 self.to_dump.append(
                     {
-                        "remote": remote_file,
+                        "remote": remote_info,
                         "local": local_file,
                     }
                 )
-
         else:
-            self.logger.info("No new release found")
+            self.logger.debug("No new release found")
