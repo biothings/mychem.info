@@ -50,9 +50,9 @@ class DrugCentralDumper(BaseDumper):
 
     def release_client(self):
         # Disconnect from the database
-        assert self.client
-        self.client.close()
-        self.client = None
+        if self.client:
+            self.client.close()
+            self.client = None
 
     def download(self, remotefile, localfile):
         # Download the data from the database and write it to a CSV file
