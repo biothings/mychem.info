@@ -10,7 +10,7 @@ biothings.config_for_app(config)
 
 from biothings.hub.dataload.dumper import BaseDumper
 
-from config import DATA_ARCHIVE_ROOT
+from config import DATA_ARCHIVE_ROOT, DRUGCENTRAL_PASSWORD
 
 
 class DrugCentralDumper(BaseDumper):
@@ -22,14 +22,13 @@ class DrugCentralDumper(BaseDumper):
     PORT = 5433
     DATABASE = "drugcentral"
     USER = "drugman"
-    PASSWORD = "dosage"
 
     def prepare_client(self):
         # Connect to the database
         self.client = psycopg2.connect(
             database=self.DATABASE,
             user=self.USER,
-            password=self.PASSWORD,  # noqa
+            password=DRUGCENTRAL_PASSWORD,
             host=self.HOST,
             port=self.PORT,
         )
