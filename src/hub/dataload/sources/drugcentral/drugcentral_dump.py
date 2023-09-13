@@ -29,7 +29,7 @@ class DrugCentralDumper(BaseDumper):
         self.client = psycopg2.connect(
             database=self.DATABASE,
             user=self.USER,
-            password=self.PASSWORD,
+            password=self.PASSWORD,  # nosec
             host=self.HOST,
             port=self.PORT,
         )
@@ -38,9 +38,15 @@ class DrugCentralDumper(BaseDumper):
 
     @property
     def cursor(self):
-        # Return the cursor if it exists, otherwise create it
-        if not self._cursor and self.client:
-            self._cursor = self.client.cursor()
+        # If _cursor is not initialized or is None
+        if not hasattr(self, "_cursor") or self._cursor is None:
+            if self.client:
+                self._cursor = self.client.cursor()
+            else:
+                self.logger.debug(
+                    "_cursor was not initialized and client is not active."
+                )
+                self._cursor = None
         return self._cursor
 
     def unprepare(self):
