@@ -29,7 +29,7 @@ class DrugCentralDumper(BaseDumper):
         self.client = psycopg2.connect(
             database=self.DATABASE,
             user=self.USER,
-            password=self.PASSWORD,  # nosec
+            password=self.PASSWORD,  # noqa
             host=self.HOST,
             port=self.PORT,
         )
