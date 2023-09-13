@@ -37,8 +37,8 @@ class DrugCentralDumper(BaseDumper):
 
     @property
     def cursor(self):
-        # If _cursor is not initialized or is None
-        if not hasattr(self, "_cursor") or self._cursor is None:
+        # Create a cursor if it doesn't exist
+        if not getattr(self, "_cursor", None):
             if self.client:
                 self._cursor = self.client.cursor()
             else:
