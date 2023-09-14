@@ -17,23 +17,29 @@ class DrugCentralDumper(BaseDumper):
     SRC_NAME = "drugcentral"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
+    # The number of rows to fetch at a time with the cursor
+    CURSOR_ITERSIZE = 100
+
     # More info about the public DrugCentral Postgres database https://drugcentral.org/download
     HOST = "unmtid-dbs.net"
     PORT = 5433
     DATABASE = "drugcentral"
     USER = "drugman"
+    PASSWORD = DRUGCENTRAL_PASSWORD
 
     def prepare_client(self):
         # Connect to the database
         self.client = psycopg2.connect(
             database=self.DATABASE,
             user=self.USER,
-            password=DRUGCENTRAL_PASSWORD,
+            password=self.PASSWORD,
             host=self.HOST,
             port=self.PORT,
         )
         # Create a cursor
         self._cursor = self.client.cursor()
+        # Set the number of rows to fetch at a time
+        self._cursor.itersize = self.CURSOR_ITERSIZE
 
     @property
     def cursor(self):
@@ -42,7 +48,7 @@ class DrugCentralDumper(BaseDumper):
             if self.client:
                 self._cursor = self.client.cursor()
             else:
-                self.logger.debug(
+                self.logger.warning(
                     "_cursor was not initialized and client is not active."
                 )
                 self._cursor = None
@@ -72,16 +78,22 @@ class DrugCentralDumper(BaseDumper):
 
         column_names = [desc[0] for desc in cursor.description]
 
-        # Open the CSV file and write the column names
+        self.logger.debug(f"Retrieving data from table: {table_name}")
+
         with open(os.path.join(localfile), "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(column_names)
 
-            # Write the rows one by one
-            row = cursor.fetchone()
-            while row:
+            row_count = 0
+
+            # Loop directly over the cursor
+            for row in cursor:
                 writer.writerow(row)
-                row = cursor.fetchone()
+                row_count += 1
+
+        self.logger.debug(
+            f"Retrieved {row_count} rows from table: {table_name} and saved to {localfile}"
+        )
 
     def get_latest_release(self):
         # Get the latest release from the dbversion table
