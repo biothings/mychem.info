@@ -18,6 +18,7 @@ class DrugCentralDumper(BaseDumper):
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
     # The number of rows to fetch at a time with the cursor
+    # More info on cursor.itersize https://www.psycopg.org/docs/cursor.html#cursor.itersize
     CURSOR_ITERSIZE = 100
 
     # More info about the public DrugCentral Postgres database https://drugcentral.org/download
@@ -47,6 +48,7 @@ class DrugCentralDumper(BaseDumper):
         if not getattr(self, "_cursor", None):
             if self.client:
                 self._cursor = self.client.cursor()
+                self._cursor.itersize = self.CURSOR_ITERSIZE
             else:
                 self.logger.warning(
                     "_cursor was not initialized and client is not active."
