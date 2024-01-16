@@ -57,14 +57,14 @@ graph_mychem.add_edge(
     "drugbank",
     "inchikey",
     #   TODO drugbank_open
-    object=MongoDBEdge("drugbank_open", "drugbank.id", "drugbank.inchi_key"),
+    object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.inchi_key"),
     weight=1.1,
 )
 
 graph_mychem.add_edge(
     "pubchem",
     "inchikey",
-    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.inchi_key"),
+    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.inchikey"),
     weight=1.2,
 )
 
@@ -79,7 +79,7 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "drugbank",
     "drugbank",
-    object=MongoDBEdge("drugbank_open", "drugbank.id", "drugbank.id"),
+    object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.id"),
 )
 
 ###############################################################################
