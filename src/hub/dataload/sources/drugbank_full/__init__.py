@@ -1,3 +1,2 @@
-from .drugbank_upload import DrugBankUploader
-from .drugbank_dump import DrugBankDumper
-
+from .drugbank_full_upload import DrugBankFullUploader
+from .drugbank_full_dump import DrugBankFullDumper
