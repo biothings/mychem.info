@@ -5,8 +5,8 @@ def load_data(csv_file):
     with open(csv_file, 'r') as f:
         reader = csv.reader(f)
 
-        # Fetch the header row from the CSV file
-        headers = next(reader)
+        # Skip the header row
+        next(reader)
 
         for row in reader:
             # Use InChI Key as the ID if it exists, else use DrugBank ID

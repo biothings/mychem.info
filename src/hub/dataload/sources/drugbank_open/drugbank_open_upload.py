@@ -63,11 +63,11 @@ class DrugBankOpenUploader(BaseDrugUploader):
             unzipall(data_folder)
             self.logger.info("Load data from '%s'" % data_folder)
             csvfiles = glob.glob(os.path.join(data_folder, "*.csv"))
-        assert len(csvfiles) == 1, "Expecting one csv file, got %s" % repr(
-            csvfiles)
+        if len(csvfiles) != 1:
+            raise ValueError("Expecting one csv file, got %s" % repr(csvfiles))
         input_file = csvfiles.pop()
-        assert os.path.exists(
-            input_file), "Can't find input file '%s'" % input_file
+        if not os.path.exists(input_file):
+            raise FileNotFoundError("Can't find input file '%s'" % input_file)
         return self.exclude_fields(self.keylookup(load_data, debug=True))(input_file)
 
     def post_update_data(self, *args, **kwargs):
