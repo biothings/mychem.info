@@ -71,7 +71,6 @@ def restructure_dict(dictionary):
     pred_properties_dict = {}
     exp_prop_dict = {}
     products_list = []
-    categories_list = []
     enzymes_list = []
     targets_list = []
     carriers_list = []
@@ -91,7 +90,8 @@ def restructure_dict(dictionary):
             if isinstance(value, list):
                 for ele in value:
                     if isinstance(ele, collections.OrderedDict):
-                        assert "@primary" in ele
+                        if "@primary" not in ele:
+                            raise KeyError("Expected '@primary' in OrderedDict element")
                         for x, y in iter(ele.items()):
                             if x == '#text':
                                 # make sure we always have DB ID as drugbank_id (now 'id')
@@ -321,7 +321,7 @@ def restructure_dict(dictionary):
 
             def restr_properties_dict(dictionary):
                 # Note: the side effect of this function sets a global variable
-                for x, y in iter(dictionary.items()):
+                for _, y in iter(dictionary.items()):
                     k1 = dictionary['kind']
                     k1 = k1.lower().replace(' ', '_').replace('-', '_')
                     if k1 == "isoelectric_point":
@@ -337,7 +337,7 @@ def restructure_dict(dictionary):
                                 logging.info("Document ID '%s' has a range " % restr_dict["_id"] +
                                              "as isoelectric_point: %s" % vals)
                                 exp_prop_dict[k1] = vals
-                            except ValueError as e:
+                            except ValueError:
                                 # not something we can handle, skip it
                                 logging.warning("Document ID '%s' has non-convertible " % restr_dict["_id"] +
                                                 " value for isoelectric_point, field ignored: %s" % dictionary['value'])
@@ -359,9 +359,8 @@ def restructure_dict(dictionary):
 
         elif key == 'calculated-properties' and value:
             def restr_properties_dict(dictionary):
-                for x in dictionary:
-                    k = dictionary['kind']
-                    k = k.lower().replace(' ', '_').replace('-', '_')
+                if "kind" in dictionary:
+                    k = dictionary['kind'].lower().replace(' ', '_').replace('-', '_')
                     if dictionary['kind'] == "IUPAC Name":
                         d1.update({'iupac': dictionary['value']})
                     elif dictionary['kind'] == "Traditional IUPAC Name":
@@ -434,13 +433,13 @@ def restructure_dict(dictionary):
                             resource = ele['resource']
                             xrefs_dict[resource.lower().replace(
                                 '.', '_')] = ele['url']
-                        except:
+                        except Exception:
                             pass
             else:
                 try:
                     resource = ele['resource']
                     d1[resource.lower().replace('.', '_')] = ele['url']
-                except:
+                except Exception:
                     pass
 
         elif key == 'patents' and value:
@@ -498,7 +497,7 @@ def restructure_dict(dictionary):
                     _li.append(_dict)
                     d1.update({key: _li})
 
-            elif isinstance(value['pathway'], dict) or isinstance(value['pathway'], OrderedDict):
+            elif isinstance(value['pathway'], dict) or isinstance(value['pathway'], collections.OrderedDict):
                 _dict = restr_pathway_dict(value['pathway'])
                 _li.append(_dict)
                 d1.update({key: _li})
@@ -528,7 +527,7 @@ def restructure_dict(dictionary):
                     _li.append(_dict)
                     d1.update({key: _li})
 
-            elif isinstance(value['reaction'], dict) or isinstance(value['reaction'], OrderedDict):
+            elif isinstance(value['reaction'], dict) or isinstance(value['reaction'], collections.OrderedDict):
                 _dict = restr_reaction_dict(value['reaction'])
                 _li.append(_dict)
                 d1.update({key: _li})
@@ -539,7 +538,7 @@ def restructure_dict(dictionary):
                     _dict = restr_protein_dict(dictionary)
                     targets_list.append(_dict)
 
-            elif isinstance(value['target'], dict) or isinstance(value['target'], OrderedDict):
+            elif isinstance(value['target'], dict) or isinstance(value['target'], collections.OrderedDict):
                 _dict = restr_protein_dict(value['target'])
                 targets_list.append(_dict)
 
@@ -549,7 +548,7 @@ def restructure_dict(dictionary):
                     _dict = restr_protein_dict(dictionary)
                     enzymes_list.append(_dict)
 
-            elif isinstance(value['enzyme'], dict) or isinstance(value['enzyme'], OrderedDict):
+            elif isinstance(value['enzyme'], dict) or isinstance(value['enzyme'], collections.OrderedDict):
                 _dict = restr_protein_dict(value['enzyme'])
                 enzymes_list.append(_dict)
 
@@ -559,7 +558,7 @@ def restructure_dict(dictionary):
                     _dict = restr_protein_dict(dictionary)
                     transporters_list.append(_dict)
 
-            elif isinstance(value['transporter'], dict) or isinstance(value['transporter'], OrderedDict):
+            elif isinstance(value['transporter'], dict) or isinstance(value['transporter'], collections.OrderedDict):
                 _dict = restr_protein_dict(value['transporter'])
                 transporters_list.append(_dict)
 
@@ -569,7 +568,7 @@ def restructure_dict(dictionary):
                     _dict = restr_protein_dict(dictionary)
                     carriers_list.append(_dict)
 
-            elif isinstance(value['carrier'], dict) or isinstance(value['carrier'], OrderedDict):
+            elif isinstance(value['carrier'], dict) or isinstance(value['carrier'], collections.OrderedDict):
                 _dict = restr_protein_dict(value['carrier'])
                 carriers_list.append(_dict)
 
@@ -584,7 +583,7 @@ def restructure_dict(dictionary):
                 for _d in value['atc-code']:
                     restr_atccode_dict(_d)
 
-            elif isinstance(value['atc-code'], dict) or isinstance(value['atc-code'], OrderedDict):
+            elif isinstance(value['atc-code'], dict) or isinstance(value['atc-code'], collections.OrderedDict):
                 restr_atccode_dict(value['atc-code'])
 
     xrefs_dict['atc_codes'] = atccode_list
