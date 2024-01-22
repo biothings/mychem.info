@@ -321,9 +321,9 @@ def restructure_dict(dictionary):
 
             def restr_properties_dict(dictionary):
                 # Note: the side effect of this function sets a global variable
-                for _, y in iter(dictionary.items()):
-                    k1 = dictionary['kind']
-                    k1 = k1.lower().replace(' ', '_').replace('-', '_')
+                if 'kind' in dictionary and 'value' in dictionary:
+                    k1 = dictionary['kind'].lower().replace(' ', '_').replace('-', '_')
+
                     if k1 == "isoelectric_point":
                         # make sure value are floats, if intervals, then list(float)
                         try:
@@ -434,12 +434,15 @@ def restructure_dict(dictionary):
                             xrefs_dict[resource.lower().replace(
                                 '.', '_')] = ele['url']
                         except Exception:
-                            pass
+                            logging.warning(
+                                "Document ID '%s' has an invalid external-link: %s" % (restr_dict["_id"], ele))
             else:
                 try:
                     resource = ele['resource']
                     d1[resource.lower().replace('.', '_')] = ele['url']
                 except Exception:
+                    logging.warning(
+                        "Document ID '%s' has an invalid external-link: %s" % (restr_dict["_id"], ele))
                     pass
 
         elif key == 'patents' and value:
