@@ -442,7 +442,6 @@ def restructure_dict(dictionary):
                 except Exception:
                     logging.warning(
                         "Document ID '%s' has an invalid external-link: %s" % (restr_dict["_id"], ele))
-                    pass
 
         elif key == 'patents' and value:
             if isinstance(value, dict):
