@@ -2,7 +2,6 @@ import json
 import os
 from collections import defaultdict
 
-import numpy as np
 import pandas as pd
 import requests
 from biothings.utils.dataload import dict_sweep, unlist
