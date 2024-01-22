@@ -1,12 +1,9 @@
 import xmltodict
-import json
 import math
 import collections
 import logging
 
-from biothings.utils.dataload import dict_sweep, boolean_convert
-from biothings.utils.dataload import boolean_convert, to_int
-from biothings.utils.dataload import float_convert, int_convert
+from biothings.utils.dataload import dict_sweep, boolean_convert, to_int, float_convert, int_convert
 from biothings.utils.dataload import unlist_incexcl as unlist
 
 
@@ -392,10 +389,10 @@ def restructure_dict(dictionary):
             for x, y in iter(value.items()):
                 if isinstance(y, list):
                     for _d in y:
-                        _d = restr_properties_dict(_d)
+                        restr_properties_dict(_d)
 
                 if isinstance(y, dict) or isinstance(y, collections.OrderedDict):
-                    _d = restr_properties_dict(y)
+                    restr_properties_dict(y)
 
         elif key == 'external-identifiers' and value:
             kegg_dict = {}

@@ -1,7 +1,5 @@
 import os
 import os.path
-import sys
-import time
 import bs4
 
 import biothings, config
@@ -28,7 +26,8 @@ class DrugBankFullDumper(HTTPDumper):
         res = self.client.get(self.VERSIONS_URL)
         html = bs4.BeautifulSoup(res.text,"lxml")
         table = html.findAll(attrs={"class":"table-bordered"})
-        assert len(table) == 1, "Expecting one table element, got %s" % len(table)
+        if len(table) != 1:
+            raise ValueError("Expecting one table element, got %s" % len(table))
         table = table.pop()
         # the very first element in the table contains the latest version
         version = table.find("tbody").find("tr").find("td").text

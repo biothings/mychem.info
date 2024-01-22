@@ -61,11 +61,11 @@ class DrugBankFullUploader(BaseDrugUploader):
             unzipall(data_folder)
             self.logger.info("Load data from '%s'" % data_folder)
             xmlfiles = glob.glob(os.path.join(data_folder, "*.xml"))
-        assert len(xmlfiles) == 1, "Expecting one xml file, got %s" % repr(
-            xmlfiles)
+        if len(xmlfiles) != 1:
+            raise ValueError("Expecting one xml file, got %s" % repr(xmlfiles))
         input_file = xmlfiles.pop()
-        assert os.path.exists(
-            input_file), "Can't find input file '%s'" % input_file
+        if not os.path.exists(input_file):
+            raise FileNotFoundError("Can't find input file '%s'" % input_file)
         return self.exclude_fields(self.keylookup(load_data, debug=True))(input_file)
 
     def post_update_data(self, *args, **kwargs):
