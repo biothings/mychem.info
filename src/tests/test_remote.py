@@ -6,7 +6,6 @@
     - Special Cases
 
 """
-import pytest
 from biothings.tests.web import BiothingsWebTest
 
 

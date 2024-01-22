@@ -3,7 +3,6 @@ from biothings.hub.datatransform import (
     CIMongoDBEdge,
     DataTransformMDB,
     MongoDBEdge,
-    RegExEdge,
 )
 
 graph_mychem = nx.DiGraph()
