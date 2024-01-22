@@ -341,7 +341,6 @@ def restructure_dict(dictionary):
                                 # not something we can handle, skip it
                                 logging.warning("Document ID '%s' has non-convertible " % restr_dict["_id"] +
                                                 " value for isoelectric_point, field ignored: %s" % dictionary['value'])
-                                continue
                     else:
                         exp_prop_dict[k1] = dictionary['value']
 
