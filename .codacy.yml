@@ -1,0 +1,17 @@
+---
+file_patterns:
+  - pattern: 'src/hub/dataload/sources/drugbank_full/__init__.py'
+    linters:
+      prospector:
+        ignore:
+          - 'F401' # Ignore unused imports in this file
+  - pattern: 'src/hub/dataload/sources/drugbank_full/drugbank_full_parser.py'
+    linters:
+      prospector:
+        ignore:
+          - 'MC0001' # Ignore complexity errors in this file
+  - pattern: 'src/tests/test_remote.py'
+    linters:
+      bandit:
+        ignore:
+          - 'B101' # Ignore assert errors in this file
