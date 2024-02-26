@@ -15,11 +15,12 @@
 #       require their own modules to run. Check their
 #       __METADATA__ setting for required modules.
 
--e git+https://github.com/biothings/biothings.api.git#egg=biothings[hub]
+-e git+https://github.com/biothings/biothings.api.git@0.12.x#egg=biothings[hub]
 
 xmltodict==0.11.0 # drugbank parsing
-beautifulsoup4==4.5.1 # drugbank dumper
+beautifulsoup4==4.11.1 # drugbank dumper
 lxml # bs4 html parsing (note: no version avail to set it fixed)
 pandas>=1.0.1 # sider parser
-obonet==0.3.0 # chebi parser
+obonet==1.0.0 # chebi parser
 networkx==2.5 # chebi parser (dependency of obonet)
+psycopg2==2.9.7 # drugcentral dumper

@@ -1,6 +1,10 @@
-import csv, os
+import csv, os, re
 from biothings.utils.dataload import dict_sweep, unlist
 
+def parse_pharm_classes(pharm_classes_str):
+    # Split on commas that are followed by a closing bracket for cases like: Anti-Inflammatory Agents, Non-Steroidal [CS]
+    classes_list = [cls.strip() for cls in re.split(r"(?<=\]),\s*", pharm_classes_str)]
+    return list(set(classes_list))
 
 def package_restr_dict(dictionary):
     _d = {}
@@ -30,6 +34,9 @@ def product_restr_dict(dictionary):
         if key == 'PRODUCTID':
             _d.update({'_id':dictionary[key]})
             _d['ndc'].update({'product_id':dictionary[key]})
+        elif key == "PHARM_CLASSES":
+            pharm_classes_list = parse_pharm_classes(dictionary[key])
+            _d["ndc"].update({"pharm_classes": pharm_classes_list})
         else:
             _d['ndc'].update({key.lower():dictionary[key]})
     return _d

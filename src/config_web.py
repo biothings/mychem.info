@@ -3,8 +3,10 @@
     https://mychem.info/
     Chemical and Drug Annotation as a Service.
 """
-
+import copy
 import re
+
+from biothings.web.settings.default import ANNOTATION_KWARGS, QUERY_KWARGS
 
 # *****************************************************************************
 # Elasticsearch variables
@@ -35,3 +37,12 @@ STATUS_CHECK = {
     'id': 'USNINKBPBVKHHZ-CYUUQNCZSA-L',  # penicillin
     'index': 'mychem_current',
 }
+
+_extra_kwargs = {
+    "list_filter": {"type": str, "default": None}
+}
+ANNOTATION_KWARGS = copy.deepcopy(ANNOTATION_KWARGS)
+ANNOTATION_KWARGS["*"].update(_extra_kwargs)
+QUERY_KWARGS = copy.deepcopy(QUERY_KWARGS)
+QUERY_KWARGS["*"].update(_extra_kwargs)
+ES_RESULT_TRANSFORM = "web.pipeline.MyChemESResultFormatter"

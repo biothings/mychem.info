@@ -1,90 +1,35 @@
-import os
+import re
 import json
-import glob
 import urllib.parse
-from abc import ABC, abstractmethod
 from itertools import chain, groupby
 from collections import defaultdict
+from typing import List
+from collections.abc import Iterator  # replacing typing.Iterable
 
 from biothings.utils.dataload import dict_sweep, unlist, value_convert_to_number
 from biothings.utils.dataload import boolean_convert
 
 
-class JsonListTransformer(ABC):
-    @classmethod
-    @abstractmethod
-    def transform_to_dict(cls, entry_list):
-        """
-        Transform a list of json object into a dictionary
-        """
-        pass
-
-
-class JsonFilesAdapter(JsonListTransformer, ABC):
-    """
-    Each adapter class extending JsonFilesAdapter should overwrite the following attribute/methods:
-
-    - entry_list_key: a key in the raw json file to the desired collection of json objects
-    - reformat(cls, entry): reformat a single json object and return it
-    - transform_to_dict(cls, entry_list): transform the (reformatted) json list into a dictionary
-    """
-    entry_list_key: str  # type annotation to avoid the "unresolved reference" warning
+class ChemblJsonFileReader:
+    EMPTY_VALUES = [None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []]
 
     @classmethod
-    @abstractmethod
-    def reformat(cls, entry):
-        """
-        Reformat a json object from download to the desired structure, and return the new object.
-        """
-        pass
+    def read_file(cls, path: str, key: str, transform_func=None) -> Iterator[dict]:
+        file_data = json.load(open(path))
+        entries = file_data[key]
+        if transform_func:
+            entries = map(transform_func, entries)
+        return entries
 
     @classmethod
-    def read_files(cls, file_iter):
-        """
-        Read and reformat json objects from a collection of files, merge them into a list, and then transform the list
-        of json objects into a dictionary.
-        """
-        def _read_file_and_reformat_content(file):
-            if not cls.entry_list_key:
-                raise ValueError("Class attribute `entry_list_key` not initialized")
+    def read_multi_files(cls, paths: Iterator[str], key: str, transform_func=None) -> Iterator[dict]:
+        entries = chain.from_iterable(cls.read_file(p, key, transform_func) for p in paths)
+        return entries
 
-            _entry_list = json.load(open(file))[cls.entry_list_key]
-            _entry_list = [cls.reformat(entry) for entry in _entry_list]
-
-            return _entry_list
-
-        files = list(file_iter)
-        if len(files) == 1:
-            entry_list = _read_file_and_reformat_content(files[0])
-        else:
-            # merge the entry lists into one and return
-            entry_list = list(chain.from_iterable(_read_file_and_reformat_content(f) for f in files))
-
-        return cls.transform_to_dict(entry_list)
-
-
-class MoleculeCrossReferenceListTransformer(JsonListTransformer):
     @classmethod
-    def transform_to_dict(cls, xref_list):
-        """
-        Group the cross references field based on the source
-        Also change the field name
-        """
-        xref_output = defaultdict(list)
-        for _record in xref_list:
-            # note that the 'xref' field names are from the chembl datasource, not the parser
-            if 'xref_src' in _record and _record['xref_src'] == 'PubChem':
-                assert _record['xref_name'].startswith('SID: ')
-                xref_output['pubchem'].append({'sid': int(_record['xref_id'])})
-            elif 'xref_src' in _record and _record['xref_src'] == 'Wikipedia':
-                xref_output['wikipedia'].append({'url_stub': _record['xref_id']})
-            elif 'xref_src' in _record and _record['xref_src'] == 'TG-GATEs':
-                xref_output['tg-gates'].append({'name': _record['xref_name'], 'id': int(_record['xref_id'])})
-            elif 'xref_src' in _record and _record['xref_src'] == 'DailyMed':
-                xref_output['dailymed'].append({'name': _record['xref_name']})
-            elif 'xref_src' in _record and _record['xref_src'] == 'DrugCentral':
-                xref_output['drugcentral'].append({'name': _record['xref_name'], 'id': int(_record['xref_id'])})
-        return xref_output
+    def sweep_emtpy_values(cls, doc: dict) -> dict:
+        doc = dict_sweep(doc, vals=cls.EMPTY_VALUES)
+        return doc
 
 
 class ReferenceUtil:
@@ -94,7 +39,7 @@ class ReferenceUtil:
     """
 
     @classmethod
-    def create_clinical_trials_reference(cls, ref_id):
+    def create_clinical_trials_reference(cls, ref_id) -> dict:
         """
         Create a new ClinicalTrials from ref_id, used when splitting comma-separated ClinicalTrials references
         into multiple references.
@@ -125,7 +70,7 @@ class ReferenceUtil:
         return ref
 
     @classmethod
-    def reformat(cls, ref):
+    def transform_reference(cls, ref: dict) -> dict:
         """
         For a downloaded reference object, transform in the following two ways:
 
@@ -160,52 +105,176 @@ class ReferenceUtil:
         return ref
 
 
-class DrugIndicationReferenceListUtil:
+class TargetReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "targets"
+
+    # Keys to the preserved fields in each target entry
+    ENTRY_PRIMARY_KEY = "target_chembl_id"
+    ENTRY_TARGET_COMPONENT_KEY = "target_components"
+    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_TARGET_COMPONENT_KEY, "pref_name", "target_type", "organism"}
+
+    # we need to rename some field keys indicated by the following map
+    REKEYING_MAP = {
+        # old_key: new_key
+        "pref_name": "target_name",
+        "organism": "target_organism"
+    }
+
+    # Fix species prefix to "ENG" (Homo sapiens; Human) and feature prefix to "G" (gene)
+    # See https://uswest.ensembl.org/info/genome/stable_ids/prefixes.html
+    HUMAN_ENSEMBL_GENE_PATTERN = re.compile(r"ENSG[0-9]{11}")
+    # See https://www.uniprot.org/help/accession_numbers
+    UNIPROT_ACCESSION_PATTERN = re.compile(r"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}")
+
     @classmethod
-    def iter_reformat(cls, ref_list):
-        """
-        Iterate the input list of references, transform and yield each reference.
+    def transform_entry(cls, entry: dict):
+        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        for key in entry_keys:
+            if key not in cls.ENTRY_PRESERVED_KEYS:
+                del entry[key]
 
-        Four types of references found in drug indications are:
+            if key == cls.ENTRY_TARGET_COMPONENT_KEY:
+                entry[key] = cls.get_accessions_from_target_components(entry[key])
 
-            ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
+            if key in cls.REKEYING_MAP:
+                new_key = cls.REKEYING_MAP[key]
+                entry[new_key] = entry.pop(key)
 
-        I only found comma-separated references in "ClinicalTrials" type, e.g.
+        return entry
 
-            {'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
-             'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'}
+    @classmethod
+    def get_accessions_from_target_components(cls, target_component_list: List[dict]) -> dict:
+        # See https://github.com/biothings/mychem.info/issues/151#issuecomment-1414407414 and comments below for the accession json structure
 
-        Commas are also found in some "FDA" references but serves as part of the file names, e.g.
+        # `component["accession"]` may be None (e.g. with "CHEMBL2364096"), so we exclude such values here.
+        # "CHEMBL4662965" has accession "ENSG00000198670 ", so we apply `.rstrip()` here. ("CHEMBL4662965" is the only case so far)
+        #   See https://github.com/chembl/GLaDOS/issues/1311
+        accessions = (component["accession"].rstrip() for component in target_component_list if component["accession"])
 
-            {'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
-             'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'}
-
-        Commas are not found in the other two types of references.
-
-        So here I only split comma-separated references in "ClinicalTrials"
-
-        Args:
-            ref_list (list): a list of reference json objects
-
-        Returns:
-            the transformed references
-        """
-
-        for ref in ref_list:
-            if ref["ref_type"] == "ClinicalTrials" and "," in ref["ref_id"]:
-                for ref_id in ref["ref_id"].split(","):
-                    yield ReferenceUtil.create_clinical_trials_reference(ref_id)
+        # `accession` may be an Ensembl Gene ID (e.g. "CHEMBL1615321" has "ENSG00000207827"), or a UniProt accession ID
+        uniprot_accessions = []
+        ensembl_accessions = []
+        for accession in accessions:
+            if cls.UNIPROT_ACCESSION_PATTERN.fullmatch(accession):
+                uniprot_accessions.append(accession)
+            elif cls.HUMAN_ENSEMBL_GENE_PATTERN.fullmatch(accession):
+                ensembl_accessions.append(accession)
             else:
-                yield ReferenceUtil.reformat(ref)
+                # Ignore the error for now. Currently, there is only one outlier, "ENSG000001127154" from "CHEMBL4630576".
+                #   See https://github.com/chembl/GLaDOS/issues/1310
+                # raise ValueError(f"Cannot recognize accession {accession}, neither UNIPROT nor Human ENSEMBL Gene.")
+                pass
 
+        ret_dict = dict()
+        if uniprot_accessions:
+            ret_dict["uniprot"] = uniprot_accessions
+        if ensembl_accessions:
+            ret_dict["ensembl_gene"] = ensembl_accessions
+        return ret_dict
 
-class MechanismReferenceListUtil:
     @classmethod
-    def iter_reformat(cls, ref_list):
+    def to_dict(cls, entries: Iterator[dict]):
+        """
+        Transform the `entries` into one dict, each of whose entries has the 'target_chembl_id'
+        as key and the rest of fields as value.
+
+        E.g.
+            entries = [
+                {'target_chembl_id': 'CHEMBL3885640',
+                 'target_name': 'Sodium/potassium-transporting ATPase subunit alpha-2/alpha-3',
+                 'target_organism': 'Rattus norvegicus',
+                 'target_type': 'PROTEIN COMPLEX'},
+
+                {'target_chembl_id': 'CHEMBL2331043',
+                 'target_name': 'Sodium channel alpha subunit',
+                 'target_organism': 'Homo sapiens',
+                 'target_type': 'PROTEIN FAMILY'}
+            ]
+
+        after transformation, we have:
+
+            return_dict = {
+                'CHEMBL3885640': {'target_name': 'Sodium/potassium-transporting ATPase subunit alpha-2/alpha-3',
+                                  'target_organism': 'Rattus norvegicus',
+                                  'target_type': 'PROTEIN COMPLEX'},
+                'CHEMBL2331043': {'target_name': 'Sodium channel alpha subunit',
+                                  'target_organism': 'Homo sapiens',
+                                  'target_type': 'PROTEIN FAMILY'}
+            }
+        """
+        ret_dict = {entry[cls.ENTRY_PRIMARY_KEY]: entry for entry in entries}
+        for _, entry in ret_dict.items():
+            del entry[cls.ENTRY_PRIMARY_KEY]
+
+        return cls.sweep_emtpy_values(ret_dict)
+
+
+class BindingSiteReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "binding_sites"
+
+    @classmethod
+    def transform_entry(cls, entry: dict):
+        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        for key in entry_keys:
+            if key not in {"site_id", "site_name"}:
+                del entry[key]
+
+        return entry
+
+    @classmethod
+    def to_dict(cls, entries: Iterator[dict]):
+        """
+        `entries` is a list-like of `<"site_id" : xxx, "site_name": yyy>` dictionaries,
+        here we convert each into a `<xxx : yyy>` dictionary
+
+        E.g.
+
+            entries = [
+                {'site_id': 10278, 'site_name': 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'},
+                {'site_id': 10279, 'site_name': 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'}
+            ]
+
+        after transformation, we have:
+
+            return_dict = {
+                10278 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain',
+                10279 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'
+            }
+        """
+        ret_dict = {entry["site_id"]: entry["site_name"] for entry in entries}
+        return cls.sweep_emtpy_values(ret_dict)
+
+
+class MechanismReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "mechanisms"
+
+    # Keys to the preserved fields in each mechanism entry
+    ENTRY_PRIMARY_KEY = "molecule_chembl_id"
+    ENTRY_REFERENCE_KEY = "mechanism_refs"  # key to the reference list (which needs special transformation)
+    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_REFERENCE_KEY,
+                            "action_type", "site_id", "target_chembl_id"}
+
+    @classmethod
+    def transform_entry(cls, entry: dict):
+        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        for key in entry_keys:
+            if key not in cls.ENTRY_PRESERVED_KEYS:
+                del entry[key]
+
+            if key == cls.ENTRY_REFERENCE_KEY:
+                entry[key] = list(cls.transform_reference_list(entry[key]))
+
+        return entry
+
+    @classmethod
+    def transform_reference_list(cls, ref_list: List[dict]) -> Iterator[dict]:
         """
         Iterate the input list of references, transform and yield each reference.
 
-        Sixteen types of references found in mechanism json objects:
+        Sixteen types of references are found in mechanism json objects:
 
             ref_types = [
                 "ISBN", "PubMed", DailyMed", "Wikipedia", "Expert", "Other",
@@ -223,487 +292,485 @@ class MechanismReferenceListUtil:
         """
 
         for ref in ref_list:
-            yield ReferenceUtil.reformat(ref)
-
-
-class TargetAdapter(JsonFilesAdapter):
-    # key of the raw content to the entry list
-    entry_list_key = "targets"
-
-    # keys to preserve and group on for each entry in the entry list
-    primary_key = "target_chembl_id"
-    field_keys = ["pref_name", "target_type", "organism"]
-    preserved_keys = set([primary_key] + field_keys)
-
-    # we need to rename some field keys indicated by the following map
-    rekeying_map = {
-        # old_key: new_key
-        "pref_name": "target_name",
-        "organism": "target_organism"
-    }
+            yield ReferenceUtil.transform_reference(ref)
 
     @classmethod
-    def reformat(cls, entry):
-        for key in list(entry):
-            if key not in cls.preserved_keys:
-                del entry[key]
-
-            if key in cls.rekeying_map:
-                new_key = cls.rekeying_map[key]
-                entry[new_key] = entry.pop(key)
-
-        return entry
-
-    @classmethod
-    def transform_to_dict(cls, entry_list):
-        """
-        Transform the `entry_list` into one dict, each of whose entries has the 'target_chembl_id'
-        as key and the rest of fields as value.
-
-        E.g.
-            entry_list = [
-                {'target_chembl_id': 'CHEMBL3885640',
-                 'target_name': 'Sodium/potassium-transporting ATPase subunit alpha-2/alpha-3',
-                 'target_organism': 'Rattus norvegicus',
-                 'target_type': 'PROTEIN COMPLEX'},
-
-                {'target_chembl_id': 'CHEMBL2331043',
-                 'target_name': 'Sodium channel alpha subunit',
-                 'target_organism': 'Homo sapiens',
-                 'target_type': 'PROTEIN FAMILY'}
-            ]
-
-        after transformation we have:
-
-            return_dict = {
-                'CHEMBL3885640': {'target_name': 'Sodium/potassium-transporting ATPase subunit alpha-2/alpha-3',
-                                  'target_organism': 'Rattus norvegicus',
-                                  'target_type': 'PROTEIN COMPLEX'},
-                'CHEMBL2331043': {'target_name': 'Sodium channel alpha subunit',
-                                  'target_organism': 'Homo sapiens',
-                                  'target_type': 'PROTEIN FAMILY'}
-            }
-        """
-        ret_dict = {entry[cls.primary_key]: entry for entry in entry_list}
-        for _, entry in ret_dict.items():
-            del entry[cls.primary_key]
-
-        return ret_dict
-
-
-class BindingSiteAdapter(JsonFilesAdapter):
-    # key of the raw content to the entry list
-    entry_list_key = "binding_sites"
-
-    # keys to preserve and group on for each entry in the entry list
-    primary_key = "site_id"
-    field_key = "site_name"
-    preserved_keys = {primary_key, field_key}
-
-    @classmethod
-    def reformat(cls, entry):
-        for key in list(entry):
-            if key not in cls.preserved_keys:
-                del entry[key]
-
-        return entry
-
-    @classmethod
-    def transform_to_dict(cls, entry_list):
-        """
-        `entry_list` is a list of `<"site_id" : xxx, "site_name": yyy>` dictionaries,
-        here we convert it into a `<xxx : yyy>` dictionary
-
-        E.g.
-
-            entry_list = [
-                {'site_id': 10278, 'site_name': 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'},
-                {'site_id': 10279, 'site_name': 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'}
-            ]
-
-        after transformation we have:
-
-            return_dict = {
-                10278 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain',
-                10279 : 'GABA-A receptor; alpha-5/beta-3/gamma-2, Neur_chan_LBD domain'
-            }
-        """
-        return {entry[cls.primary_key]: entry[cls.field_key] for entry in entry_list}
-
-
-class MechanismAdapter(JsonFilesAdapter):
-    # key of the raw content to the entry list
-    entry_list_key = "mechanisms"
-
-    # keys to preserve and group on for each entry in the entry list
-    primary_key = "molecule_chembl_id"
-    field_keys = ["action_type", "mechanism_refs", "site_id", "target_chembl_id"]
-    preserved_keys = set([primary_key] + field_keys)
-
-    @classmethod
-    def reformat(cls, entry):
-        for key in list(entry):
-            if key not in cls.preserved_keys:
-                del entry[key]
-
-            if key == "mechanism_refs":
-                entry[key] = list(MechanismReferenceListUtil.iter_reformat(entry[key]))
-
-        return entry
-
-    @classmethod
-    def transform_to_dict(cls, entry_list):
-        def primary_key_fn(entry): return entry[cls.primary_key]
+    def to_dict(cls, entries: Iterator[dict]):
+        def primary_key_fn(entry: dict):
+            return entry[cls.ENTRY_PRIMARY_KEY]
 
         # Sorting is necessary here because `itertools.groupby()` does not combine non-consecutive groups
         #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
         # Another workaround is to use `pandas.DataFrame.groupby()`
-        entry_list.sort(key=primary_key_fn)
-        ret_dict = {key: list(group) for key, group in groupby(entry_list, key=primary_key_fn)}
+        entries = sorted(entries, key=primary_key_fn)
+        ret_dict = {key: list(group) for key, group in groupby(entries, key=primary_key_fn)}
 
         for _, mechanism_list in ret_dict.items():
             for mechanism in mechanism_list:
-                del mechanism[cls.primary_key]
+                del mechanism[cls.ENTRY_PRIMARY_KEY]
 
-        return ret_dict
+        return cls.sweep_emtpy_values(ret_dict)
 
 
-class DrugIndicationAdapter(JsonFilesAdapter):
-    # key of the raw content to the entry list
-    entry_list_key = "drug_indications"
+class DrugIndicationReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "drug_indications"
 
-    # keys to preserve and group on for each entry in the entry list
-    primary_key, secondary_key = "molecule_chembl_id", "mesh_id"
-    field_keys = ["mesh_heading", "efo_id", "efo_term", "max_phase_for_ind", "indication_refs"]
-    preserved_keys = set([primary_key, secondary_key] + field_keys)
-
-    # key to the reference list (which needs special transformation)
-    reference_key = "indication_refs"
+    ENTRY_PRIMARY_KEY = "molecule_chembl_id"
+    ENTRY_SECONDARY_KEY = "mesh_id"
+    ENTRY_REFERENCE_KEY = "indication_refs"  # key to the reference list (which needs special transformation)
+    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_SECONDARY_KEY, ENTRY_REFERENCE_KEY,
+                            "mesh_heading", "efo_id", "efo_term", "max_phase_for_ind"}
 
     @classmethod
-    def reformat(cls, entry):
+    def transform_entry(cls, entry: dict):
         for key in list(entry):
-            if key not in cls.preserved_keys:
+            if key not in cls.ENTRY_PRESERVED_KEYS:
                 del entry[key]
 
-            if key == cls.reference_key:
-                entry[key] = list(DrugIndicationReferenceListUtil.iter_reformat(entry[key]))
+            if key == cls.ENTRY_REFERENCE_KEY:
+                entry[key] = list(cls.transform_reference_list(entry[key]))
 
         return entry
 
     @classmethod
-    def transform_to_dict(cls, entry_list):
-        def extract_molecule_id_and_merge_mesh_subgroups():
-            """
-            First we need to transform `entry_list`, a list of dictionaries into one dictionary.
+    def transform_reference_list(cls, ref_list: List[dict]) -> Iterator[dict]:
+        """
+        Iterate the input list of references, transform and yield each reference.
 
-            E.g.
-                entry_list = [
-                    {'mesh_id': 'D006967', ..., 'molecule_chembl_id': 'CHEMBL1000'},
-                    {'mesh_id': 'D020754', ..., 'molecule_chembl_id': 'CHEMBL744'},
-                    {'mesh_id': 'D020754', ..., 'molecule_chembl_id': 'CHEMBL744'}
+        Four types of references are found in drug indications:
+
+            ref_types = ["ClinicalTrials", "ATC", "DailyMed", "FDA"]
+
+        I only found comma-separated references in "ClinicalTrials" type, e.g.
+
+            {
+                'ref_id': 'NCT00375713,NCT02447393', 'ref_type': 'ClinicalTrials',
+                'ref_url': 'https://clinicaltrials.gov/search?id=%22NCT00375713%22OR%22NCT02447393%22'
+            }
+
+        Commas are also found in some "FDA" references but serves as part of the file names, e.g.
+
+            {
+                'ref_id': 'label/2015/206352s003,021567s038lbl.pdf', 'ref_type': 'FDA',
+                'ref_url': 'http://www.accessdata.fda.gov/drugsatfda_docs/label/2015/206352s003,021567s038lbl.pdf'
+            }
+
+        Commas are not found in the other two types of references.
+
+        So here I only split comma-separated references in "ClinicalTrials"
+
+        Args:
+            ref_list (list): a list of reference json objects
+
+        Returns:
+            the transformed references
+        """
+
+        for ref in ref_list:
+            if ref["ref_type"] == "ClinicalTrials" and "," in ref["ref_id"]:
+                for ref_id in ref["ref_id"].split(","):
+                    yield ReferenceUtil.create_clinical_trials_reference(ref_id)
+            else:
+                yield ReferenceUtil.transform_reference(ref)
+
+    @classmethod
+    def to_dict(cls, entries: Iterator[dict]):
+        """
+        First we need to transform `entries`, a list-like of dictionaries into one dictionary.
+
+        E.g.
+            entries = [
+                {'mesh_id': 'D006967', ..., 'molecule_chembl_id': 'CHEMBL1000'},
+                {'mesh_id': 'D020754', ..., 'molecule_chembl_id': 'CHEMBL744'},
+                {'mesh_id': 'D020754', ..., 'molecule_chembl_id': 'CHEMBL744'}
+            ]
+
+        will be transformed (via `groupby` operation) to:
+
+            ret_dict = {
+                'CHEMBL744': [{'mesh_id': 'D020754', ...,}, {'mesh_id': 'D020754', ...,}]
+                'CHEMBL1000': [{'mesh_id': 'D006967', ..., }]
+            }
+
+        Then Note that in each value list in the above dictionary, `efo_id`, `efo_term` and `indication_refs`
+        can be further merged under the same `mesh_id` (to be consistent with the results shown on ChEMBL webpages,
+        e.g https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL744/).
+
+        E.g. values in
+
+            ret_dict = {
+                'CHEMBL744': [
+                    {'mesh_id': 'D020754', 'efo_id': 'Orphanet:98756', 'max_phase_for_ind': 3, ...},
+                    {'mesh_id': 'D020754', 'efo_id': 'Orphanet:94147', 'max_phase_for_ind': 3, ...},
+                    ...
                 ]
+            }
 
-            will be transformed (via `groupby` operation) to:
+        will be merged into:
 
-                ret_dict = {
-                    'CHEMBL744': [{'mesh_id': 'D020754', ...,}, {'mesh_id': 'D020754', ...,}]
-                    'CHEMBL1000': [{'mesh_id': 'D006967', ..., }]
-                }
+            ret_dict = {
+                'CHEMBL744': [
+                    {
+                        'mesh_id': 'D020754',
+                        'efo_id': ['Orphanet:98756', 'Orphanet:94147'],
+                        'max_phase_for_ind': 3, ...
+                    },
+                    ...
+                ]
+            }
 
-            Then Note that in each value list in the above dictionary, `efo_id`, `efo_term` and `indication_refs`
-            can be further merged under the same `mesh_id` (to be consistent with the results shown on ChEMBL webpages,
-            e.g https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL744/).
+        This can be done by grouping by `mesh_id` for each `molecule_chembl_id`. After grouping, we process other
+        fields as following:
 
-            E.g. values in
+        - `mesh_heading`: use the unique value
+            - because one-to-one (bijection) relationship is confirmed between `mesh_id` and `mesh_heading`
+        - `efo_id` and `efo_terms`: put all valid values into lists
+            - one-to-one (bijection) relationship is also confirmed between `efo_id` and `efo_terms`
+        - `indication_refs`: concat all the reference lists into one
+        - `max_phase_for_ind`: use the max value
 
-                ret_dict = {
-                    'CHEMBL744': [{'mesh_id': 'D020754', 'efo_id': 'Orphanet:98756', 'max_phase_for_ind': 3, ...},
-                                  {'mesh_id': 'D020754', 'efo_id': 'Orphanet:94147', 'max_phase_for_ind': 3, ...},
-                                  ...]
-                }
+        Uniqueness does not hold for just a couple `max_phase_for_ind` entries for certain
+        `<molecule_chembl_id, mesh_id>` combinations, and we decide to use `max(max_phase_for_ind)` in these cases.
+        A sample uniqueness test is like below:
 
-            will be merged into:
+        ```python
+        import pandas as pd
+        import glob
 
-                ret_dict = {
-                    'CHEMBL744': [{'mesh_id': 'D020754',
-                                   'efo_id': ['Orphanet:98756', 'Orphanet:94147'],
-                                   'max_phase_for_ind': 3, ...},
-                                  ...]
-                }
+        drug_indication_json_files = glob.iglob(os.path.join(SRC_ROOT_FOLDER, "drug_indication.*.json"))
+        entries = DrugIndicationReader.read_multi_files(drug_indication_json_files, ...)
 
-            This can be done by grouping by `mesh_id` for each `molecule_chembl_id`. After grouping, we process other
-            fields as following:
+        df = pd.DataFrame(entries)
+        for _, group in df.groupby("molecule_chembl_id"):
+            for __, subgroup in group.groupby("mesh_id"):
+                if subgroup.shape[0] > 1:
+                    if len(subgroup.loc[:, "max_phase_for_ind"].unique()) > 1:
+                        print(subgroup.loc[:, ["molecule_chembl_id", "mesh_id", "max_phase_for_ind"]])
+        ```
 
-            - `mesh_heading`: use the unique value
-                - because one-to-one (bijection) relationship is confirmed between `mesh_id` and `mesh_heading`
-            - `efo_id` and `efo_terms`: put all valid values into lists
-                - one-to-one (bijection) relationship is also confirmed between `efo_id` and `efo_terms`
-            - `indication_refs`: concat all the reference lists into one
-            - `max_phase_for_ind`: use the max value
+        Output will be like:
 
-            Uniqueness does not hold for just a couple `max_phase_for_ind` entries for certain
-            `<molecule_chembl_id, mesh_id>` combinations, and we decide to use `max(max_phase_for_ind)` in these cases.
-            Uniqueness tests be by running the following code:
+        ```
+              molecule_chembl_id  mesh_id  max_phase_for_ind
+        32263      CHEMBL1201610  D009103                  4
+        34415      CHEMBL1201610  D009103                  3
+              molecule_chembl_id  mesh_id  max_phase_for_ind
+        16625      CHEMBL1201631  D003920                  3
+        32505      CHEMBL1201631  D003920                  4
+        32506      CHEMBL1201631  D003920                  3
+              molecule_chembl_id  mesh_id  max_phase_for_ind
+        16185      CHEMBL1201631  D003924                  3
+        32512      CHEMBL1201631  D003924                  4
+        32513      CHEMBL1201631  D003924                  3
+        ```
+        """
 
-            ```python
-            import pandas as pd
-            import glob
+        def primary_key_fn(entry):
+            return entry[cls.ENTRY_PRIMARY_KEY]
 
-            drug_indication_json_files = glob.iglob(os.path.join(SRC_ROOT_FOLDER, "drug_indication.*.json"))
-            entry_list = DrugIndicationAdapter.read_files_and_adapt_contents(drug_indication_json_files)
+        def secondary_key_fn(entry):
+            return entry[cls.ENTRY_SECONDARY_KEY]
 
-            df = pd.DataFrame(entry_list)
-            for _, group in df.groupby("molecule_chembl_id"):
-                for __, subgroup in group.groupby("mesh_id"):
-                    if subgroup.shape[0] > 1:
-                        if len(subgroup.loc[:, "max_phase_for_ind"].unique()) > 1:
-                            print(subgroup.loc[:, ["molecule_chembl_id", "mesh_id", "max_phase_for_ind"]])
-            ```
-
-            Output will be like:
-
-            ```
-                  molecule_chembl_id  mesh_id  max_phase_for_ind
-            32263      CHEMBL1201610  D009103                  4
-            34415      CHEMBL1201610  D009103                  3
-                  molecule_chembl_id  mesh_id  max_phase_for_ind
-            16625      CHEMBL1201631  D003920                  3
-            32505      CHEMBL1201631  D003920                  4
-            32506      CHEMBL1201631  D003920                  3
-                  molecule_chembl_id  mesh_id  max_phase_for_ind
-            16185      CHEMBL1201631  D003924                  3
-            32512      CHEMBL1201631  D003924                  4
-            32513      CHEMBL1201631  D003924                  3
-            ```
+        def merge_mesh_subgroups(_group):
             """
-
-            def primary_key_fn(entry): return entry[cls.primary_key]
-            def secondary_key_fn(entry): return entry[cls.secondary_key]
-
-            def merge_mesh_subgroups(_group):
-                """
-                Further group the input `group` by "mesh_id" and merge the subgroups
-                """
-
-                # Sorting is necessary here because `itertools.groupby()` does not combine non-consecutive groups
-                #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
-                # Another workaround is to use `pandas.DataFrame.groupby()`
-                _group = list(_group)
-                _group.sort(key=secondary_key_fn)
-
-                for _, subgroup in groupby(_group, key=secondary_key_fn):
-                    # `subgroup` returned by `groupby` is an iterator; to reuse it below, save it as a list
-                    subgroup = list(subgroup)
-
-                    ret_dict = dict()  # the dict to be returned (actually yielded)
-
-                    # No matter whether `len(subgroup) > 1` or not, the following 2 fields are unique to each subgroup
-                    ret_dict["mesh_id"] = subgroup[0]["mesh_id"]
-                    ret_dict["mesh_heading"] = subgroup[0]["mesh_heading"]
-
-                    # if len(subgroup) == 1: ret_dict["max_phase_for_ind"] = subgroup[0]["max_phase_for_ind"]
-                    # `max` operation applies no matter if `len(subgroup) == 1`
-                    ret_dict["max_phase_for_ind"] = max(entry["max_phase_for_ind"] for entry in subgroup)
-
-                    """
-                    Corner cases of `efo_id` and `efo_term`:
-
-                    1. We found some `mesh_id` mapped to None values of `efo_id` and `efo_term`.
-                    2. ChEMBL UI will merge duplicated `efo_id` and `efo_term` entries while keeping duplicated 
-                    references.
-
-                    --------------------------------------
-
-                    Example 1: 
-
-                        molecule_chembl_id : 'CHEMBL1201631'
-                        mesh_id : 'D007006'
-                        efo_id : [None, None, None, 
-                                  'HP:0000044', 
-                                  'HP:0000044', 
-                                  'HP:0000044']
-                        efo_term: [None, None, None, 
-                                   'Hypogonadotrophic hypogonadism \
-                                   {http://www.co-ode.org/patterns#createdBy=\
-                                   "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
-                                   'Hypogonadotrophic hypogonadism \
-                                   {http://www.co-ode.org/patterns#createdBy=\
-                                   "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
-                                   'Hypogonadotrophic hypogonadism 
-                                   {http://www.co-ode.org/patterns#createdBy=\
-                                   "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}']
-
-                    However, `indication_refs` exist for such None entries of `efo_id` and `efo_terms`.
-
-                    See https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel 
-                    for more details.
-
-                    No idea why ChEMBL has data like this.
-
-                    --------------------------------------
-
-                    Example 2: 
-
-                        molecule_chembl_id : 'CHEMBL1201631'
-                        mesh_id : 'D020528',
-                        efo_id: ['EFO:0003840', 'EFO:0003840', 'EFO:0003840'],
-                        efo_term: ['chronic progressive multiple sclerosis',
-                                   'chronic progressive multiple sclerosis',
-                                   'chronic progressive multiple sclerosis']
-
-                    On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel, 
-                    mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references 
-                    """
-
-                    # I did not find a None `efo_id` mapped to a non-None `efo_term`, or vice versa
-                    efo_id_list = [entry["efo_id"] for entry in subgroup if entry["efo_id"] is not None]
-                    efo_term_list = [entry["efo_term"] for entry in subgroup if entry["efo_term"] is not None]
-
-                    """
-                    Addendum: Kevin suggested the following format for `efo_id` and `efo_term`:
-
-                        efo: [{efo_id: 'EFO:0008520', efo_term: 'primary progressive multiple sclerosis'},
-                              {efo_id: 'EFO:0008522', efo_term: 'secondary progressive multiple sclerosis'},
-                              {efo_id: 'EFO:0003840', efo_term: 'chronic progressive multiple sclerosis'}]
-                              
-                    Addendum: Chunlei suggested trim the "efo_" prefixes in the sub-field names:
-
-                        efo: [{id: ..., term: ...}]
-                    """
-                    # ret_dict["efo"] = [{"efo_id": t[0], "efo_term": t[1]} for t in
-                    #                    {*zip(efo_id_list, efo_term_list)}]
-                    ret_dict["efo"] = [{"id": t[0], "term": t[1]} for t in
-                                       {*zip(efo_id_list, efo_term_list)}]
-
-                    indication_refs = chain.from_iterable([entry["indication_refs"] for entry in subgroup])
-                    # remove the duplicated references (dictionaries underlying) in the collection
-                    # see https://stackoverflow.com/a/9427216
-                    ret_dict["indication_refs"] = [dict(t) for t in
-                                                   {tuple(sorted(ref.items())) for ref in indication_refs}]
-
-                    yield ret_dict
+            Further group the input `group` by "mesh_id" and merge the subgroups
+            """
 
             # Sorting is necessary here because `itertools.groupby()` does not combine non-consecutive groups
             #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
             # Another workaround is to use `pandas.DataFrame.groupby()`
-            entry_list.sort(key=primary_key_fn)
-            for key, group in groupby(entry_list, key=primary_key_fn):
-                drug_ind_list = list(merge_mesh_subgroups(group))
-                yield key, drug_ind_list
+            _group = list(_group)
+            _group.sort(key=secondary_key_fn)
 
-        return dict(extract_molecule_id_and_merge_mesh_subgroups())
+            for _, subgroup in groupby(_group, key=secondary_key_fn):
+                # `subgroup` returned by `groupby` is an iterator; to reuse it below, save it as a list
+                subgroup = list(subgroup)
 
+                indication = dict()  # the dict to be returned
 
-class MoleculeUtil:
-    @classmethod
-    def reformat(cls, dictionary):
+                # No matter whether `len(subgroup) > 1` or not, the following 2 fields are unique to each subgroup
+                indication["mesh_id"] = subgroup[0]["mesh_id"]
+                indication["mesh_heading"] = subgroup[0]["mesh_heading"]
+
+                # if len(subgroup) == 1: ret_dict["max_phase_for_ind"] = subgroup[0]["max_phase_for_ind"]
+                # `max` operation applies no matter if `len(subgroup) == 1`
+                indication["max_phase_for_ind"] = max(entry["max_phase_for_ind"] for entry in subgroup)
+
+                """
+                Corner cases of `efo_id` and `efo_term`:
+
+                1. We found some `mesh_id` mapped to None values of `efo_id` and `efo_term`.
+                2. ChEMBL UI will merge duplicated `efo_id` and `efo_term` entries while keeping duplicated references.
+
+                --------------------------------------
+
+                Example 1:
+
+                    molecule_chembl_id : 'CHEMBL1201631'
+                    mesh_id : 'D007006'
+                    efo_id : [None, None, None, 'HP:0000044',  'HP:0000044',  'HP:0000044']
+                    efo_term: [None, None, None,
+                               'Hypogonadotrophic hypogonadism \
+                               {http://www.co-ode.org/patterns#createdBy=\
+                               "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
+                               'Hypogonadotrophic hypogonadism \
+                               {http://www.co-ode.org/patterns#createdBy=\
+                               "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}',
+                               'Hypogonadotrophic hypogonadism \
+                               {http://www.co-ode.org/patterns#createdBy=\
+                               "http://www.ebi.ac.uk/ontology/webulous#OPPL_pattern"}']
+
+                However, `indication_refs` exist for such None entries of `efo_id` and `efo_terms`.
+
+                See https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel for more details.
+
+                No idea why ChEMBL has data like this.
+
+                --------------------------------------
+
+                Example 2:
+
+                    molecule_chembl_id : 'CHEMBL1201631'
+                    mesh_id : 'D020528',
+                    efo_id: ['EFO:0003840', 'EFO:0003840', 'EFO:0003840'],
+                    efo_term: ['chronic progressive multiple sclerosis',
+                               'chronic progressive multiple sclerosis',
+                               'chronic progressive multiple sclerosis']
+
+                On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel,
+                mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references 
+                """
+
+                # I did not find a None `efo_id` mapped to a non-None `efo_term`, or vice versa
+                efo_id_list = [entry["efo_id"] for entry in subgroup if entry["efo_id"] is not None]
+                efo_term_list = [entry["efo_term"] for entry in subgroup if entry["efo_term"] is not None]
+
+                """
+                Addendum: Kevin suggested the following format for `efo_id` and `efo_term`:
+
+                    efo: [{efo_id: 'EFO:0008520', efo_term: 'primary progressive multiple sclerosis'},
+                          {efo_id: 'EFO:0008522', efo_term: 'secondary progressive multiple sclerosis'},
+                          {efo_id: 'EFO:0003840', efo_term: 'chronic progressive multiple sclerosis'}]
+
+                Addendum: Chunlei suggested trim the "efo_" prefixes in the sub-field names:
+
+                    efo: [{id: ..., term: ...}]
+                """
+                indication["efo"] = [{"id": t[0], "term": t[1]} for t in {*zip(efo_id_list, efo_term_list)}]
+
+                indication_refs = chain.from_iterable([entry["indication_refs"] for entry in subgroup])
+                # remove the duplicated references (dictionaries underlying) in the collection
+                # see https://stackoverflow.com/a/9427216
+                indication["indication_refs"] = [dict(t) for t in {tuple(sorted(ref.items())) for ref in indication_refs}]
+
+                yield indication
+
+        # Sorting is necessary here because `itertools.groupby()` does not combine non-consecutive groups
+        #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
+        # Another workaround is to use `pandas.DataFrame.groupby()`
+        entries = sorted(entries, key=primary_key_fn)
+
         ret_dict = dict()
-        _flag = 0
-        for key in list(dictionary):
-            if key == 'molecule_chembl_id':
-                ret_dict['_id'] = dictionary[key]
-            if key == 'molecule_structures' and type(dictionary['molecule_structures']) == dict:
-                ret_dict['chembl'] = dictionary
-                _flag = 1
-                for x, y in iter(dictionary['molecule_structures'].items()):
-                    if x == 'standard_inchi_key':
-                        ret_dict['chembl'].update(dictionary)
-                        ret_dict['chembl'].update({'inchi_key': y})
-                    if x == 'canonical_smiles':
-                        ret_dict['chembl']['smiles'] = y
-                    if x == 'standard_inchi':
-                        ret_dict['chembl']['inchi'] = y
+        for primary_key, indication_group in groupby(entries, key=primary_key_fn):
+            indications = list(merge_mesh_subgroups(indication_group))
+            ret_dict[primary_key] = indications
 
-        if _flag == 0:
-            ret_dict['chembl'] = dictionary
-        if 'cross_references' in ret_dict['chembl'] and ret_dict['chembl']['cross_references']:
-            ret_dict['chembl']['xrefs'] = MoleculeCrossReferenceListTransformer.transform_to_dict(
-                ret_dict['chembl']['cross_references'])
+        return cls.sweep_emtpy_values(ret_dict)
 
-        del ret_dict['chembl']['molecule_structures']
-        del ret_dict['chembl']['cross_references']
 
-        ret_dict = unlist(ret_dict)
+class MoleculeReader(ChemblJsonFileReader):
+    # Top key to the entry list in the JSON file
+    CONTENT_KEY = "molecules"
+
+    @classmethod
+    def transform_entry(cls, entry: dict):
+        doc = dict()
+
+        doc["_id"] = entry.get("molecule_chembl_id", None)
+        if doc["_id"] is None:
+            return None
+
+        # Copy all the content in `molecule_entry` to the "chembl" field
+        doc["chembl"] = entry
+
+        # Preserve "inchi", "inchi_key", and "smile" values from the "molecule_structures" sub-field;
+        # then discard the whole "molecule_structures" sub-field from the "chembl" field
+        molecule_structures = entry.get("molecule_structures", None)
+        if molecule_structures and isinstance(molecule_structures, dict):
+            inchi_key = molecule_structures.get("standard_inchi_key", None)
+            if inchi_key is not None:
+                doc["chembl"]["inchi_key"] = inchi_key
+
+            smiles = molecule_structures.get("canonical_smiles", None)
+            if smiles is not None:
+                doc["chembl"]["smiles"] = smiles
+
+            inchi = molecule_structures.get("standard_inchi", None)
+            if inchi is not None:
+                doc["chembl"]["inchi"] = inchi
+        doc["chembl"].pop("molecule_structures", None)
+
+        # Convert "cross_references" field into "xrefs" field;
+        # then discard "cross_references" field
+        cross_references = entry.get("cross_references", None)
+        if cross_references and isinstance(cross_references, list):
+            doc["chembl"]["xrefs"] = cls.transform_cross_reference_list(cross_references)
+        doc["chembl"].pop("cross_references", None)
 
         # Add "CHEBI:" prefix, standardize the way representing CHEBI IDs
-        if 'chebi_par_id' in ret_dict['chembl'] and ret_dict['chembl']['chebi_par_id']:
-            ret_dict['chembl']['chebi_par_id'] = 'CHEBI:' + str(ret_dict['chembl']['chebi_par_id'])
+        chebi_par_id = entry.get("chebi_par_id", None)
+        if chebi_par_id:
+            doc["chembl"]["chebi_par_id"] = "CHEBI:" + str(chebi_par_id)
         else:
-            # clean, could be a None
-            ret_dict['chembl'].pop("chebi_par_id", None)
+            doc["chembl"].pop("chebi_par_id", None)  # clean, could be a None
 
-        ret_dict = dict_sweep(ret_dict, vals=[None, ".", "-", "", "NA", "None", "none", " ", "Not Available",
-                                              "unknown", "null"])
-        ret_dict = value_convert_to_number(ret_dict, skipped_keys=["chebi_par_id", "first_approval"])
-        ret_dict = boolean_convert(ret_dict, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
-                                              "therapeutic_flag", "med_chem_friendly",
-                                              "molecule_properties.ro3_pass"])
-        return ret_dict
+        doc = unlist(doc)
+        doc = cls.sweep_emtpy_values(doc)
+        doc = value_convert_to_number(doc, skipped_keys=["chebi_par_id", "first_approval"])
+        doc = boolean_convert(doc, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
+                                    "therapeutic_flag", "med_chem_friendly", "molecule_properties.ro3_pass"])
+        return doc
+
+    @classmethod
+    def transform_cross_reference_list(cls, xref_list: List[dict]) -> dict:
+        """
+        Group the cross-references field based on the source
+        Also change the field name
+        """
+        xref_dict = defaultdict(list)
+        for xref in xref_list:
+            # note that the 'xref' field names are from the chembl datasource, not the parser
+            if "xref_src" not in xref:
+                continue
+
+            xref_src = xref["xref_src"]
+            if xref_src == 'PubChem':
+                assert xref['xref_name'].startswith('SID: ')
+                xref_dict['pubchem'].append({'sid': int(xref['xref_id'])})
+            elif xref_src == 'Wikipedia':
+                xref_dict['wikipedia'].append({'url_stub': xref['xref_id']})
+            elif xref_src == 'TG-GATEs':
+                xref_dict['tg-gates'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+            elif xref_src == 'DailyMed':
+                xref_dict['dailymed'].append({'name': xref['xref_name']})
+            elif xref_src == 'DrugCentral':
+                xref_dict['drugcentral'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+        return xref_dict
 
 
-class NonMoleculeFileLoader:
-    def __init__(self):
+class AuxiliaryDataLoader:
+    def __init__(self,
+                 drug_indication_filepaths: Iterator[str],
+                 mechanism_filepaths: Iterator[str],
+                 target_filepaths: Iterator[str],
+                 binding_site_filepaths: Iterator[str]):
+        self.drug_indication_filepaths = list(drug_indication_filepaths)
+        self.mechanism_filepaths = list(mechanism_filepaths)
+        self.target_filepaths = list(target_filepaths)
+        self.binding_site_filepaths = list(binding_site_filepaths)
+
         self.drug_indication_dict = None
         self.mechanism_dict = None
-        self.target_dict = None
-        self.binding_site_dict = None
 
-    def load(self, data_folder):
-        drug_indication_json_files = glob.iglob(os.path.join(data_folder, "drug_indication.*.json"))
-        mechanism_json_files = glob.iglob(os.path.join(data_folder, "mechanism.*.json"))
-        target_json_files = glob.iglob(os.path.join(data_folder, "target.*.json"))
-        binding_site_json_files = glob.iglob(os.path.join(data_folder, "binding_site.*.json"))
+        # These two dictionaries are for augmenting drug indications and mechanisms, not necessary to hold as members.
+        # In addition, commenting them out also saves time in pickling the object.
+        # The pickling is carried out by https://github.com/biothings/biothings.api/blob/master/biothings/utils/manager.py#L28
+        # self.target_dict = None
+        # self.binding_site_dict = None
 
-        self.drug_indication_dict = DrugIndicationAdapter.read_files(drug_indication_json_files)
-        self.mechanism_dict = MechanismAdapter.read_files(mechanism_json_files)
-        self.target_dict = TargetAdapter.read_files(target_json_files)
-        self.binding_site_dict = BindingSiteAdapter.read_files(binding_site_json_files)
+    def eagerly_load(self):
+        drug_indications = DrugIndicationReader.read_multi_files(paths=self.drug_indication_filepaths,
+                                                                 key=DrugIndicationReader.CONTENT_KEY,
+                                                                 transform_func=DrugIndicationReader.transform_entry)
+        drug_indication_dict = DrugIndicationReader.to_dict(drug_indications)
+
+        mechanisms = MechanismReader.read_multi_files(paths=self.mechanism_filepaths,
+                                                      key=MechanismReader.CONTENT_KEY,
+                                                      transform_func=MechanismReader.transform_entry)
+        mechanism_dict = MechanismReader.to_dict(mechanisms)
+
+        targets = TargetReader.read_multi_files(paths=self.target_filepaths,
+                                                key=TargetReader.CONTENT_KEY,
+                                                transform_func=TargetReader.transform_entry)
+        target_dict = TargetReader.to_dict(targets)
+
+        binding_sites = BindingSiteReader.read_multi_files(paths=self.binding_site_filepaths,
+                                                           key=BindingSiteReader.CONTENT_KEY,
+                                                           transform_func=BindingSiteReader.transform_entry)
+        binding_site_dict = BindingSiteReader.to_dict(binding_sites)
 
         # Join `binding_site::binding_site_name` to `mechanism`
-        # Join `target::target_type`, `target::target_organism` and `target::target_name` to `mechanism`
-        target_keys = ["target_type", 'target_organism', 'target_name']
-        for _, mechanism_list in self.mechanism_dict.items():
+        # Join `target::target_type`, `target::target_organism`, `target::target_name`, and `target::target_components` to `mechanism`
+        for _, mechanism_list in mechanism_dict.items():
             for mechanism in mechanism_list:
-                mechanism["binding_site_name"] = self.binding_site_dict.get(mechanism["site_id"], None)
-                del mechanism["site_id"]
+                # Both "site_id" and "target_chembl_id" fields may be `None` and got swept
+                if "site_id" in mechanism:
+                    binding_site_name = binding_site_dict.get(mechanism["site_id"], None)
+                    if binding_site_name is not None:
+                        mechanism["binding_site_name"] = binding_site_name
+                    del mechanism["site_id"]
 
-                target = self.target_dict.get(mechanism["target_chembl_id"], defaultdict(lambda: None))
-                for key in target_keys:
-                    mechanism[key] = target[key]
+                if "target_chembl_id" in mechanism:
+                    target = target_dict.get(mechanism["target_chembl_id"], None)
+                    if target is not None:
+                        mechanism.update(target)
 
-    def get_drug_indications(self):
+        self.drug_indication_dict = drug_indication_dict
+        self.mechanism_dict = mechanism_dict
+
+    def get_drug_indication_map(self) -> dict:
         return self.drug_indication_dict
 
-    def get_drug_mechanisms(self):
+    def get_drug_mechanism_map(self) -> dict:
         return self.mechanism_dict
 
 
-def load_molecule_file(molecule_file, non_molecule_file_loader: NonMoleculeFileLoader):
-    molecule_data = json.load(open(molecule_file))['molecules']
-    molecule_list = [MoleculeUtil.reformat(entry) for entry in molecule_data]
-    for molecule in molecule_list:
-        drug_indications = non_molecule_file_loader.get_drug_indications().get(
-            molecule["chembl"]["molecule_chembl_id"], None)
-        drug_mechanisms = non_molecule_file_loader.get_drug_mechanisms().get(
-            molecule["chembl"]["molecule_chembl_id"], None)
+class MoleculeDataLoader:
+    def __init__(self, molecule_filepath: str):
+        self.molecule_filepath = molecule_filepath
+
+    def get_molecules(self) -> Iterator[dict]:
+        return MoleculeReader.read_file(path=self.molecule_filepath,
+                                        key=MoleculeReader.CONTENT_KEY,
+                                        transform_func=MoleculeReader.transform_entry)
+
+
+def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
+    molecules = mol_data_loader.get_molecules()
+
+    drug_indication_map = aux_data_loader.get_drug_indication_map()
+    drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
+    if (drug_indication_map is None) or (drug_mechanism_map is None):
+        raise ValueError("'aux_data_loader' is not eagerly loaded. Call '.eagerly_load()' in advance.")
+
+    for doc in molecules:
+        chembl_id = doc["chembl"]["molecule_chembl_id"]
+        drug_indications = drug_indication_map.get(chembl_id, None)
+        drug_mechanisms = drug_mechanism_map.get(chembl_id, None)
 
         if drug_indications is not None:
             # Join `molecule::first_approval` to `drug_indication::first_approval`
-            first_approval = molecule["chembl"].get("first_approval", None)
+            first_approval = doc["chembl"].get("first_approval", None)
             if first_approval:
                 for indication in drug_indications:
                     indication["first_approval"] = first_approval
 
-            molecule["chembl"]["drug_indications"] = drug_indications
+            doc["chembl"]["drug_indications"] = drug_indications
 
         if drug_mechanisms is not None:
-            molecule["chembl"]["drug_mechanisms"] = drug_mechanisms
+            doc["chembl"]["drug_mechanisms"] = drug_mechanisms
 
-        try:
-            _id = molecule["chembl"]['inchi_key']
-            molecule["_id"] = _id
-        except KeyError:
-            pass
+        """
+        "inchi_key" is the primary key for cross-datasource merging in MyChem.
+        
+        However we still allow uploading documents without "inchi_key", and `ChemblUploader.keylookup` will set `doc["molecule_chembl_id"]` as their "_id".
 
-        yield molecule
+        There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL".
+        It can be verified on the EMBL-EBI site that those entities have no inchi representation.
+        """
+        if "inchi_key" in doc["chembl"]:
+            _id = doc["chembl"]["inchi_key"]
+            doc["_id"] = _id
+
+        yield doc

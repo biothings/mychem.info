@@ -3,8 +3,11 @@ from biothings.utils.dataload import int_convert
 
 
 def load_data(input_file):
-
-    unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str)
+    try:
+        unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str)
+    except UnicodeDecodeError:
+        unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str, encoding='windows-1252')
+    
     unii.rename(columns={'MF': 'molecular_formula',
                          'PT': 'preferred_term',
                          'RN': 'registry_number'}, inplace=True)

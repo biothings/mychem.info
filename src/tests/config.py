@@ -1,12 +1,15 @@
-
 """
     Mychem.info
     https://mychem.info/
     Chemical and Drug Annotation as a Service.
 """
+import sys
 import importlib.util as _imp_util
 from os.path import dirname, join, pardir
 
+
+if pardir not in sys.path:
+    sys.path.append(pardir)
 
 # find the path of the config file
 _cfg_path = join(dirname(__file__), pardir)
