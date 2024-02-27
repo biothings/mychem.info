@@ -43,7 +43,7 @@ for (
     mapping,
 ) in BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING.items():
     expression = re.compile(rf"({biolink_prefix}):(?P<term>[^:]+)", re.I)
-    field_match = mapping["field"]
+    field_match = mapping.get("field", [])
     pattern = (expression, field_match)
     biolink_curie_regex_list.append(pattern)
 
