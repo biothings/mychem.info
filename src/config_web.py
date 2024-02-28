@@ -22,7 +22,6 @@ ES_SCROLL_TIME = "10m"
 # *****************************************************************************
 # Endpoint Specifics
 # *****************************************************************************
-
 BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING = {
     "INCHIKEY": {"type": "chem"},
     "CHEMBL.COMPOUND": {
@@ -35,7 +34,6 @@ BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING = {
     "UNII": {"type": "chem", "field": "unii.unii"},
 }
 
-
 # CURIE ID support based on BioLink Model
 biolink_curie_regex_list = []
 for (
@@ -44,6 +42,8 @@ for (
 ) in BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING.items():
     expression = re.compile(rf"({biolink_prefix}):(?P<term>[^:]+)", re.I)
     field_match = mapping.get("field", [])
+    keep_prefix = mapping.get("keep_prefix", False)
+
     pattern = (expression, field_match)
     biolink_curie_regex_list.append(pattern)
 
