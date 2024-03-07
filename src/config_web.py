@@ -3,6 +3,7 @@
     https://mychem.info/
     Chemical and Drug Annotation as a Service.
 """
+
 import copy
 import re
 
@@ -22,16 +23,41 @@ ES_SCROLL_TIME = "10m"
 # *****************************************************************************
 # Endpoint Specifics
 # *****************************************************************************
+
+# *** NOTE ***
+# The CHEBI prefix must have a regex_term_pattern without a named <term> grouping.
+# example query: CHEBI:57966:
+# code snippet location: <biothings.api/web/query/builder.py>
+# With a named term grouping of <term>, we produce the following which will fail
+#     named_groups = match.groupdict() -> {"term": 57966}
+#     q = named_groups.get(self.gpname.term) or q -> "57966"
+# Without a named term grouping of <term> we orduce the following which will pass
+#     named_groups = match.groupdict() -> {}
+#     q = named_groups.get(self.gpname.term) or q -> "CHEBI:57966"
+
 BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING = {
     "INCHIKEY": {"type": "chem"},
     "CHEMBL.COMPOUND": {
         "type": "chem",
         "field": "chembl.molecule_chembl_id",
+        "regex_term_pattern": "(?P<term>chembl[0-9]+)",
         # "converter": lambda x: x.replace("CHEMBL.COMPOUND:", "CHEMBL"),
     },
-    "PUBCHEM.COMPOUND": {"type": "chem", "field": "pubchem.cid"},
-    "CHEBI": {"type": "chem", "field": "chebi.id", "keep_prefix": True},
-    "UNII": {"type": "chem", "field": "unii.unii"},
+    "PUBCHEM.COMPOUND": {
+        "type": "chem",
+        "field": "pubchem.cid",
+        "regex_term_pattern": "(?P<term>[0-9]+)",
+    },
+    "CHEBI": {
+        "type": "chem",
+        "field": ["chebi.id", "chebi.secondary_chebi_id"],
+        "regex_term_pattern": "(?P<term>CHEBI:[0-9]+)",
+    },
+    "UNII": {
+        "type": "chem",
+        "field": "unii.unii",
+        "regex_term_pattern": "(?P<term>[A-Z0-9]{10})",
+    },
 }
 
 # CURIE ID support based on BioLink Model
@@ -40,15 +66,19 @@ for (
     biolink_prefix,
     mapping,
 ) in BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING.items():
-    expression = re.compile(rf"({biolink_prefix}):(?P<term>[^:]+)", re.I)
     field_match = mapping.get("field", [])
-    keep_prefix = mapping.get("keep_prefix", False)
+    term_pattern = mapping.get("regex_term_pattern", None)
+    if term_pattern is None:
+        term_pattern = "(?P<term>[^:]+)"
 
-    pattern = (expression, field_match)
+    raw_expression = rf"({biolink_prefix}):{term_pattern}"
+    compiled_expression = re.compile(raw_expression, re.I)
+
+    pattern = (compiled_expression, field_match)
     biolink_curie_regex_list.append(pattern)
 
 # Custom prefix handling for chem specific identifiers
-custom_chem_prefix_handling = [
+chem_prefix_handling = [
     (
         re.compile(r"((chembl\:(?P<term>chembl[0-9]+))|(chembl[0-9]+))", re.I),
         "chembl.molecule_chembl_id",
@@ -82,16 +112,15 @@ custom_chem_prefix_handling = [
     ),
 ]
 
-# The default pattern is neither the fallback pattern or the biolink
-# CURIE ID prefixes match the pattern. This pattern matches the default
-# presented in the ESQueryBuilder in the biothings.api library.
-# Infers based off empty scopes
-default_pattern = (re.compile(r"(?P<scope>[\W\w]+):(?P<term>[^:]+)"), [])
+default_chem_regex = re.compile(r"(?P<scope>[^:]+):(?P<term>[\W\w]+)")
+default_chem_fields = ()
+default_chem_regex_pattern = (default_chem_regex, default_chem_fields)
+
 
 ANNOTATION_ID_REGEX_LIST = [
     *biolink_curie_regex_list,
-    *custom_chem_prefix_handling,
-    default_pattern,
+    *chem_prefix_handling,
+    default_chem_regex_pattern,
 ]
 
 
