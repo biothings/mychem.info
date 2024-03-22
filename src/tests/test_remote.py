@@ -6,7 +6,6 @@
     - Special Cases
 
 """
-import pytest
 from biothings.tests.web import BiothingsWebTest
 
 
@@ -15,7 +14,7 @@ class MychemWebTest(BiothingsWebTest):
     host = 'mychem.info'
 
     inchikey_id = 'ZRALSGWEFCBTJO-UHFFFAOYSA-N'
-    # drugbank_id = 'DB00551'
+    drugbank_id = 'DB00551'
     chembl_id = 'CHEMBL1308'
     chebi_id = 'CHEBI:6431'
     unii_id = '7AXV542LZ4'
@@ -33,7 +32,6 @@ class TestMychemDataIntegrity(MychemWebTest):
     def test_010(self):
         self.query(q='imatinib')
 
-    @pytest.mark.skip("Drugbank has been removed")
     def test_011_drugbank_name(self):
         self.query(q='drugbank.name:imatinib')
 
@@ -42,22 +40,22 @@ class TestMychemDataIntegrity(MychemWebTest):
         # it is replacing (old 011 marked for skipping)
         self.query(q='chebi.name:caffeine')
 
-    """ Drugbank was removed as a datasource on the 09/08/21 release
     def test_012(self):
         monobenzone = self.query(q='drugbank.name:monobenzone')
         assert 'drugbank' in monobenzone['hits'][0]
         assert 'name' in monobenzone['hits'][0]['drugbank']
-        assert monobenzone['hits'][0]['drugbank']['name'].lower() == 'monobenzone'
+        assert monobenzone['hits'][0]['drugbank']['name'].lower(
+        ) == 'monobenzone'
 
-    def test_013(self):
-        P34981 = self.query(q='drugbank.targets.uniprot:P34981')
-        assert 'drugbank' in P34981['hits'][0]
-        assert 'targets' in P34981['hits'][0]['drugbank']
-        assert 'uniprot' in P34981['hits'][0]['drugbank']['targets'][0]
-        assert P34981['hits'][0]['drugbank']['targets'][0]['uniprot'] == 'P34981'
+    # Skip this test for now as drugbank.targets no longer exists
+    # def test_013(self):
+    #     P34981 = self.query(q='drugbank.targets.uniprot:P34981')
+    #     assert 'drugbank' in P34981['hits'][0]
+    #     assert 'targets' in P34981['hits'][0]['drugbank']
+    #     assert 'uniprot' in P34981['hits'][0]['drugbank']['targets'][0]
+    #     assert P34981['hits'][0]['drugbank']['targets'][0]['uniprot'] == 'P34981'
 
     def test_020(self):
-
         res = self.request("query", method='POST', data={
             'q': self.drugbank_id,
             'scopes': 'drugbank.id'
@@ -67,7 +65,6 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert res[0]['_id'] == 'RRUDCFGSUDOHDG-UHFFFAOYSA-N'
 
     def test_021(self):
-
         res = self.request("query", method='POST', data={
             'q': self.drugbank_id + ',DB00441',
             'scopes': 'drugbank.id'
@@ -78,7 +75,6 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert res[1]['_id'] == 'SDUQYLNIPVEERB-QPPQHZFASA-N'
 
     def test_022(self):
-
         res = self.request("query", method='POST', data={
             'q': self.drugbank_id,
             'scopes': 'drugbank.id',
@@ -91,14 +87,15 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert res[0]['query'] == res[0]['drugbank']['id']
 
     def test_030(self):
-        drugbank = self.request('drug/' + self.drugbank_id + '?fields=drugbank').json()
+        drugbank = self.request(
+            'drug/' + self.drugbank_id + '?fields=drugbank').json()
         assert 'drugbank' in drugbank
         assert 'id' in drugbank['drugbank']
         assert drugbank['drugbank']['id'] == self.drugbank_id
-    """
 
     def test_031(self):
-        chembl = self.request('drug/' + self.chembl_id + '?fields=chembl').json()
+        chembl = self.request('drug/' + self.chembl_id +
+                              '?fields=chembl').json()
         assert 'chembl' in chembl
         assert 'molecule_chembl_id' in chembl['chembl']
         assert chembl['chembl']['molecule_chembl_id'] == self.chembl_id
@@ -116,21 +113,23 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert chebi['chebi']['id'] == self.chebi_id
 
     def test_034(self):
-        pubchem = self.request('drug/' + self.pubchem_id + '?fields=pubchem').json()
+        pubchem = self.request(
+            'drug/' + self.pubchem_id + '?fields=pubchem').json()
         assert 'pubchem' in pubchem
         assert 'cid' in pubchem['pubchem']
         assert pubchem['pubchem']['cid'] == int(self.pubchem_id)
 
     def test_035(self):
-        pubchem = self.request('drug/' + self.pubchem_id + '?fields=pubchem').json()
+        pubchem = self.request(
+            'drug/' + self.pubchem_id + '?fields=pubchem').json()
         prefixed_pubchem = self.request(
             'drug/' + self.prefixed_pubchem_id + '?fields=pubchem').json()
         assert prefixed_pubchem == pubchem
 
     def test_040(self):
         alls = [
-            # {"q": "DB01076", "fields": "drugbank.id"},
-            # {"q": "Siltuximab", "fields": "drugbank.name"},
+            {"q": "DB01076", "fields": "drugbank.id"},
+            {"q": "Siltuximab", "fields": "drugbank.name"},
             {"q": "IBUPROFEN", "fields": "ndc.substancename"},
             {"q": "fospropofol", "fields": "aeolus.drug_name"},
             {"q": "TOOSENDANIN", "fields": "chembl.pref_name"},
@@ -138,7 +137,8 @@ class TestMychemDataIntegrity(MychemWebTest):
             {"q": "IJT22X8U2Z", "fields": "unii.unii"},
         ]
         for d in alls:
-            res = self.request('query?q=%(q)s&fields=%(fields)s&dotfield=true' % d).json()
+            res = self.request(
+                'query?q=%(q)s&fields=%(fields)s&dotfield=true' % d).json()
             foundone = False
             for e in res["hits"]:
                 if d["fields"] in e:
@@ -154,7 +154,8 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert 'drug_use' in C0242339['drugcentral']
         assert 'indication' in C0242339['drugcentral']['drug_use']
         assert 'umls_cui' in C0242339['drugcentral']['drug_use']['indication']
-        assert C0242339['drugcentral']['drug_use']['indication']['umls_cui'].lower() == 'c0242339'
+        assert C0242339['drugcentral']['drug_use']['indication']['umls_cui'].lower(
+        ) == 'c0242339'
 
     # ---------------
     # via Annotation
@@ -174,7 +175,8 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert chem == compound
 
     def test_120(self):
-        res = self.request("drug", method='POST', data={'ids': self.inchikey_id}).json()
+        res = self.request("drug", method='POST', data={
+                           'ids': self.inchikey_id}).json()
         assert len(res) == 1
         assert res[0]['_id'] == self.inchikey_id
 
@@ -203,7 +205,7 @@ class TestMychemDataIntegrity(MychemWebTest):
         assert len(res) > 490
 
         # Check some specific keys
-        # assert 'drugbank' in res
+        assert 'drugbank' in res
         assert 'pubchem' in res
         assert 'ginas' in res
         assert 'aeolus' in res
@@ -221,11 +223,9 @@ class TestMychemDataIntegrity(MychemWebTest):
         if 'chembl' in res:
             assert '_license' in res['chembl']
             assert res['chembl']['_license']
-        """
         if 'drugbank' in res:
             assert '_license' in res['drugbank']
             assert res['drugbank']['_license']
-        """
         if 'drugcentral' in res:
             assert '_license' in res['drugcentral']
             assert res['drugcentral']['_license']
@@ -236,27 +236,82 @@ class TestMychemDataIntegrity(MychemWebTest):
             assert '_license' in res['pubchem']
             assert res['pubchem']['_license']
 
+    # ---------------
+    # GitHub Issues
+    # ---------------
+
+    def test_001_unii_present_in_pubchem(self):
+        # https://github.com/biothings/mychem.info/issues/169
+        q = "UGOZVNFCFYTPAZ-IOXYNQHNSA-N"
+        res = self.request("chem", method="POST", data={"ids": q})
+        res = res.json()
+        assert len(res) == 1
+        assert self.value_in_result("4FT78T86XV", res, "unii.unii")
+
+    def test_002_trailing_whitespace(self):
+        # https://github.com/biothings/mychem.info/issues/160
+        response = self.request('query', params={'q': 'DB00099'}).json()
+        assert 'hits' in response, "No hits found in the response"
+
+        for hit in response['hits']:
+            if 'drugbank' in hit and 'synonyms' in hit['drugbank']:
+                for synonym in hit['drugbank']['synonyms']:
+                    assert synonym == synonym.strip(
+                    ), f"Trailing whitespace found in synonym: '{synonym}'"
+
+    def test_003_unii_ncit_description(self):
+        # https://github.com/biothings/mychem.info/issues/170
+        id_to_test = 'DFJSJLGUIXFDJP-UHFFFAOYSA-N'
+        response = self.request("chem", method='POST', data={
+                                'ids': id_to_test}).json()
+
+        assert len(response) > 0, "No response data found for the given ID"
+
+        for item in response:
+            assert 'unii' in item, "unii field not found in the response item"
+            assert 'ncit_description' in item['unii'], "unii.ncit_description field not found in the response item"
+
+    def test_004_ndc_pharm_classes_is_list(self):
+        # https://github.com/biothings/mychem.info/issues/161
+        id_to_test = 'WSEQXVZVJXJVFP-FQEVSTJZSA-N'
+        response = self.request("chem", method='POST', data={
+                                'ids': id_to_test}).json()
+
+        assert len(response) > 0, "No response data found for the given ID"
+
+        for item in response:
+            assert 'ndc' in item, "ndc field not found in the response item"
+            assert 'pharm_classes' in item['ndc'][0], "ndc.pharm_classes field not found in the response"
+            assert isinstance(item['ndc'][0]['pharm_classes'],
+                              list), "ndc.pharm_classes is not a list"
+            assert len(item['ndc'][0]['pharm_classes']
+                       ) > 1, "ndc.pharm_classes list does not have more than one item"
+
 
 class TestMychemWebFeatures(MychemWebTest):
 
     def test_fields(self):
-        res = self.request('drug/{}?fields=pubchem'.format(self.inchikey_id)).json()
+        res = self.request(
+            'drug/{}?fields=pubchem'.format(self.inchikey_id)).json()
         assert set(res) == set(['_id', '_version', 'pubchem'])
 
-    """
     def test_query_size_1(self):
-        res = self.request('query?q=drugbank.name:acid&fields=drugbank.name').json()
+        res = self.request(
+            'query?q=drugbank.name:acid&fields=drugbank.name').json()
         assert len(res['hits']) == 10  # default
 
     def test_query_size_2(self):
-        res = self.request('query?q=drugbank.name:acid&fields=drugbank.name&size=1000').json()
+        res = self.request(
+            'query?q=drugbank.name:acid&fields=drugbank.name&size=1000').json()
         assert len(res['hits']) == 1000
 
     def test_query_size_3(self):
-        self.request('query?q=drugbank.name:acid&fields=drugbank.name&size=1001', expect=400)
+        self.request(
+            'query?q=drugbank.name:acid&fields=drugbank.name&size=1001', expect=400)
 
     def test_query_size_4(self):
-        self.request('query?q=drugbank.name:acid&fields=drugbank.name&size=2000', expect=400)
+        self.request(
+            'query?q=drugbank.name:acid&fields=drugbank.name&size=2000', expect=400)
 
     def test_facets(self):
         res = self.request(
@@ -272,14 +327,14 @@ class TestMychemWebFeatures(MychemWebTest):
         res2 = self.request('query?scroll_id=' + res['_scroll_id']).json()
         assert 'hits' in res2
 
-
     def test_msgpack_2(self):
-        res = self.request('query?q=drugbank.id:{}&size=1'.format(self.drugbank_id)).json()
+        res = self.request(
+            'query?q=drugbank.id:{}&size=1'.format(self.drugbank_id)).json()
         res2 = self.msgpack_ok(self.request(
             'query?q=drugbank.id:{}&size=1&format=msgpack'.format(self.drugbank_id)).content)
         assert res
         assert res2
-    """
+
     def test_msgpack_1(self):
         res = self.request('drug/' + self.inchikey_id).json()
         res2 = self.msgpack_ok(self.request(
@@ -334,7 +389,6 @@ class TestMychemSpecialInput(TestMychemWebFeatures):
         res = self.request('query?q=' + self.s).json()
         assert res['hits'] == []
 
-    """
     def test_23_unicode(self):
         res = self.request("query", method='POST', data={
                            "q": self.s, "scopes": 'drugbank.id'}).json()
@@ -346,4 +400,3 @@ class TestMychemSpecialInput(TestMychemWebFeatures):
                            "q": self.drugbank_id + '+' + self.s, 'scopes': 'drugbank.id'}).json()
         assert res[1]['notfound']
         assert len(res) == 2
-    """

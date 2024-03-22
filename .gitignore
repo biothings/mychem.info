@@ -27,3 +27,5 @@ src/.idea
 # VS Code
 *.vscode
 
+#Virtual Environment
+venv

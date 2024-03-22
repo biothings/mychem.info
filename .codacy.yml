@@ -1,0 +1,10 @@
+---
+engines:
+  prospector:
+    exclude_paths:
+      - 'src/hub/dataload/sources/drugbank_full/__init__.py'
+      - 'src/hub/dataload/sources/drugbank_open/__init__.py'
+      - 'src/hub/dataload/sources/drugbank_full/drugbank_full_parser.py'
+  bandit:
+    exclude_paths:
+      - 'src/tests/test_remote.py'

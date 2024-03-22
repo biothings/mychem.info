@@ -1,4 +1,4 @@
-drugbank_mapping = {
+drugbank_full_mapping = {
     "drugbank": {
         "properties": {
             "FASTA_sequences": {
