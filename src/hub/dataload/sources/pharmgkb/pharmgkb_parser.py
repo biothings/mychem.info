@@ -19,7 +19,6 @@ def load_data(tsv_file):
     _file = open(tsv_file)
     reader = csv.DictReader(_file, delimiter='\t')
     _dict = {}
-    drug_list = []
     for row in reader:
         _id = row["PharmGKB Accession Id"]
         _d = restr_dict(row)
