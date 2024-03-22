@@ -4,12 +4,21 @@ import sys
 
 from biothings.utils.dataload import dict_sweep, unlist
 
+try:
+    from biothings import config
+    logging = config.logger
+except ImportError:
+    import logging
+    LOG_LEVEL = logging.INFO
+    logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s: %(message)s')
+
 csv.field_size_limit(sys.maxsize)
 
 
 def load_data(tsv_file):
     _file = open(tsv_file)
     reader = csv.DictReader(_file, delimiter='\t')
+    _dict = {}
     for row in reader:
         _id = row["PharmGKB Accession Id"]
         _d = restr_dict(row)
@@ -29,58 +38,87 @@ def restr_dict(d):
             ('FDA Drug Label at DailyMed', 'dailymed.setid'),
         ]
         res = []
-        for v in xrefs.split(','):
+        for v in xrefs:
             for rf_orig, rf_new in rename_fields:
                 if rf_orig in v:
                     v = v.replace(rf_orig, rf_new)
             # Multiple replacements on the 'Web Resource' field
             if 'Web Resource' in v:
                 if 'http://en.wikipedia.org/wiki/' in v:
-                    v = v.replace('Web Resource', 'wikipedia.url_stub').replace(
-                        'http://en.wikipedia.org/wiki/', '')
+                    v = v.replace('Web Resource', 'wikipedia.url_stub')
+                    v = v.replace('http://en.wikipedia.org/wiki/', '')
             # Add 'CHEBI:' prefix if not there already
-            elif 'ChEBI:' in v and 'ChEBI:CHEBI' not in v:
-                v = v.replace('ChEBI:', 'ChEBI:CHEBI:')
-            res.append(v.strip())
+            elif 'ChEBI:' in v:
+                if 'ChEBI:CHEBI' not in v:
+                    v = v.replace('ChEBI:', 'ChEBI:CHEBI:')
+            res.append(v)
         return res
-
     _d = {}
+    _li2 = ["Trade Names", "Generic Names",
+            "Brand Mixtures", "Dosing Guideline"]
+    _li1 = ["SMILES", "Name", "Type", "InChI"]
     for key, val in iter(d.items()):
-        if key in ["SMILES", "Name", "Type", "InChI"]:
+        if key in _li1:
             _d.update({key.lower(): val})
-        elif key in ["Trade Names", "Generic Names", "Brand Mixtures"]:
-            # Convert to list if not empty, otherwise default to empty list
-            _d.update({key.lower().replace(" ", "_")                      : val.split(', ') if val else []})
-        elif key == "Dosing Guideline":
-            # Convert to boolean
-            _d.update({"dosing_guideline": True if val == "Yes" else False})
+        elif key in _li2:
+            val = val.split(',"')
+            # python 3 compatible
+            val = list(map(lambda each: each.strip('"'), val))
+            k = key.lower().replace(" ", "_").replace('-', '_').replace(".", "_")
+            _d.update({k: val})
         elif key == "PharmGKB Accession Id":
-            _d.update({'id': val})
+            k = 'id'
+            _d.update({k: val})
         elif key == "Cross-references":
-            _d.update({"xrefs": _restr_xrefs(val)})
+            k = "xrefs"
+            val = val.split(',"')
+            # python 3 compatible
+            val = list(map(lambda each: each.strip('"'), val))
+            val = _restr_xrefs(val)
+            _d.update({k: val})
         elif key == "External Vocabulary":
-            # Process and remove parentheses if present
-            val = [remove_paren(each.strip()) for each in val.split(',')]
-            _d.update({"external_vocabulary": val})
+            # external_vocabulary - remove parenthesis and text within
+            k = "external_vocabulary"
+            # note:  regular expressions appear to be causing an error
+            # val = re.sub('\([^)]*\)', '', val)
+            val = val.split(',"')
+            # python 3 compatible
+            val = list(map(lambda each: remove_paren(each.strip('"')), val))
+            _d.update({k: val})
     return _d
 
 
 def clean_up(d):
     _li = ['xrefs', 'external_vocabulary']
     _d = {}
+
+    def extract_primary_id(value):
+        # Here, we prioritize extracting the numeric value before any comma.
+        # This function returns the first numeric sequence found in the string.
+        matches = re.findall(r'\d+', value)
+        return int(matches[0]) if matches else None
+
     for key, val in iter(d.items()):
         if key in _li:
             for ele in val:
                 idx = ele.find(':')
-                # Note:  original pharmgkb keys do not have '.'
                 k = transform_xrefs_fieldnames(ele[0:idx])
-                v = ele[idx+1:]
+                v = ele[idx+1:].strip()
+
                 if k in ["pubchem.cid", "pubchem.sid"]:
-                    v = int(v)
+                    try:
+                        v = int(v)
+                    except ValueError:
+                        v = extract_primary_id(v)
+                        if v is None:
+                            logging.warning(
+                                f"Failed to extract primary ID for {k}: {ele}. Skipping this entry.")
+                            continue
+
                 # Handle nested elements (ex: 'wikipedia.url_stub') here
                 sub_d = sub_field(k, v)
                 _d.update(sub_d)
-    # 'xrefs' and 'external_vocabulary' are merged
+
     if 'external_vocabulary' in d.keys():
         d.pop('external_vocabulary')
     d.update({'xrefs': _d})

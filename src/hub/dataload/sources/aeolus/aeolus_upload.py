@@ -1,13 +1,12 @@
-from hub.dataload.uploader import BaseDrugUploader
-from biothings.utils.mongo import get_src_conn
+# import biothings.hub.dataload.storage as storage
+import biothings.hub.dataload.uploader as uploader
 
-import biothings.hub.dataload.storage as storage
-from hub.datatransform.keylookup import MyChemKeyLookup
+# from biothings.utils.mongo import get_src_conn
+
+# from hub.datatransform.keylookup import MyChemKeyLookup
 
 
-class AeolusUploader(BaseDrugUploader):
-
-    storage_class = storage.RootKeyMergerStorage
+class AeolusUploader(uploader.DummySourceUploader):
     name = "aeolus"
     __metadata__ = {
         "src_meta": {
@@ -18,21 +17,23 @@ class AeolusUploader(BaseDrugUploader):
         }
     }
 
-    keylookup = MyChemKeyLookup(
-            [('inchikey', 'aeolus.inchikey'),
-             ('unii', 'aeolus.unii'),
-             ('drugname', 'aeolus.drug_name')],
-            copy_from_doc=True
-            )
+    # storage_class = storage.RootKeyMergerStorage
+    # keylookup = MyChemKeyLookup(
+    #     [('inchikey', 'aeolus.inchikey'),
+    #      ('unii', 'aeolus.unii'),
+    #      ('drugname', 'aeolus.drug_name')],
+    #     copy_from_doc=True
+    # )
 
-    def load_data(self, data_folder):
-        # read data from the source collection
-        src_col = self.db[self.src_col_name]
-        def load_data():
-            yield from src_col.find()
+    # def load_data(self, data_folder):
+    #     # read data from the source collection
+    #     src_col = self.db[self.src_col_name]
 
-        # perform keylookup on source collection
-        return self.keylookup(load_data, debug=True)()
+    #     def load_data():
+    #         yield from src_col.find()
+
+    #     # perform keylookup on source collection
+    #     return self.keylookup(load_data, debug=True)()
 
     @classmethod
     def get_mapping(klass):

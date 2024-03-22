@@ -1,7 +1,8 @@
 
 __sources_dict__ = [
         # auto-updated
-        'hub.dataload.sources.drugbank',
+        'hub.dataload.sources.drugbank_full',
+        'hub.dataload.sources.drugbank_open',
         'hub.dataload.sources.chebi',
         'hub.dataload.sources.chembl',
         'hub.dataload.sources.pubchem',
