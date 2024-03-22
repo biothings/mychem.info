@@ -22,10 +22,10 @@ class UMLSDumper(HTTPDumper):
         res.raise_for_status()
         html = bs4.BeautifulSoup(res.text, 'lxml')
         # Get the table of metathesaurus release files
-        table = html.find("table", attrs={"class": "mb-4"})
+        table = html.find("table", attrs={"class": "usa-table margin-bottom-4"})
         rows = table.find_all('tr')
         # The header of the fifth column should be 'Date'
-        assert rows[0].find_all('th')[4].text == 'Date', "Could not parse version from html table."
+        assert rows[0].find_all('th')[4].text.strip() == 'Date', "Could not parse version from html table."
         version = rows[1].find_all('td')[4].text
         try:
             latest = datetime.date.strftime(dtparser.parse(version), "%Y-%m-%d")
