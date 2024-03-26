@@ -38,53 +38,84 @@ def restr_dict(d):
             ('FDA Drug Label at DailyMed', 'dailymed.setid'),
         ]
         res = []
-        for v in xrefs:
+        for v in xrefs.split(','):
             for rf_orig, rf_new in rename_fields:
                 if rf_orig in v:
                     v = v.replace(rf_orig, rf_new)
             # Multiple replacements on the 'Web Resource' field
             if 'Web Resource' in v:
                 if 'http://en.wikipedia.org/wiki/' in v:
-                    v = v.replace('Web Resource', 'wikipedia.url_stub')
-                    v = v.replace('http://en.wikipedia.org/wiki/', '')
+                    v = v.replace('Web Resource', 'wikipedia.url_stub').replace(
+                        'http://en.wikipedia.org/wiki/', '')
             # Add 'CHEBI:' prefix if not there already
-            elif 'ChEBI:' in v:
-                if 'ChEBI:CHEBI' not in v:
-                    v = v.replace('ChEBI:', 'ChEBI:CHEBI:')
-            res.append(v)
+            elif 'ChEBI:' in v and 'ChEBI:CHEBI' not in v:
+                v = v.replace('ChEBI:', 'ChEBI:CHEBI:')
+            elif 'ClinicalTrials.gov' in v:
+                nct_match = re.search(r'ClinicalTrials\.gov:?\/?(NCT\d+)', v)
+                if nct_match:
+                    nct_number = nct_match.group(1)
+                    v = f"clinicaltrials_gov:{nct_number}"
+            res.append(v.strip())
         return res
+
+    def _split_ingredients(ingredients_section):
+        # This handles the splitting of ingredients, taking care of nested parentheses
+        ingredients = []
+        start = 0
+        parenthesis_level = 0
+        for i, char in enumerate(ingredients_section):
+            if char == '(':
+                parenthesis_level += 1
+            elif char == ')':
+                parenthesis_level -= 1
+            elif char == '+' and parenthesis_level == 0:
+                # Split at '+' only if we're not inside parentheses
+                ingredients.append(ingredients_section[start:i].strip())
+                start = i + 1
+        # Add the last or only ingredient
+        ingredients.append(ingredients_section[start:].strip())
+        return ingredients
+
+    def _parse_brand_mixtures(mixtures):
+        parsed_mixtures = []
+        for mixture in mixtures:
+            if '(' in mixture and ')' in mixture:
+                brand_name, ingredients_section = mixture.split('(', 1)
+                brand_name = brand_name.strip()
+                ingredients_section = ingredients_section.rsplit(
+                    ')', 1)[0]
+                ingredients = _split_ingredients(ingredients_section)
+            else:
+                brand_name = mixture.strip()
+                ingredients = []
+
+            parsed_mixtures.append(
+                {"brand_name": brand_name, "mixture": ingredients})
+        return parsed_mixtures
+
     _d = {}
-    _li2 = ["Trade Names", "Generic Names",
-            "Brand Mixtures", "Dosing Guideline"]
-    _li1 = ["SMILES", "Name", "Type", "InChI"]
     for key, val in iter(d.items()):
-        if key in _li1:
+        if key in ["SMILES", "Name", "Type", "InChI"]:
             _d.update({key.lower(): val})
-        elif key in _li2:
-            val = val.split(',"')
-            # python 3 compatible
-            val = list(map(lambda each: each.strip('"'), val))
-            k = key.lower().replace(" ", "_").replace('-', '_').replace(".", "_")
-            _d.update({k: val})
+        elif key in ["Trade Names", "Generic Names"]:
+            # Convert to list if not empty, otherwise default to empty list
+            _d.update({key.lower().replace(" ", "_")
+                      : val.split(', ') if val else []})
+        elif key == "Dosing Guideline":
+            # Convert to boolean
+            _d.update({"dosing_guideline": True if val == "Yes" else False})
         elif key == "PharmGKB Accession Id":
-            k = 'id'
-            _d.update({k: val})
+            _d.update({'id': val})
         elif key == "Cross-references":
-            k = "xrefs"
-            val = val.split(',"')
-            # python 3 compatible
-            val = list(map(lambda each: each.strip('"'), val))
-            val = _restr_xrefs(val)
-            _d.update({k: val})
+            _d.update({"xrefs": _restr_xrefs(val)})
         elif key == "External Vocabulary":
-            # external_vocabulary - remove parenthesis and text within
-            k = "external_vocabulary"
-            # note:  regular expressions appear to be causing an error
-            # val = re.sub('\([^)]*\)', '', val)
-            val = val.split(',"')
-            # python 3 compatible
-            val = list(map(lambda each: remove_paren(each.strip('"')), val))
-            _d.update({k: val})
+            # Process and remove parentheses if present
+            val = [remove_paren(each.strip()) for each in val.split(',')]
+            _d.update({"external_vocabulary": val})
+        elif key == "Brand Mixtures":
+            if val:
+                _d.update(
+                    {"brand_mixtures": _parse_brand_mixtures(val.split(', '))})
     return _d
 
 
