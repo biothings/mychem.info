@@ -5,8 +5,8 @@ from biothings.web.options import OptionError
 class MyChemESResultFormatter(ESResultFormatter):
     """Subclass of ESResultFormatter to add list_filter transformation"""
 
-    def transform_hit(self, path, doc, options):
-        super().transform_hit(path, doc, options)
+    def transform_hit(self, path, doc, hit, options):
+        super().transform_hit(path, doc, hit, options)
         # process list_filter, e.g. list_filter=aaa.bbb:sub_a=val_a,val_aa|sub_b=val_b
         if options.list_filter:
             try:
