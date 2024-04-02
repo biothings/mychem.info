@@ -93,7 +93,7 @@ def load_annotations(data_folder):
         chunk_start = chunk_counter * current_chunk_size
         chunk_min = schunk["uci"].min()
         chunk_max = schunk["uci"].max()
-        chunk_counter = 1
+        chunk_counter += 1
         min_max_dfs.append(pd.DataFrame([[chunk_start, chunk_min, chunk_max]], columns=min_max_columns))
 
     structure_min_max_df = pd.concat(min_max_dfs, ignore_index=True)  # Use concat to combine the chunks
