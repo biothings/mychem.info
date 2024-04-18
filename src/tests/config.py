@@ -27,7 +27,7 @@ for _k, _v in _config.__dict__.items():
 
 
 # override default
-ES_HOST = 'localhost:9200'
+ES_HOST = 'http://localhost:9200'
 ES_INDEX = 'mychem_test'
 ES_INDICES = {
     "drug": ES_INDEX,
