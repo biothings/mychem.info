@@ -1,10 +1,35 @@
+import glob
 import os
+import re
 import time
+import urllib
+import zipfile
 from collections import defaultdict
+from typing import Union
 
+import bs4
+import requests
+from biothings.utils.common import open_anyfile
 from biothings_client import get_client
 
+from .umls_secret import UMLS_API_KEY
+
+try:
+    from biothings import config
+
+    logger = config.logger
+except ImportError:
+    import logging
+
+    logger = logging.getLogger(__name__)
+
 CHEM_CLIENT = get_client('chem')
+
+
+class ParserException(Exception):
+    pass
+
+
 # list of UMLS semantic types belonging to chemical is based on
 # https://www.nlm.nih.gov/research/umls/META3_current_semantic_types.html
 UMLS_CHEMICAL_SEMANTIC_TYPES = [
@@ -37,13 +62,13 @@ UMLS_CHEMICAL_SEMANTIC_TYPES = [
 ]
 
 
-def fetch_chemical_umls_cuis(mrsty_file):
+def fetch_chemical_umls_cuis(archive_path, data_path: Union[str, bytes]):
     """Fetch all UMLS CUI IDs belonging to chemical semantic types
 
     :param: mrsty_file: the file path of MRSTY.RRF file
     """
     chem_set = set()
-    with open(mrsty_file, "r") as fin:
+    with open_anyfile((archive_path, data_path), "r") as fin:
         for line in fin:
             vals = line.rstrip("\n").split("|")
             if vals[3] in UMLS_CHEMICAL_SEMANTIC_TYPES:
@@ -86,7 +111,7 @@ def query_drug_name(names: list) -> dict:
     return new_res
 
 
-def parse_umls(rrf_file, chem_umls):
+def parse_umls(archive_path, data_path: Union[str, bytes], chem_umls):
     """Parse the UMLS to determine the HGNC identifier of each gene CUI.
     The relevant files are in the archive <version>-1-meta.nlm (a zip file)
     within <version>/META/MRCONSO.RRF.*.gz
@@ -97,7 +122,7 @@ def parse_umls(rrf_file, chem_umls):
     res = defaultdict(list)
     mesh_ids = set()
     names = set()
-    with open(rrf_file, "r") as fin:
+    with open_anyfile((archive_path, data_path), "r") as fin:
         for line in fin:
             if "|MSH|" in line:
                 vals = line.rstrip("\n").split("|")
@@ -121,20 +146,79 @@ def unlist(l):
     return l
 
 
+def get_download_url():
+    res = requests.get(
+        "https://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html"
+    )
+    # Raise error if status is not 200
+    res.raise_for_status()
+    html = bs4.BeautifulSoup(res.text, "lxml")
+    # Get the table of metathesaurus release files
+    table = html.find(
+        "table", attrs={"class": "usa-table border-base-lighter margin-bottom-4"}
+    )
+    rows = table.find_all("tr")
+    # The header of the first column should be 'Release'
+    assert (
+        rows[0].find_all("th")[0].text.strip() == "Release"
+    ), "Could not parse url from html table."
+    try:
+        # Get the url from the link
+        url = rows[2].find_all("td")[0].a["href"]
+        logger.info(f"Found UMLS download url: {url}")
+        # Create the url using the api aky
+        url = f"https://uts-ws.nlm.nih.gov/download?url={url}&apiKey={UMLS_API_KEY}"
+        return url
+    except Exception as e:
+        raise ParserException(
+            f"Can't find or parse url from table field {url}: {e}")
+
+
 def load_data(data_folder):
-    mrsat_file = os.path.join(data_folder, 'MRSTY.RRF')
-    mrconso_file = os.path.join(data_folder, 'MRCONSO.RRF')
-    if not os.path.exists(mrsat_file):
-        raise FileNotFoundError(
-            """Could not find 'MRSTY.RRF' in {}.
-            Please download UMLS Metathesaurus files manually and extract to folder.
-            """.format(data_folder))
-    if not os.path.exists(mrconso_file):
-        raise FileNotFoundError(
-            """Could not find 'MRCONSO.RRF' in {}.
-            Please download manually and extract to folder.""".format(data_folder))
-    chem_umls = fetch_chemical_umls_cuis(mrsat_file)
-    cui_map, mesh_ids, names = parse_umls(mrconso_file, chem_umls)
+    try:
+        metathesaurus_file = glob.glob(
+            os.path.join(data_folder, "*metathesaurus-release.zip")
+        )[0]
+    except IndexError:
+        url = get_download_url()
+        # Use re.sub to replace all characters after "apiKey=" with asterisks
+        pii_url = re.sub(
+            r"(apiKey=).*",
+            r"\1" + "*" * len(re.search(r"(apiKey=)(.*)", url).group(2)),
+            url,
+        )
+        logger.info(
+            """Could not find metathesaurus archive in {}.
+                     Downloading UMLS Metathesaurus file automatically:
+                     {}
+                     """.format(
+                data_folder, pii_url
+            )
+        )
+        # Download UMLS file to data folder
+        urllib.request.urlretrieve(
+            url, os.path.join(data_folder, "metathesaurus-release.zip")
+        )
+        # Get the downloaded file path
+        metathesaurus_file = glob.glob(
+            os.path.join(data_folder, "*metathesaurus-release.zip")
+        )[0]
+    file_list = zipfile.ZipFile(metathesaurus_file, mode="r").namelist()
+    logger.info(
+        "Found the following files in the metathesaurus file: {}".format(
+            file_list)
+    )
+    try:
+        mrsty_path = [f for f in file_list if f.endswith("MRSTY.RRF")][0]
+    except IndexError:
+        raise FileNotFoundError("Could not find MRSTY.RRF in archive.")
+    try:
+        mrconso_path = [f for f in file_list if f.endswith("MRCONSO.RRF")][0]
+    except IndexError:
+        raise FileNotFoundError("Could not find MRCONSO.RRF in archive.")
+    chem_umls = fetch_chemical_umls_cuis(metathesaurus_file, mrsty_path)
+    cui_map, mesh_ids, names = parse_umls(
+        metathesaurus_file, mrconso_path, chem_umls)
     name_mapping = query_drug_name(names)
     time.sleep(200)
     mesh_id_mapping = query_mesh(mesh_ids)
