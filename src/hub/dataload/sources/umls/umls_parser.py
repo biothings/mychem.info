@@ -165,8 +165,7 @@ def get_download_url():
         url = rows[2].find_all("td")[0].a["href"]
         logger.info(f"Found UMLS download url: {url}")
         # Create the url using the api aky
-        url = f"https://uts-ws.nlm.nih.gov/download?url={
-            url}&apiKey={UMLS_API_KEY}"
+        url = f"https://uts-ws.nlm.nih.gov/download?url={url}&apiKey={UMLS_API_KEY}"
         return url
     except Exception as e:
         raise ParserException(
