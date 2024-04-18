@@ -5,9 +5,11 @@ import time
 import urllib
 import zipfile
 from collections import defaultdict
+from typing import Union
 
 import bs4
 import requests
+from biothings.utils.common import open_anyfile
 from biothings_client import get_client
 
 from .umls_secret import UMLS_API_KEY
@@ -60,13 +62,13 @@ UMLS_CHEMICAL_SEMANTIC_TYPES = [
 ]
 
 
-def fetch_chemical_umls_cuis(mrsty_file):
+def fetch_chemical_umls_cuis(archive_path, data_path: Union[str, bytes]):
     """Fetch all UMLS CUI IDs belonging to chemical semantic types
 
     :param: mrsty_file: the file path of MRSTY.RRF file
     """
     chem_set = set()
-    with open(mrsty_file, "r") as fin:
+    with open_anyfile((archive_path, data_path), "r") as fin:
         for line in fin:
             vals = line.rstrip("\n").split("|")
             if vals[3] in UMLS_CHEMICAL_SEMANTIC_TYPES:
@@ -109,7 +111,7 @@ def query_drug_name(names: list) -> dict:
     return new_res
 
 
-def parse_umls(rrf_file, chem_umls):
+def parse_umls(archive_path, data_path: Union[str, bytes], chem_umls):
     """Parse the UMLS to determine the HGNC identifier of each gene CUI.
     The relevant files are in the archive <version>-1-meta.nlm (a zip file)
     within <version>/META/MRCONSO.RRF.*.gz
@@ -120,7 +122,7 @@ def parse_umls(rrf_file, chem_umls):
     res = defaultdict(list)
     mesh_ids = set()
     names = set()
-    with open(rrf_file, "r") as fin:
+    with open_anyfile((archive_path, data_path), "r") as fin:
         for line in fin:
             if "|MSH|" in line:
                 vals = line.rstrip("\n").split("|")
@@ -165,7 +167,8 @@ def get_download_url():
         url = rows[2].find_all("td")[0].a["href"]
         logger.info(f"Found UMLS download url: {url}")
         # Create the url using the api aky
-        url = f"https://uts-ws.nlm.nih.gov/download?url={url}&apiKey={UMLS_API_KEY}"
+        url = f"https://uts-ws.nlm.nih.gov/download?url={
+            url}&apiKey={UMLS_API_KEY}"
         return url
     except Exception as e:
         raise ParserException(
@@ -214,8 +217,9 @@ def load_data(data_folder):
         mrconso_path = [f for f in file_list if f.endswith("MRCONSO.RRF")][0]
     except IndexError:
         raise FileNotFoundError("Could not find MRCONSO.RRF in archive.")
-    chem_umls = fetch_chemical_umls_cuis(mrsty_path)
-    cui_map, mesh_ids, names = parse_umls(mrconso_path, chem_umls)
+    chem_umls = fetch_chemical_umls_cuis(metathesaurus_file, mrsty_path)
+    cui_map, mesh_ids, names = parse_umls(
+        metathesaurus_file, mrconso_path, chem_umls)
     name_mapping = query_drug_name(names)
     time.sleep(200)
     mesh_id_mapping = query_mesh(mesh_ids)
