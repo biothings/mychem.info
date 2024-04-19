@@ -3,9 +3,6 @@ Local tests for exercising the annotation regex pattern matching for
 different types of queries one could expect for the mychem data sources
 """
 
-import pytest
-import requests
-
 from biothings.tests.web import BiothingsWebAppTest
 
 
