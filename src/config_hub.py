@@ -14,7 +14,7 @@ INDEX_CONFIG = {
     },
     "env": {
         "prod": {
-            "host": "<PRODSERVER>:9200",
+            "host": "http://<PRODSERVER>:9200",
             "indexer": {
                     "args": {
                         "timeout": 300,
@@ -25,7 +25,7 @@ INDEX_CONFIG = {
             "index": [{"index": "mydrugs_current", "doc_type": "drug"}],
         },
         "local": {
-            "host": "localhost:9200",
+            "host": "http://localhost:9200",
             "indexer": {
                     "args": {
                         "timeout": 300,

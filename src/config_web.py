@@ -12,7 +12,7 @@ from biothings.web.settings.default import ANNOTATION_KWARGS, QUERY_KWARGS
 # *****************************************************************************
 # Elasticsearch variables
 # *****************************************************************************
-ES_HOST = 'localhost:9200'
+ES_HOST = 'http://localhost:9200'
 ES_INDICES = {
     "chem": "mychem_current",
     "drug": "mychem_current",
