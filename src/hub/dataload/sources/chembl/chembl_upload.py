@@ -132,7 +132,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                                 }
                             },
                             "max_phase_for_ind": {
-                                "type": "text"
+                                "type": "keyword"
                             },
                             "mesh_heading": {
                                 "type": "text"
