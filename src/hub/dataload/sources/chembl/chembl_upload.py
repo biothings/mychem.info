@@ -368,7 +368,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                         "type": "keyword"
                     },
                     "max_phase": {
-                        "type": "integer"
+                        "type": "keyword"
                     },
                     "inorganic_flag": {
                         "type": "integer"
