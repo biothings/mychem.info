@@ -74,9 +74,16 @@ class PharmGkbUploader(BaseDrugUploader):
                         "type": "text",
                         'copy_to': ['all'],
                         },
-                    "brand_mixtures": {
-                        "type": "text"
-                        },
+                    'brand_mixtures': {
+                        'properties': {
+                            'brand_name': {
+                                'type': 'text'
+                            },
+                            'mixture': {
+                                'type': 'text'
+                            }
+                        }
+                    },
                     "trade_names": {
                         "type": "text"
                         },
