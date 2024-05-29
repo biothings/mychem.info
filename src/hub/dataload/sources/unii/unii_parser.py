@@ -63,9 +63,14 @@ def load_data(input_file):
                 record['unii']['ncit_description'] = ncit_descriptions[ncit_id]
         if isinstance(record['unii'], dict):
             del record['unii']['_id']
+            if 'display name' in record['unii']:
+                record['unii']['display_name'] = record['unii'].pop(
+                    'display name')
         else:
             for subr in record['unii']:
                 del subr['_id']
+                if 'display name' in subr:
+                    subr['display_name'] = subr.pop('display name')
 
         # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
