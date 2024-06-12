@@ -1,11 +1,28 @@
-import asyncio
+from copy import deepcopy
 
-from biothings.hub.dataindex.indexer import Indexer
+from biothings.hub.dataindex.indexer import Indexer, IndexMappings
+
+DEFAULT_INDEX_MAPPINGS = {
+    "dynamic": "false",
+    "properties": {
+        "all": {"type": "text"},
+        "name": {
+            "type": "text",
+            "fields": {
+                "raw": {
+                    "type": "keyword",
+                    "ignore_above": 128,
+                    "normalizer": "keyword_lowercase_normalizer"
+                }
+            },
+            "copy_to": "all"
+        }
+    }
+}
 
 
 class DrugIndexer(Indexer):
-    pass
-
-    # @asyncio.coroutine
-    # def index(self, job_manager, steps=("pre", "index", "post"), batch_size=2500, ids=None, mode="index"):
-    #     return super().index(job_manager, steps=steps, batch_size=batch_size, ids=ids, mode=mode)
+    def __init__(self, build_doc, indexer_env, index_name):
+        super().__init__(build_doc, indexer_env, index_name)
+        self.es_index_mappings = IndexMappings(
+            deepcopy(DEFAULT_INDEX_MAPPINGS))
