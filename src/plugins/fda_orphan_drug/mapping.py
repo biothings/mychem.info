@@ -1,8 +1,8 @@
 def get_customized_mapping(cls):
     mapping = {
-          "fda_orphan_drug": {
-                "properties": {
-                    "designated_date": {
+        "fda_orphan_drug": {
+            "properties": {
+                "designated_date": {
                     "type": "date"
                 },
                 "designation_status": {
@@ -10,70 +10,71 @@ def get_customized_mapping(cls):
                     "type": "keyword"
                 },
                 "orphan_designation": {
-                  "properties": {
-                    "original_text": {
-                        "type": "text",
-                        "copy_to": [
-                            "all"
-                        ]
-                    },
-                    "umls": {
-                        "type": "text",
-                        "copy_to": [
-                            "all"
-                        ]
-                    },
-                    "parsed_text": {
-                        "type": "text",
-                        "copy_to": [
-                            "all"
-                        ]
+                    "properties": {
+                        "original_text": {
+                            "type": "text",
+                            "copy_to": [
+                                    "all"
+                            ]
+                        },
+                        "umls": {
+                            "type": "text",
+                            "copy_to": [
+                                    "all"
+                            ]
+                        },
+                        "parsed_text": {
+                            "type": "text",
+                            "copy_to": [
+                                    "all"
+                            ]
+                        }
                     }
-                  }
                 },
                 "marketing_approval_date": {
-                  "type": "date"
+                    "type": "date"
                 },
                 "exclusivity_end_date": {
-                  "type": "date"
+                    "type": "date"
                 },
                 "pubchem_cid": {
-                  "type": "integer",
-                  "copy_to": [
-                    "all"
-                  ]
+                    "type": "integer",
+                    "copy_to": [
+                            "all"
+                    ]
                 },
                 "inchikey": {
-                  "normalizer": "keyword_lowercase_normalizer",
-                  "type": "keyword"
+                    "normalizer": "keyword_lowercase_normalizer",
+                    "type": "keyword"
                 },
                 "trade_name": {
-                  "type": "text"
+                    "type": "text"
                 },
                 "approved_labeled_indication": {
-                  "type": "text"
+                    "type": "text"
                 },
                 "exclusivity_protected_indication": {
-                  "type": "text"
+                    "type": "text"
                 },
                 "pubchem_sid": {
-                  "type": "text"
+                    "type": "text"
                 },
                 "generic_name": {
-                  "type": "text",
-                  "copy_to": [
-                    "all"
-                  ]
+                    "type": "text",
+                    "copy_to": [
+                            "all",
+                            "name"
+                    ]
                 },
                 "approval_status": {
-                  "type": "text"
+                    "type": "text"
                 },
                 "sponsor": {
-                  "type": "text",
-                  "index": "false"
+                    "type": "text",
+                    "index": "false"
                 }
             }
         }
-        
-      }
+
+    }
     return mapping

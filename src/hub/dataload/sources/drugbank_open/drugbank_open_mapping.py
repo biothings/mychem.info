@@ -11,7 +11,8 @@ drugbank_open_mapping = {
                 "type": "keyword"
             },
             "name": {
-                "type": "text"
+                "type": "text",
+                "copy_to": ["name"]
             },
             "cas_number": {
                 "normalizer": "keyword_lowercase_normalizer",

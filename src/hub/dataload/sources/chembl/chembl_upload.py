@@ -1,15 +1,18 @@
 """
 Chembl uploader
 """
+import glob
+
 # pylint: disable=E0401, E0611
 import os
-import glob
+
 import biothings.hub.dataload.storage as storage
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
+
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
-from .chembl_parser import AuxiliaryDataLoader, MoleculeDataLoader, load_chembl_data
 
+from .chembl_parser import AuxiliaryDataLoader, MoleculeDataLoader, load_chembl_data
 
 SRC_META = {
     "url": 'https://www.ebi.ac.uk/chembl/',
@@ -50,13 +53,19 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         this method will be called by self.update_data() and then generate arguments for self.load.data() method,
         allowing parallelization
         """
-        molecule_filepaths = glob.glob(os.path.join(self.data_folder, self.MOLECULE_FILENAME_PATTERN))
-        mol_data_loaders = [MoleculeDataLoader(molecule_filepath=filepath) for filepath in molecule_filepaths]
+        molecule_filepaths = glob.glob(os.path.join(
+            self.data_folder, self.MOLECULE_FILENAME_PATTERN))
+        mol_data_loaders = [MoleculeDataLoader(
+            molecule_filepath=filepath) for filepath in molecule_filepaths]
 
-        drug_indication_filepaths = glob.iglob(os.path.join(self.data_folder, self.DRUG_INDICATION_FILENAME_PATTERN))
-        mechanism_filepaths = glob.iglob(os.path.join(self.data_folder, self.MECHANISM_FILENAME_PATTERN))
-        target_filepaths = glob.iglob(os.path.join(self.data_folder, self.TARGET_FILENAME_PATTERN))
-        binding_site_filepaths = glob.iglob(os.path.join(self.data_folder, self.BINDING_SITE_FILENAME_PATTERN))
+        drug_indication_filepaths = glob.iglob(os.path.join(
+            self.data_folder, self.DRUG_INDICATION_FILENAME_PATTERN))
+        mechanism_filepaths = glob.iglob(os.path.join(
+            self.data_folder, self.MECHANISM_FILENAME_PATTERN))
+        target_filepaths = glob.iglob(os.path.join(
+            self.data_folder, self.TARGET_FILENAME_PATTERN))
+        binding_site_filepaths = glob.iglob(os.path.join(
+            self.data_folder, self.BINDING_SITE_FILENAME_PATTERN))
         aux_data_loader = AuxiliaryDataLoader(drug_indication_filepaths=drug_indication_filepaths,
                                               mechanism_filepaths=mechanism_filepaths,
                                               target_filepaths=target_filepaths,
@@ -67,7 +76,8 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
 
     def load_data(self, mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
         """load data from an input file"""
-        self.logger.info("Load data from file '%s'" % mol_data_loader.molecule_filepath)
+        self.logger.info("Load data from file '%s'" %
+                         mol_data_loader.molecule_filepath)
 
         return self.keylookup(load_chembl_data, debug=True)(mol_data_loader, aux_data_loader)
 
@@ -103,9 +113,9 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                                     }
                                 }
                             },
-			    "first_approval": {
-				"type": "integer"
- 			    },
+                            "first_approval": {
+                                "type": "integer"
+                            },
                             "indication_refs": {
                                 "properties": {
                                     "id": {
@@ -535,7 +545,8 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
                     "pref_name": {
                         "type": "text",
                         "copy_to": [
-                            "all"
+                            "all",
+                            "name"
                         ]
                     },
                     "first_approval": {

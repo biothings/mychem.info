@@ -1,15 +1,15 @@
 import os
+
+import biothings.hub.dataload.storage as storage
 import pymongo
+from biothings.utils.exclude_ids import ExcludeFieldsById
+from biothings.utils.mongo import get_src_db
+
+from hub.dataload.uploader import BaseDrugUploader
+from hub.datatransform.keylookup import MyChemKeyLookup
 
 from .chebi_parser import ChebiParser, CompoundReader, OntologyReader
 from .exclusion_ids import exclusion_ids
-from hub.dataload.uploader import BaseDrugUploader
-from biothings.utils.mongo import get_src_db
-import biothings.hub.dataload.storage as storage
-from biothings.utils.exclude_ids import ExcludeFieldsById
-
-from hub.datatransform.keylookup import MyChemKeyLookup
-
 
 SRC_META = {
     "url": 'https://www.ebi.ac.uk/chebi/',
@@ -38,7 +38,7 @@ class ChebiUploader(BaseDrugUploader):
     - `chebi.xrefs.patent`
 
     `ExcludeFieldsById` acts like a filter to truncate the length of such long lists to 1,000.
-    
+
     See the comment on the ExcludeFieldsById for use of this class.
     """
     exclude_fields = ExcludeFieldsById(exclusion_ids, [
@@ -53,10 +53,12 @@ class ChebiUploader(BaseDrugUploader):
         self.logger.info("Load data from '%s'" % data_folder)
 
         sdf_input_file = os.path.join(data_folder, "ChEBI_complete.sdf")
-        assert os.path.exists(sdf_input_file), "Can't find input file '%s'" % sdf_input_file
+        assert os.path.exists(
+            sdf_input_file), "Can't find input file '%s'" % sdf_input_file
 
         obo_input_file = os.path.join(data_folder, "chebi_lite.obo")
-        assert os.path.exists(obo_input_file), "Can't find input file '%s'" % obo_input_file
+        assert os.path.exists(
+            obo_input_file), "Can't find input file '%s'" % obo_input_file
 
         # get others source collection for inchi key conversion
         drugbank_col = get_src_db()["drugbank"]
@@ -276,7 +278,7 @@ class ChebiUploader(BaseDrugUploader):
                     },
                     "name": {
                         "type": "text",
-                        'copy_to': ['all'],
+                        'copy_to': ['all', 'name'],
                     },
                     "charge": {
                         "type": "integer"
