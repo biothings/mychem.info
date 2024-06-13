@@ -10,7 +10,7 @@ HUB_ICON = "http://biothings.io/static/img/mychem-logo-shiny.svg"
 INDEX_CONFIG = {
     "indexer_select": {
         # default
-        None: "hub.dataindex.indexer.DrugIndexer",
+        None: "hub.dataindex.indexer.MyChemIndexer",
     },
     "env": {
         "prod": {
