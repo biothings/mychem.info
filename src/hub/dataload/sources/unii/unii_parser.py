@@ -65,12 +65,12 @@ def load_data(input_file):
             del record['unii']['_id']
             if 'display name' in record['unii']:
                 record['unii']['display_name'] = record['unii'].pop(
-                    'display name')
+                    'display name').strip()
         else:
             for subr in record['unii']:
                 del subr['_id']
                 if 'display name' in subr:
-                    subr['display_name'] = subr.pop('display name')
+                    subr['display_name'] = subr.pop('display name').strip()
 
         # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
