@@ -32,15 +32,16 @@ class UniiUploader(BaseDrugUploader):
     def load_data(self, data_folder):
         self.logger.info("Load data from '%s'" % data_folder)
         record_files = glob.glob(os.path.join(data_folder, "*Records*.txt"))
-        assert len(record_files) == 1, "Expecting one record.txt file, got %s" % repr(
-            record_files)
+        if len(record_files) != 1:
+            raise AssertionError(
+                "Expecting one record.txt file, got %s" % repr(record_files))
         input_file = record_files.pop()
-        assert os.path.exists(
-            input_file), "Can't find input file '%s'" % input_file
-        # disable keylookup - unii is a base collection used for drugname lookup
-        # and should be loaded first, (keylookup commented out)
+        if not os.path.exists(input_file):
+            raise AssertionError("Can't find input file '%s'" % input_file)
+        # disable keylookup - unii is a base collection used for drugname
+        # lookup and should be loaded first, (keylookup commented out)
         return self.keylookup(load_data)(input_file)
-#        return load_data(input_file)
+    #    return load_data(input_file)
 
     def post_update_data(self, *args, **kwargs):
         for field in ("unii.unii", "unii.preferred_term"):
