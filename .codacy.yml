@@ -8,7 +8,4 @@ engines:
   bandit:
     exclude_paths:
       - 'src/tests/test_remote.py'
-    config:
-      assert_used:
-        skips:
-          - 'src/hub/dataload/sources/'
+      - 'src/hub/dataload/sources/'
