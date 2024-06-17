@@ -1,11 +1,12 @@
-from .umls_parser import load_data
 import biothings.hub.dataload.uploader as uploader
 
+from .umls_parser import load_data
 
 SRC_META = {
-        "url": 'https://www.nlm.nih.gov/research/umls/index.html',
-        "license_url": "https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html"
-        }
+    "url": 'https://www.nlm.nih.gov/research/umls/index.html',
+    "license_url": "https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html"
+}
+
 
 class UMLSUploader(uploader.BaseSourceUploader):
 
@@ -33,7 +34,7 @@ class UMLSUploader(uploader.BaseSourceUploader):
                     "name": {
                         "type": "keyword",
                         "normalizer": "keyword_lowercase_normalizer",
-                        "copy_to": ["all"]
+                        "copy_to": ["all", "name"]
                     }
                 }
             }

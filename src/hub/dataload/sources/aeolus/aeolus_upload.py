@@ -110,7 +110,8 @@ class AeolusUploader(uploader.DummySourceUploader):
                     "drug_name": {
                         "type": "text",
                         "copy_to": [
-                            "all"
+                            "all",
+                            "name"
                         ]
                     },
                     "pt": {

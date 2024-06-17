@@ -4,19 +4,21 @@ NDC Uploader
 # pylint: disable=E0401, E0611
 import biothings.hub.dataload.storage as storage
 from biothings.utils.exclude_ids import ExcludeFieldsById
+
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
-from .ndc_parser import load_data
-from .exclusion_ids import exclusion_ids
 
+from .exclusion_ids import exclusion_ids
+from .ndc_parser import load_data
 
 SRC_META = {
-    "url" : "http://www.fda.gov/Drugs/InformationOnDrugs/ucm142438.htm",
-    "license_url" :
+    "url": "http://www.fda.gov/Drugs/InformationOnDrugs/ucm142438.htm",
+    "license_url":
         "https://www.fda.gov/AboutFDA/AboutThisWebsite/WebsitePolicies/default.htm#linking",
     "lincese_url_short": "http://bit.ly/2KAojBn",
     "license": "public domain"
 }
+
 
 class NDCUploader(BaseDrugUploader):
     """
@@ -24,7 +26,7 @@ class NDCUploader(BaseDrugUploader):
     """
     name = "ndc"
     storage_class = (storage.RootKeyMergerStorage, storage.CheckSizeStorage)
-    __metadata__ = {"src_meta" : SRC_META}
+    __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup(
         [("ndc", "ndc.productndc"),
          ("drugname", "ndc.nonproprietaryname")])
@@ -39,90 +41,92 @@ class NDCUploader(BaseDrugUploader):
     def get_mapping(cls):
         """return mapping data for the class"""
         mapping = {
-            "ndc" : {
-                "properties" : {
-                    "product_id" : {
+            "ndc": {
+                "properties": {
+                    "product_id": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "productndc" : {
-                        "type" : "text"
-                        },
-                    "producttypename" : {
+                    },
+                    "productndc": {
+                        "type": "text"
+                    },
+                    "producttypename": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "proprietaryname" : {
+                    },
+                    "proprietaryname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "proprietarynamesuffix" : {
+                        "copy_to": ["name"]
+                    },
+                    "proprietarynamesuffix": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "nonproprietaryname" : {
+                    },
+                    "nonproprietaryname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "dosageformname" : {
+                        "copy_to": ["name"]
+                    },
+                    "dosageformname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "routename" : {
+                    },
+                    "routename": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "startmarketingdate" : {
-                        "type" : "text"
-                        },
-                    "endmarketingdate" : {
-                        "type" : "text"
-                        },
-                    "marketingcategoryname" : {
+                    },
+                    "startmarketingdate": {
+                        "type": "text"
+                    },
+                    "endmarketingdate": {
+                        "type": "text"
+                    },
+                    "marketingcategoryname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "applicationnumber" : {
+                    },
+                    "applicationnumber": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "labelername" : {
+                    },
+                    "labelername": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "substancename" : {
+                    },
+                    "substancename": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
                         "copy_to": ["all"]
-                        },
-                    "active_numerator_strength" : {
-                        "type" : "text"
-                        },
-                    "active_ingred_unit" : {
+                    },
+                    "active_numerator_strength": {
+                        "type": "text"
+                    },
+                    "active_ingred_unit": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "pharm_classes" : {
+                    },
+                    "pharm_classes": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "deaschedule" : {
+                    },
+                    "deaschedule": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        },
-                    "package" : {
-                        "properties" : {
-                            "packagedescription" : {
+                    },
+                    "package": {
+                        "properties": {
+                            "packagedescription": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                },
-                            "ndcpackagecode" : {
-                                "type" : "text"
-                                }
+                            },
+                            "ndcpackagecode": {
+                                "type": "text"
                             }
                         }
                     }
                 }
             }
+        }
 
         return mapping
