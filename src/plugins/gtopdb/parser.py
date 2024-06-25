@@ -10,7 +10,9 @@ logging = config.logger
 
 VAL_MAP = {"yes": True, "no": False}
 process_key = lambda key: key.replace(" ", "_").lower()
-process_val = lambda val: VAL_MAP[val] if isinstance(val, str) and val in VAL_MAP.keys() else val
+process_val = lambda val: (
+    VAL_MAP[val] if isinstance(val, str) and val in VAL_MAP.keys() else val
+)
 remove_tags = lambda val: (
     lxml.html.document_fromstring(val).text_content() if isinstance(val, str) else val
 )
@@ -87,7 +89,9 @@ def preprocess_intrs(d: dict):
 def load_ligands(data_folder: str):
     # pk: Ligand ID,Target ID,Target Ligand ID,Target Species
     # inner join of primary_targets_csv[pk] and detailed_csv[pk] is primary_targets_csv[pk]
-    interactions_file = os.path.join(data_folder, "approved_drug_detailed_interactions.csv")
+    interactions_file = os.path.join(
+        data_folder, "approved_drug_detailed_interactions.csv"
+    )
     ligands_file = os.path.join(data_folder, "ligands.csv")
     assert os.path.exists(interactions_file) and os.path.exists(ligands_file)
 
