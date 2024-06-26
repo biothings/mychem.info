@@ -1,0 +1,18 @@
+version: '0.2'
+requires:
+  - "numpy==1.26.4"
+  - "pandas==2.2.2"
+  - "lxml==5.2.2"
+__metadata__:
+  license_url: https://www.guidetopharmacology.org/download.jsp
+  licence: CC BY-SA 4.0
+  url: https://www.guidetopharmacology.org
+dumper:
+  data_url:
+    - https://www.guidetopharmacology.org/DATA/approved_drug_detailed_interactions.csv
+    - https://www.guidetopharmacology.org/DATA/ligands.csv
+  uncompress: false
+uploader:
+  parser: parser:load_ligands
+  on_duplicates: error
+  mapping : mapping:get_customized_mapping
