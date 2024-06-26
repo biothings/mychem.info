@@ -155,6 +155,50 @@ graph_mychem.add_edge(
     weight=3.0,
 )
 
+###############################################################################
+# GSRS Nodes and Edges
+###############################################################################
+# Adding gsrs -> inchikey
+graph_mychem.add_node("gsrs")
+graph_mychem.add_edge(
+    "gsrs",
+    "inchikey",
+    object=MongoDBEdge("gsrs", "gsrs.smiles", "gsrs.inchikey"),
+    weight=1.3,
+)
+
+###############################################################################
+# Adding edges for other SMILES sources
+###############################################################################
+# chebi.smiles -> inchikey
+graph_mychem.add_edge(
+    "chebi",
+    "inchikey",
+    object=MongoDBEdge("chebi", "chebi.smiles", "chebi.inchikey"),
+)
+
+# chembl.smiles -> inchikey
+graph_mychem.add_edge(
+    "chembl",
+    "inchikey",
+    object=MongoDBEdge("chembl", "chembl.smiles", "chembl.inchikey"),
+)
+
+# drugcentral.structures.smiles -> inchikey
+graph_mychem.add_edge(
+    "drugcentral",
+    "inchikey",
+    object=MongoDBEdge("drugcentral", "drugcentral.structures.smiles",
+                       "drugcentral.structures.inchikey"),
+)
+
+# unii.smiles -> inchikey
+graph_mychem.add_edge(
+    "unii",
+    "inchikey",
+    object=MongoDBEdge("unii", "unii.smiles", "unii.inchikey"),
+)
+
 
 class MyChemKeyLookup(DataTransformMDB):
     def __init__(self, input_types, *args, **kwargs):
