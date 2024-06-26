@@ -11,8 +11,7 @@ logging = config.logger
 process_key = lambda key: key.replace(" ", "_").lower()
 
 
-def load_substances(data_folder: str):
-    file_name = os.path.join(data_folder, "dump-public-2023-12-14.gsrs")
+def load_substances(file_name: str):
 
     with gzip.GzipFile(file_name) as fd:
         for raw_line in fd:
