@@ -24,14 +24,15 @@ intrs_rename_dict = {
 }
 
 
-def preprocess_ligands(d: dict):
+def preprocess_ligands(d: dict, _id: str):
     """convert key names, remove empty vals and XML tags, and determine _id
 
     Args:
         d (dict): ligand properties
+        _id (str): default _id
 
     Returns:
-        dict: processed ligand properties
+        Tuple[dict, str]: processed ligand properties, and _id
     """
     if isinstance(d["Synonyms"], str):
         d["Synonyms"] = d["Synonyms"].split("|")
@@ -41,15 +42,16 @@ def preprocess_ligands(d: dict):
     d = dict_convert(d, valuefn=remove_tags)
 
     if "inchikey" in d.keys() and not d["inchikey_dup"]:
-        d["_id"] = d["inchikey"]
+        _id = d["inchikey"]
     elif "pubchem_cid" in d.keys() and not d["cid_dup"]:
-        d["_id"] = f"pubchem.compound:{d['pubchem_cid']}"
+        _id = f"pubchem.compound:{d['pubchem_cid']}"
     elif "pubchem_sid" in d.keys() and not d["sid_dup"]:
-        d["_id"] = f"pubchem.substance:{d['pubchem_sid']}"
+        _id = f"pubchem.substance:{d['pubchem_sid']}"
 
     for key in ["inchikey_dup", "cid_dup", "sid_dup"]:
         d.pop(key)
-    return d
+
+    return d, _id
 
 
 def preprocess_intrs(d: dict):
@@ -122,5 +124,6 @@ def load_ligands(data_folder: str):
         ligands[ligand_id]["interaction_targets"].append(preprocess_intrs(row))
 
     for k, ligand in ligands.items():
-        ligand["_id"] = f"gtopdb:{k}"  # default _id if others are NaN or duplicated
-        yield preprocess_ligands(ligand)
+        # default _id uses `ligand_id` if others are NaN or duplicated
+        ligand, _id = preprocess_ligands(ligand, f"gtopdb:{k}")
+        yield {"_id": _id, "gtopdb": ligand}
