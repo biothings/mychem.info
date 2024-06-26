@@ -29,8 +29,7 @@ class GSRSUploader(BaseDrugUploader):
         """load_data method"""
         self.logger.info("Load data from '%s'" % data_folder)
         input_file = os.path.join(data_folder, "dump-public-2023-12-14.gsrs")
-        assert os.path.exists(
-            input_file), "Can't find input file '%s'" % input_file
+        assert os.path.exists(input_file), "Can't find input file '%s'" % input_file
         return load_substances(input_file)
 
     @classmethod
@@ -174,7 +173,7 @@ class GSRSUploader(BaseDrugUploader):
                                         "type": "keyword",
                                     },
                                     "nameOrg": {"type": "text"},
-                                    "deprecatedDate": {"type": "integer"},
+                                    "deprecatedDate": {"type": "date"},
                                 }
                             },
                             "nameJurisdiction": {
@@ -458,7 +457,7 @@ class GSRSUploader(BaseDrugUploader):
                             },
                             "publicDomain": {"type": "boolean"},
                             "tags": {"type": "text"},
-                            "documentDate": {"type": "integer"},
+                            "documentDate": {"type": "date"},
                             "uploadedFile": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
