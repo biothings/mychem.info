@@ -9,7 +9,7 @@ import biothings.hub.dataload.storage as storage
 
 from hub.dataload.uploader import BaseDrugUploader
 
-from .parser import load_substances
+from .gsrs_parser import load_substances
 
 SRC_META = {
     "url": "https://gsrs.ncats.nih.gov/",
@@ -29,7 +29,8 @@ class GSRSUploader(BaseDrugUploader):
         """load_data method"""
         self.logger.info("Load data from '%s'" % data_folder)
         input_file = os.path.join(data_folder, "dump-public-2023-12-14.gsrs")
-        assert os.path.exists(input_file), "Can't find input file '%s'" % input_file
+        assert os.path.exists(
+            input_file), "Can't find input file '%s'" % input_file
         return load_substances(input_file)
 
     @classmethod
