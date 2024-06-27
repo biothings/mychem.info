@@ -1079,10 +1079,7 @@ class GSRSUploader(BaseDrugUploader):
                                         "normalizer": "keyword_lowercase_normalizer",
                                         "type": "keyword",
                                     },
-                                    "sequence": {
-                                        "normalizer": "keyword_lowercase_normalizer",
-                                        "type": "keyword",
-                                    },
+                                    "sequence": {"type": "text"},
                                     "subunitIndex": {"type": "integer"},
                                     "length": {"type": "float"},
                                 }
