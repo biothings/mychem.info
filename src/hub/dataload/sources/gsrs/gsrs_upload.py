@@ -173,7 +173,10 @@ class GSRSUploader(BaseDrugUploader):
                                         "type": "keyword",
                                     },
                                     "nameOrg": {"type": "text"},
-                                    "deprecatedDate": {"type": "date"},
+                                    "deprecatedDate": {
+                                        "type": "date",
+                                        "format": "yyyy-MM-dd",
+                                    },
                                 }
                             },
                             "nameJurisdiction": {
@@ -457,7 +460,7 @@ class GSRSUploader(BaseDrugUploader):
                             },
                             "publicDomain": {"type": "boolean"},
                             "tags": {"type": "text"},
-                            "documentDate": {"type": "date"},
+                            "documentDate": {"type": "date", "format": "yyyy-MM-dd"},
                             "uploadedFile": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -672,10 +675,7 @@ class GSRSUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "smiles": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
+                            "smiles": {"type": "keyword"},
                             "formula": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -721,10 +721,7 @@ class GSRSUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "smiles": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
+                            "smiles": {"type": "keyword"},
                             "formula": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -922,7 +919,6 @@ class GSRSUploader(BaseDrugUploader):
                                     },
                                     "molfile": {"type": "text"},
                                     "smiles": {
-                                        "normalizer": "keyword_lowercase_normalizer",
                                         "type": "keyword",
                                     },
                                     "formula": {
@@ -962,7 +958,6 @@ class GSRSUploader(BaseDrugUploader):
                                     },
                                     "molfile": {"type": "text"},
                                     "smiles": {
-                                        "normalizer": "keyword_lowercase_normalizer",
                                         "type": "keyword",
                                     },
                                     "formula": {
