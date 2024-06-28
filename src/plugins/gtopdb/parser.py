@@ -10,7 +10,9 @@ logging = config.logger
 
 VAL_MAP = {"yes": True, "no": False}
 process_key = lambda key: key.replace(" ", "_").lower()
-process_val = lambda val: VAL_MAP[val] if isinstance(val, str) and val in VAL_MAP.keys() else val
+process_val = lambda val: (
+    VAL_MAP[val] if isinstance(val, str) and val in VAL_MAP.keys() else val
+)
 remove_tags = lambda val: (
     lxml.html.document_fromstring(val).text_content() if isinstance(val, str) else val
 )
@@ -20,34 +22,61 @@ intrs_rename_dict = {
     "Target Gene Name": "Symbol",
     "Target Species": "Species",
 }
+recognized_code_systems = [
+    "cas",
+    "pubchem_cid",
+    "pubchem_sid",
+    "uniprot_id",
+    "ensembl_id",
+]
 
 
-def preprocess_ligands(d: dict):
+def preprocess_ligands(d: dict, _id: str):
     """convert key names, remove empty vals and XML tags, and determine _id
 
     Args:
         d (dict): ligand properties
+        _id (str): default _id
 
     Returns:
-        dict: processed ligand properties
+        Tuple[dict, str]: processed ligand properties, and _id
     """
-    if isinstance(d["Synonyms"], str):
-        d["Synonyms"] = d["Synonyms"].split("|")
+
     d = dict_sweep(d, vals=["", np.nan], remove_invalid_list=True)
     d = dict_convert(d, keyfn=process_key)
     d = dict_convert(d, valuefn=process_val)
     d = dict_convert(d, valuefn=remove_tags)
 
     if "inchikey" in d.keys() and not d["inchikey_dup"]:
-        d["_id"] = d["inchikey"]
+        _id = d["inchikey"]
     elif "pubchem_cid" in d.keys() and not d["cid_dup"]:
-        d["_id"] = f"pubchem.compound:{d['pubchem_cid']}"
+        _id = f"pubchem.compound:{d['pubchem_cid']}"
     elif "pubchem_sid" in d.keys() and not d["sid_dup"]:
-        d["_id"] = f"pubchem.substance:{d['pubchem_sid']}"
+        _id = f"pubchem.substance:{d['pubchem_sid']}"
 
     for key in ["inchikey_dup", "cid_dup", "sid_dup"]:
         d.pop(key)
-    return d
+
+    if "cas_number" in d.keys():
+        d["cas"] = d.pop("cas_number")
+
+    if "type" in d.keys():
+        d["type"] = d["type"].lower()
+    if "species" in d.keys():
+        d["species"] = d["species"].lower()
+
+    if "synonyms" in d.keys():
+        d["synonyms"] = d["synonyms"].split("|")
+    if "uniprot_id" in d.keys():
+        d["uniprot_id"] = d["uniprot_id"].split("|")
+    if "ensembl_id" in d.keys():
+        d["ensembl_id"] = d["ensembl_id"].split("|")
+
+    xrefs = parse_xrefs(d)
+    if len(xrefs) > 0:
+        d["xrefs"] = xrefs
+
+    return d, _id
 
 
 def preprocess_intrs(d: dict):
@@ -60,8 +89,6 @@ def preprocess_intrs(d: dict):
         dict: processed interaction properties
     """
     d["Name"] = d["Target"]
-    if isinstance(d["Species"], str):
-        d["Species"] = d["Species"].lower()
 
     # redundant since present in ligands
     cols_to_drop = [
@@ -78,16 +105,33 @@ def preprocess_intrs(d: dict):
     for col in cols_to_drop:
         d.pop(col)
 
-    d = dict_sweep(d, vals=["", np.nan], remove_invalid_list=True)
     d = dict_convert(d, keyfn=process_key)
     d = dict_convert(d, valuefn=remove_tags)
+    d = dict_sweep(d, vals=["", np.nan], remove_invalid_list=True)
     return d
+
+
+def parse_xrefs(d: dict):
+    xrefs = {}
+    for k in recognized_code_systems:
+        new_k = k
+        if k in d.keys():
+            if k == "uniprot_id":
+                new_k = "uniprotkb"
+            elif k == "ensembl_id":
+                new_k = "ensembl"
+
+            xrefs[new_k] = d[k]
+            d.pop(k)
+    return xrefs
 
 
 def load_ligands(data_folder: str):
     # pk: Ligand ID,Target ID,Target Ligand ID,Target Species
     # inner join of primary_targets_csv[pk] and detailed_csv[pk] is primary_targets_csv[pk]
-    interactions_file = os.path.join(data_folder, "approved_drug_detailed_interactions.csv")
+    interactions_file = os.path.join(
+        data_folder, "approved_drug_detailed_interactions.csv"
+    )
     ligands_file = os.path.join(data_folder, "ligands.csv")
     assert os.path.exists(interactions_file) and os.path.exists(ligands_file)
 
@@ -118,5 +162,7 @@ def load_ligands(data_folder: str):
         ligands[ligand_id]["interaction_targets"].append(preprocess_intrs(row))
 
     for k, ligand in ligands.items():
-        ligand["_id"] = f"gtopdb:{k}"  # default _id if others are NaN or duplicated
-        yield preprocess_ligands(ligand)
+        # default _id uses `ligand_id` if others are NaN or duplicated
+        ligand["ligand_id"] = k
+        ligand, _id = preprocess_ligands(ligand, f"gtopdb:{k}")
+        yield {"_id": _id, "gtopdb": ligand}
