@@ -50,9 +50,9 @@ def preprocess_ligands(d: dict, _id: str):
     if "inchikey" in d.keys() and not d["inchikey_dup"]:
         _id = d["inchikey"]
     elif "pubchem_cid" in d.keys() and not d["cid_dup"]:
-        _id = f"pubchem.compound:{d['pubchem_cid']}"
+        _id = d['pubchem_cid']
     elif "pubchem_sid" in d.keys() and not d["sid_dup"]:
-        _id = f"pubchem.substance:{d['pubchem_sid']}"
+        _id = d['pubchem_sid']
 
     for key in ["inchikey_dup", "cid_dup", "sid_dup"]:
         d.pop(key)
@@ -164,5 +164,5 @@ def load_ligands(data_folder: str):
     for k, ligand in ligands.items():
         # default _id uses `ligand_id` if others are NaN or duplicated
         ligand["ligand_id"] = k
-        ligand, _id = preprocess_ligands(ligand, f"gtopdb:{k}")
+        ligand, _id = preprocess_ligands(ligand, k)
         yield {"_id": _id, "gtopdb": ligand}
