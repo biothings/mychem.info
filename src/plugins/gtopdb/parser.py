@@ -63,7 +63,8 @@ def preprocess_ligands(d: dict, _id: str):
     if "type" in d.keys():
         d["type"] = d["type"].lower()
     if "species" in d.keys():
-        d["species"] = d["species"].lower()
+        species_list = d["species"].split(", ")
+        d["species"] = [species.lower() for species in species_list]
 
     if "synonyms" in d.keys():
         d["synonyms"] = d["synonyms"].split("|")
