@@ -68,7 +68,7 @@ def load_substances(file_name: str):
             dict_traverse(record, timestamp_to_date, traverse_list=True)
             record = dict_sweep(record, vals=["", None], remove_invalid_list=True)
 
-            _id = record['uuid']"
+            _id = record['uuid']
             if "approvalid" in record.keys():
                 _id = record['approvalid']
             yield {"_id": _id, "gsrs": record}
