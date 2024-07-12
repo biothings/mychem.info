@@ -8,6 +8,7 @@ import os
 import biothings.hub.dataload.storage as storage
 
 from hub.dataload.uploader import BaseDrugUploader
+from hub.datatransform.keylookup import MyChemKeyLookup
 
 from .gsrs_parser import load_substances
 
@@ -24,13 +25,17 @@ class GSRSUploader(BaseDrugUploader):
 
     name = "gsrs"
     __metadata__ = {"src_meta": SRC_META}
+    storage_class = storage.RootKeyMergerStorage
+    keylookup = MyChemKeyLookup(
+        [('smiles', 'gsrs.smiles')])
 
     def load_data(self, data_folder):
         """load_data method"""
         self.logger.info("Load data from '%s'" % data_folder)
         input_file = os.path.join(data_folder, "dump-public-2023-12-14.gsrs")
-        assert os.path.exists(input_file), "Can't find input file '%s'" % input_file
-        return load_substances(input_file)
+        assert os.path.exists(
+            input_file), "Can't find input file '%s'" % input_file
+        return self.keylookup(load_substances)(input_file)
 
     @classmethod
     def get_mapping(cls):
@@ -173,7 +178,10 @@ class GSRSUploader(BaseDrugUploader):
                                         "type": "keyword",
                                     },
                                     "nameOrg": {"type": "text"},
-                                    "deprecatedDate": {"type": "date"},
+                                    "deprecatedDate": {
+                                        "type": "date",
+                                        "format": "yyyy-MM-dd",
+                                    },
                                 }
                             },
                             "nameJurisdiction": {
@@ -457,7 +465,7 @@ class GSRSUploader(BaseDrugUploader):
                             },
                             "publicDomain": {"type": "boolean"},
                             "tags": {"type": "text"},
-                            "documentDate": {"type": "date"},
+                            "documentDate": {"type": "date", "format": "yyyy-MM-dd"},
                             "uploadedFile": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -672,10 +680,7 @@ class GSRSUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "smiles": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
+                            "smiles": {"type": "keyword"},
                             "formula": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -721,10 +726,7 @@ class GSRSUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "smiles": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
+                            "smiles": {"type": "keyword"},
                             "formula": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -922,7 +924,6 @@ class GSRSUploader(BaseDrugUploader):
                                     },
                                     "molfile": {"type": "text"},
                                     "smiles": {
-                                        "normalizer": "keyword_lowercase_normalizer",
                                         "type": "keyword",
                                     },
                                     "formula": {
@@ -962,7 +963,6 @@ class GSRSUploader(BaseDrugUploader):
                                     },
                                     "molfile": {"type": "text"},
                                     "smiles": {
-                                        "normalizer": "keyword_lowercase_normalizer",
                                         "type": "keyword",
                                     },
                                     "formula": {
