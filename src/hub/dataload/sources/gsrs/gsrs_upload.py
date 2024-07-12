@@ -35,8 +35,7 @@ class GSRSUploader(BaseDrugUploader):
         input_file = os.path.join(data_folder, "dump-public-2023-12-14.gsrs")
         assert os.path.exists(
             input_file), "Can't find input file '%s'" % input_file
-        return load_substances(input_file)
-        # return self.keylookup(load_data)(input_file)
+        return self.keylookup(load_substances)(input_file)
 
     @classmethod
     def get_mapping(cls):
