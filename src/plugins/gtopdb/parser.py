@@ -173,8 +173,8 @@ def load_ligands(data_folder: str):
     for k, ligand in ligands.items():
         # default _id uses `ligand_id` if others are NaN or duplicated
         ligand["ligand_id"] = k
+        ligand, _id = preprocess_ligands(ligand, k)
         if "interaction_targets" in ligand:
             ligand["no_of_interaction_targets"] = len(
                 ligand["interaction_targets"])
-        ligand, _id = preprocess_ligands(ligand, k)
         yield {"_id": _id, "gtopdb": ligand}
