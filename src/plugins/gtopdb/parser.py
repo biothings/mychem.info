@@ -9,13 +9,20 @@ from biothings.utils.dataload import dict_convert, dict_sweep
 logging = config.logger
 
 VAL_MAP = {"yes": True, "no": False}
-process_key = lambda key: key.replace(" ", "_").lower()
-process_val = lambda val: (
+def process_key(key): return key.replace(" ", "_").lower()
+
+
+def process_val(val): return (
     VAL_MAP[val] if isinstance(val, str) and val in VAL_MAP.keys() else val
 )
-remove_tags = lambda val: (
-    lxml.html.document_fromstring(val).text_content() if isinstance(val, str) else val
+
+
+def remove_tags(val): return (
+    lxml.html.document_fromstring(
+        val).text_content() if isinstance(val, str) else val
 )
+
+
 intrs_rename_dict = {
     "Target Ensembl Gene ID": "Ensembl Gene",
     "Target Entrez Gene ID": "Entrez Gene",
@@ -136,7 +143,8 @@ def load_ligands(data_folder: str):
     ligands_file = os.path.join(data_folder, "ligands.csv")
     assert os.path.exists(interactions_file) and os.path.exists(ligands_file)
 
-    ligands = pd.read_csv(ligands_file, skiprows=1, dtype=object).set_index("Ligand ID")
+    ligands = pd.read_csv(ligands_file, skiprows=1,
+                          dtype=object).set_index("Ligand ID")
     interactions = (
         pd.read_csv(interactions_file, skiprows=1, dtype=object)
         .rename(intrs_rename_dict, axis=1)
@@ -165,5 +173,8 @@ def load_ligands(data_folder: str):
     for k, ligand in ligands.items():
         # default _id uses `ligand_id` if others are NaN or duplicated
         ligand["ligand_id"] = k
+        if "interaction_targets" in ligand:
+            ligand["no_of_interaction_targets"] = len(
+                ligand["interaction_targets"])
         ligand, _id = preprocess_ligands(ligand, k)
         yield {"_id": _id, "gtopdb": ligand}
