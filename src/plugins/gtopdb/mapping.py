@@ -4,29 +4,16 @@ def get_customized_mapping(cls):
             "properties": {
                 "name": {"type": "text"},
                 "type": {"type": "text"},
+                "ligand_id": {
+                    "normalizer": "keyword_lowercase_normalizer",
+                    "type": "keyword",
+                },
                 "approved": {"type": "boolean"},
-                "pubchem_sid": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
-                "pubchem_cid": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
                 "inn": {"type": "text"},
                 "synonyms": {"type": "text"},
-                "smiles": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
-                "inchikey": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
-                "inchi": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
+                "smiles": {"type": "keyword"},
+                "inchikey": {"type": "keyword"},
+                "inchi": {"type": "keyword"},
                 "interaction_targets": {
                     "properties": {
                         "target_id": {
@@ -45,9 +32,29 @@ def get_customized_mapping(cls):
                         "name": {"type": "text"},
                     }
                 },
-                "cas_number": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
+                "xrefs": {
+                    "properties": {
+                        "cas": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword",
+                        },
+                        "pubchem_cid": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword",
+                        },
+                        "pubchem_sid": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword",
+                        },
+                        "uniprotkb": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword",
+                        },
+                        "ensembl": {
+                            "normalizer": "keyword_lowercase_normalizer",
+                            "type": "keyword",
+                        },
+                    }
                 },
                 "clinical_use_comment": {"type": "text"},
                 "iupac_name": {"type": "text"},
@@ -55,14 +62,6 @@ def get_customized_mapping(cls):
                 "labelled": {"type": "boolean"},
                 "radioactive": {"type": "boolean"},
                 "species": {"type": "text"},
-                "uniprot_id": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
-                "ensembl_id": {
-                    "normalizer": "keyword_lowercase_normalizer",
-                    "type": "keyword",
-                },
                 "bioactivity_comment": {"type": "text"},
                 "antibacterial": {"type": "boolean"},
                 "gtompdb": {"type": "boolean"},
