@@ -1,25 +1,25 @@
 import networkx as nx
-from biothings.hub.datatransform import (
-    CIMongoDBEdge,
-    DataTransformMDB,
-    MongoDBEdge,
-)
+from biothings.hub.datatransform import CIMongoDBEdge, DataTransformMDB, MongoDBEdge
 
 graph_mychem = nx.DiGraph()
 
 ###############################################################################
 # PharmGKB Nodes and Edges
 ###############################################################################
-graph_mychem.add_node("inchi")
+graph_mychem.add_node("chebi")
+graph_mychem.add_node("cas")
 graph_mychem.add_node("chembl")
 graph_mychem.add_node("drugbank")
 graph_mychem.add_node("drugcentral")
 graph_mychem.add_node("drugname")
+graph_mychem.add_node("inchi")
+graph_mychem.add_node("inchikey")
+graph_mychem.add_node("ndc")
+graph_mychem.add_node("pharmgkb")
 graph_mychem.add_node("pubchem")
 graph_mychem.add_node("rxnorm")
+graph_mychem.add_node("smiles")
 graph_mychem.add_node("unii")
-graph_mychem.add_node("inchikey")
-graph_mychem.add_node("pharmgkb")
 
 graph_mychem.add_edge(
     "inchi",
@@ -48,7 +48,8 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chembl",
     "inchikey",
-    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id", "chembl.inchi_key"),
+    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id",
+                       "chembl.inchi_key"),
     weight=1.0,
 )
 
@@ -86,7 +87,6 @@ graph_mychem.add_edge(
 ###############################################################################
 # ndc -> drugbank -> inchikey
 # shortcut edge, one lookup for ndc to inchikey by way of drugbank
-graph_mychem.add_node("ndc")
 
 graph_mychem.add_edge(
     "ndc",
@@ -102,7 +102,6 @@ graph_mychem.add_edge(
 ###############################################################################
 # chebi -> drugbank -> inchikey
 # chebi -> chembl -> inchikey
-graph_mychem.add_node("chebi")
 graph_mychem.add_edge(
     "chebi",
     "inchikey",
@@ -118,7 +117,8 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chebi",
     "chembl",
-    object=MongoDBEdge("chembl", "chembl.chebi_par_id", "chembl.molecule_chembl_id"),
+    object=MongoDBEdge("chembl", "chembl.chebi_par_id",
+                       "chembl.molecule_chembl_id"),
     weight=1.0,
 )
 
@@ -155,6 +155,38 @@ graph_mychem.add_edge(
     weight=3.0,
 )
 
+###############################################################################
+# Edges for SMILES sources
+###############################################################################
+# chebi.smiles -> inchikey
+graph_mychem.add_edge(
+    "smiles",
+    "inchikey",
+    object=MongoDBEdge("chebi", "chebi.smiles", "chebi.inchikey"),
+)
+
+# chembl.smiles -> inchikey
+graph_mychem.add_edge(
+    "smiles",
+    "inchikey",
+    object=MongoDBEdge("chembl", "chembl.smiles", "chembl.inchikey"),
+)
+
+# drugcentral.structures.smiles -> inchikey
+graph_mychem.add_edge(
+    "smiles",
+    "inchikey",
+    object=MongoDBEdge("drugcentral", "drugcentral.structures.smiles",
+                       "drugcentral.structures.inchikey"),
+)
+
+# unii.smiles -> inchikey
+graph_mychem.add_edge(
+    "smiles",
+    "inchikey",
+    object=MongoDBEdge("unii", "unii.smiles", "unii.inchikey"),
+)
+
 
 class MyChemKeyLookup(DataTransformMDB):
     def __init__(self, input_types, *args, **kwargs):
@@ -169,6 +201,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "chebi",
                 "chembl",
                 "pubchem",
+                'cas',
                 "drugname",
             ],
             id_priority_list=[
@@ -179,6 +212,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "chebi",
                 "chembl",
                 "pubchem",
+                'cas',
                 "drugname",
             ],
             # skip keylookup for InchiKeys
