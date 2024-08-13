@@ -5,20 +5,14 @@ import requests
 
 from biothings.tests.web import BiothingsDataTest
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
 class TestMyChemCurieIdParsing(BiothingsDataTest):
-    host = "mygene.info"
+    host = "mychem.info"
     prefix = "v1"
 
-    @pytest.mark.xfail(
-        reason="CURIE ID SUPPORT NOT CURRENTLY ENABLED ON MYCHEM.INFO HOST",
-        run=True,
-        strict=True,
-    )
     def test_001_curie_id_annotation_endpoint_GET(self):
         """
         Tests the annotation endpoint support for the biolink CURIE ID.
@@ -76,7 +70,8 @@ class TestMyChemCurieIdParsing(BiothingsDataTest):
         for query_collection in curie_id_testing_collection:
             query_result_storage = []
             for similar_query in query_collection:
-                query_result = self.request(f"{endpoint}/{similar_query}", expect=200)
+                query_result = self.request(
+                    f"{endpoint}/{similar_query}", expect=200)
                 query_result = self.request(f"{endpoint}/{similar_query}")
                 assert isinstance(query_result, requests.models.Response)
                 assert query_result.url == self.get_url(
@@ -96,11 +91,6 @@ class TestMyChemCurieIdParsing(BiothingsDataTest):
             aggregation_query_groups.append(all(results_aggregation))
         assert all(aggregation_query_groups)
 
-    @pytest.mark.xfail(
-        reason="CURIE ID SUPPORT NOT CURRENTLY ENABLED ON MYCHEM.INFO HOST",
-        run=True,
-        strict=True,
-    )
     def test_002_curie_id_annotation_endpoint_POST(self):
         """
         Tests the annotations endpoint support for the biolink CURIE ID.
@@ -160,7 +150,8 @@ class TestMyChemCurieIdParsing(BiothingsDataTest):
         results_aggregation = []
         endpoint = "chem"
         for query_collection in curie_id_testing_collection:
-            base_result = self.request(f"{endpoint}/{query_collection[0]}", expect=200)
+            base_result = self.request(
+                f"{endpoint}/{query_collection[0]}", expect=200)
 
             delimiter = ","
             data_mapping = {
