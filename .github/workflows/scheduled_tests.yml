@@ -1,0 +1,56 @@
+name: Scheduled Tests
+
+on:
+  workflow_dispatch: # Manual trigger
+  schedule: # Scheduled trigger
+    - cron: "15,45 14-23,0-1 * * 1-5"  # At minutes 15 and 45 past every hour from 14:00 through 01:00 on every day-of-week from Monday through Friday.
+    - cron: "15 7,13 * * 1-5"  # At minute 15 past hour 7 and 13 on every day-of-week from Monday through Friday.
+
+jobs:
+  run_app_tests:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # AWS Access Key ID.
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # AWS Secret Access Key.
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }} # AWS Default Region.
+      AWS_S3_BUCKET: "biothings-codebuild" # The S3 bucket name for storing application metadata.
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # The Slack webhook URL for sending notifications.
+      SLACK_CHANNEL: "#observability-test" # The Slack channel where notifications will be posted.
+      APPLICATION_NAME: "mychem.info" # The name of the application being tested. It will be displayed in the Slack message.
+      APPLICATION_METADATA_URL: "https://mychem.info/metadata" # Path to the application metadata, typically a URL.
+      APPLICATION_METADATA_FIELD: "build_date" # Notation to the build version field. Ex.: "metadata.build_version"
+      PYTEST_PATH: "src/tests/test_remote.py" # Path to the Pytest test files.
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.11" ]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Prepare virtual environment and dependences
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements_web.txt
+          pip install pytest boto3
+          pip install .venv/lib/python${{ matrix.python-version }}/site-packages/biothings/tests/biothings_pytest_plugin
+      - name: Run pytest
+        run: |
+          source .venv/bin/activate
+          python -m pytest $PYTEST_PATH -s -vv
+
+      # ### For debugging purposes in case of github action failure
+      # ### Reference:https://github.com/mxschmitt/action-tmate
+      # - name: Setup tmate debug session on failure
+      #   if: ${{ failure() }}
+      #   uses: mxschmitt/action-tmate@v3
