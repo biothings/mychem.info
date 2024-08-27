@@ -43,7 +43,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements_web.txt
           pip install pytest boto3
-          pip install .venv/lib/python${{ matrix.python-version }}/site-packages/biothings/tests/biothings_pytest_plugin
+          pip install .venv/lib/python${{ matrix.python-version }}/site-packages/biothings/tests/slack_test_notification
       - name: Run pytest
         run: |
           source .venv/bin/activate
