@@ -5,6 +5,7 @@ on:
   schedule: # Scheduled trigger
     - cron: "15,45 14-23,0-1 * * 1-5"  # At minutes 15 and 45 past every hour from 14:00 through 01:00 on every day-of-week from Monday through Friday.
     - cron: "15 7,13 * * 1-5"  # At minute 15 past hour 7 and 13 on every day-of-week from Monday through Friday.
+    - cron: "0 14 * * 1"  # At 14:00 on Monday (once a week).
 
 jobs:
   run_app_tests:
@@ -44,6 +45,11 @@ jobs:
           pip install -r requirements_web.txt
           pip install pytest boto3
           pip install .venv/lib/python${{ matrix.python-version }}/site-packages/biothings/tests/slack_test_notification
+
+      - name: Set BYPASS_VERSION_CHECK for weekly run to bypass the version check
+        if: github.event.schedule == '0 14 * * 1'
+        run: echo "BYPASS_VERSION_CHECK=True" >> $GITHUB_ENV
+
       - name: Run pytest
         run: |
           source .venv/bin/activate
