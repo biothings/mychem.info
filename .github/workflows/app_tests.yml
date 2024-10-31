@@ -31,7 +31,7 @@ jobs:
         working-directory: src/tests
     services:
       Elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
         env:
           "discovery.type" : single-node
           "xpack.security.enabled": false
