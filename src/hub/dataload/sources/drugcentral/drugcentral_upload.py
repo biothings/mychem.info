@@ -30,7 +30,8 @@ class DrugCentralUploader(BaseDrugUploader):
          ('drugbank', 'drugcentral.xrefs.drugbank_id'),
          ('chebi', 'drugcentral.xrefs.chebi'),
          ('chembl', 'drugcentral.xrefs.chembl_id'),
-         ('pubchem', 'drugcentral.xrefs.pubchem_cid')],
+         ('pubchem', 'drugcentral.xrefs.pubchem_cid'),
+         ('smiles', 'drugcentral.structures.smiles')],
         # ('drugname', 'drugcentral.synonyms')], # unhashable type - list
         copy_from_doc=True,
     )
@@ -41,7 +42,7 @@ class DrugCentralUploader(BaseDrugUploader):
         drugcentral_docs = load_data(data_folder)
         return drugcentral_docs
 
-    @classmethod
+    @ classmethod
     def get_mapping(klass):
         mapping = {
             "drugcentral": {

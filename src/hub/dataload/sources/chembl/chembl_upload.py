@@ -42,7 +42,8 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
          ("chembl", "chembl.molecule_chembl_id"),
          ("chebi", "chembl.chebi_par_id"),
          ("drugcentral", "chembl.xrefs.drugcentral.id"),
-         ("drugname", "chembl.pref_name")],
+         ("drugname", "chembl.pref_name"),
+         ('smiles', 'chembl.smiles')],
         # TODO:  handle duplicate keys from pubchem
         # we use RootKeyMergerStorage, but the num. duplicates is too high (>10000)
         # ("pubchem", "chembl.xrefs.pubchem.sid"),

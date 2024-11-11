@@ -26,7 +26,9 @@ class ChebiUploader(BaseDrugUploader):
     __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup([('inchikey', 'chebi.inchikey'),
                                  ('drugbank', 'chebi.xrefs.drugbank'),
-                                 ('chebi', 'chebi.id')], copy_from_doc=True)
+                                 ('chebi', 'chebi.id'),
+                                 ('smiles', 'chebi.smiles')],
+                                copy_from_doc=True)
 
     """
     A document with an ID from `exclusion_ids` would have a long list for one or more of the following fields:
