@@ -14,6 +14,7 @@ def get_customized_mapping(cls):
                 "smiles": {"type": "keyword"},
                 "inchikey": {"type": "keyword"},
                 "inchi": {"type": "keyword"},
+                "no_of_interaction_targets": {"type": "integer"},
                 "interaction_targets": {
                     "properties": {
                         "target_id": {
