@@ -75,8 +75,8 @@ def preprocess_ligands(d: dict, _id: str):
 
     if "synonyms" in d.keys():
         # replace trademark and registered symbols with url encoding
-        d["synonyms"] = d["synonyms"].split(
-            "|").replace("™", "&trade;").replace("®", "&reg;")
+        d["synonyms"] = "|".join([syn.replace("™", "&trade;").replace(
+            "®", "&reg;") for syn in d["synonyms"].split("|")])
     if "uniprot_id" in d.keys():
         d["uniprot_id"] = d["uniprot_id"].split("|")
     if "ensembl_id" in d.keys():
