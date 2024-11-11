@@ -14,9 +14,9 @@ from biothings.web.settings.default import ANNOTATION_KWARGS, QUERY_KWARGS
 # *****************************************************************************
 ES_HOST = 'http://localhost:9200'
 ES_INDICES = {
-    "chem": "mychem_current",
-    "drug": "mychem_current",
-    "compound": "mychem_current",
+    "chem": "mychem_v2_current",
+    "drug": "mychem_v2_current",
+    "compound": "mychem_v2_current",
 }
 ES_SCROLL_TIME = "10m"
 
@@ -83,8 +83,10 @@ chem_prefix_handling = [
         re.compile(r"((chembl\:(?P<term>chembl[0-9]+))|(chembl[0-9]+))", re.I),
         "chembl.molecule_chembl_id",
     ),
-    (re.compile(r"chebi\:[0-9]+", re.I), ["chebi.id", "chebi.secondary_chebi_id"]),
-    (re.compile(r"((unii\:(?P<term>[A-Z0-9]{10}))|([A-Z0-9]{10}))", re.I), "unii.unii"),
+    (re.compile(r"chebi\:[0-9]+", re.I),
+     ["chebi.id", "chebi.secondary_chebi_id"]),
+    (re.compile(
+        r"((unii\:(?P<term>[A-Z0-9]{10}))|([A-Z0-9]{10}))", re.I), "unii.unii"),
     (
         re.compile(r"((drugbank\:(?P<term>db[0-9]+))|(db[0-9]+))", re.I),
         [
@@ -126,7 +128,7 @@ ANNOTATION_ID_REGEX_LIST = [
 
 STATUS_CHECK = {
     "id": "USNINKBPBVKHHZ-CYUUQNCZSA-L",  # penicillin
-    "index": "mychem_current",
+    "index": "mychem_v2_current",
 }
 
 _extra_kwargs = {"list_filter": {"type": str, "default": None}}

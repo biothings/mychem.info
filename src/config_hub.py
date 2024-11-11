@@ -3,7 +3,7 @@
 #############
 
 # Hub name/icon url/version, for display purpose
-HUB_NAME = "MyChem"
+HUB_NAME = "MyChemV2"
 HUB_ICON = "http://biothings.io/static/img/mychem-logo-shiny.svg"
 
 # Pre-prod/test ES definitions
@@ -53,7 +53,7 @@ SNAPSHOT_CONFIG = {
                 "type": "s3",
                 "settings": {
                         "bucket": "<SNAPSHOT_BUCKET_NAME>",
-                        "base_path": "mychem.info/$(Y)",  # per year
+                        "base_path": "mychem.info_v2/$(Y)",  # per year
                         "region": "us-west-2",
                 },
                 "acl": "private",
@@ -77,7 +77,7 @@ SNAPSHOT_CONFIG = {
                 "type": "s3",
                 "settings": {
                         "bucket": "<SNAPSHOT_DEMO_BUCKET_NAME>",
-                        "base_path": "mychem.info/$(Y)",  # per year
+                        "base_path": "mychem.info_v2/$(Y)",  # per year
                         "region": "us-west-2",
                 },
                 "acl": "public",
@@ -106,12 +106,12 @@ RELEASE_CONFIG = {
             "release": {
                 "bucket": "<RELEASES_BUCKET_NAME>",
                 "region": "us-west-2",
-                "folder": "mychem.info",
+                "folder": "mychem.info_v2",
                 "auto": True,  # automatically generate release-note ?
             },
             "diff": {
                 "bucket": "<DIFFS_BUCKET_NAME>",
-                "folder": "mychem.info",
+                "folder": "mychem.info_v2",
                 "region": "us-west-2",
                 "auto": True,  # automatically generate diff ? Careful if lots of changes
             },
@@ -125,12 +125,12 @@ RELEASE_CONFIG = {
             "release": {
                 "bucket": "<RELEASES_BUCKET_NAME>",
                 "region": "us-west-2",
-                "folder": "mychem.info-demo",
+                "folder": "mychem.info_v2-demo",
                 "auto": True,  # automatically generate release-note ?
             },
             "diff": {
                 "bucket": "<DIFFS_BUCKET_NAME>",
-                "folder": "mychem.info",
+                "folder": "mychem.info_v2",
                 "region": "us-west-2",
                 "auto": True,  # automatically generate diff ? Careful if lots of changes
             },
