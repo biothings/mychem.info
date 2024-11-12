@@ -3,7 +3,7 @@ import os.path
 
 import biothings
 import bs4
-from biothings.hub.dataload.dumper import DummyDumper
+from biothings.hub.dataload.dumper import HTTPDumper
 
 import config
 from config import DATA_ARCHIVE_ROOT
@@ -11,7 +11,7 @@ from config import DATA_ARCHIVE_ROOT
 biothings.config_for_app(config)
 
 
-class DrugBankFullDumper(DummyDumper):
+class DrugBankFullDumper(HTTPDumper):
     """
     DrugBank requires to sign-in before downloading a file. This dumper
     will just monitor new versions and report when a new one is available
@@ -21,7 +21,7 @@ class DrugBankFullDumper(DummyDumper):
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
     AUTO_UPLOAD = False  # it's still manual, so upload won't have the
 
-    #SCHEDULE = "0 12 * * *"
+    # SCHEDULE = "0 12 * * *"
     VERSIONS_URL = "https://www.drugbank.ca/releases"
 
     def create_todump_list(self, force=False, **kwargs):
