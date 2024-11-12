@@ -13,7 +13,7 @@ class UMLSDumper(HTTPDumper):
     SRC_NAME = "umls"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
     HOMEPAGE_URL = "https://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html"
 
     def get_latest_release(self):

@@ -14,7 +14,7 @@ class Unichem_biothings_sdkDumper(FTPDumper):
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
     FTP_HOST = 'ftp.ebi.ac.uk'
     CWD_DIR = '/pub/databases/chembl/UniChem/legacy/oracleDumps'
-    SCHEDULE = "0 6 * * *"
+    #SCHEDULE = "0 6 * * *"
     UNCOMPRESS = True
     MAX_PARALLEL_DUMP = 1
 

@@ -44,7 +44,7 @@ class ChemblDumper(HTTPDumper):
         "binding_site": "https://www.ebi.ac.uk/chembl/api/data/binding_site.json"
     }
 
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
     SLEEP_BETWEEN_DOWNLOAD = 0.1
     MAX_PARALLEL_DUMP = 5   # HUB_MAX_WORKERS // 2
 

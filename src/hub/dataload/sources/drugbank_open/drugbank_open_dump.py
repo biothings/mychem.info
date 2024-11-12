@@ -18,7 +18,7 @@ class DrugBankOpenDumper(HTTPDumper):
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
     AUTO_UPLOAD = True
 
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
     BASE_URL = "https://go.drugbank.com"
     DOWNLOAD_URL = BASE_URL + \
         "/releases/{version}/downloads/all-drugbank-vocabulary"

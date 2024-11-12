@@ -14,7 +14,7 @@ class UniiDumper(HTTPDumper):
     SRC_NAME = "unii"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
     HOMEPAGE_URL = "https://precision.fda.gov/uniisearch/archive"
 
     def get_latest_release(self):

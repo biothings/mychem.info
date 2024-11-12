@@ -13,7 +13,7 @@ class ChebiDumper(FTPDumper):
     FTP_HOST = 'ftp.ebi.ac.uk'
     CWD_DIR = '/pub/databases/chebi/archive'  # contains all releases
 
-    SCHEDULE = "0 12 * * *"
+    #SCHEDULE = "0 12 * * *"
 
     def get_release(self):
         self.client.cwd(self.__class__.CWD_DIR)
