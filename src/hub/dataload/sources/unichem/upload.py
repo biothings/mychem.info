@@ -1,9 +1,12 @@
-import re
-import biothings.hub.dataload.uploader
 import os
+import re
 
 import biothings
+import biothings.hub.dataload.storage as storage
+import biothings.hub.dataload.uploader
+
 import config
+
 biothings.config_for_app(config)
 
 # when code is exported, import becomes relative
@@ -32,7 +35,7 @@ class Unichem_biothings_sdkUploader(
     }
 
     idconverter = None
-    storage_class = biothings.hub.dataload.storage.BasicStorage
+    storage_class = storage.BasicStorage
 
     def load_data(self, data_folder):
         self.logger.info("Load data from directory: '%s'" % data_folder)
