@@ -1,7 +1,7 @@
 import glob
 import os.path
 
-from biothings.hub.datatransform.keylookup import MyChemKeyLookup
+from hub.datatransform.keylookup import MyChemKeyLookup
 
 # when code is exported, import becomes relative
 try:
