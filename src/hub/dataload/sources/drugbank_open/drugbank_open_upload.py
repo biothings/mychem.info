@@ -42,15 +42,12 @@ class DrugBankOpenUploader(BaseDrugUploader):
     ])
     keylookup = MyChemKeyLookup(
         [("inchikey", "drugbank.inchi_key"),
-         # new
          ("unii", "drugbank.unii"),
          ("drugbank", "drugbank.id"),
-         # the following keys could possible be used to lookup 'inchikey' or 'unii'
          ("chebi", "drugbank.xrefs.chebi"),
          ("chembl", "drugbank.xrefs.chembl"),
          ("pubchem", "drugbank.xrefs.pubchem.cid"),
          ("inchi", "drugbank.inchi"),
-         # can be used to lookup unii, disabled for now
          ("drugname", "drugbank.name"),
          ],
         copy_from_doc=True)

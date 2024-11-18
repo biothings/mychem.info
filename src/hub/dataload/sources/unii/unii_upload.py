@@ -25,7 +25,6 @@ class UniiUploader(BaseDrugUploader):
 
     keylookup = MyChemKeyLookup([('inchikey', 'unii.inchikey'),
                                  ('pubchem', 'unii.pubchem'),
-                                 ('unii', 'unii.unii'),
                                  ('smiles', 'unii.smiles')],
                                 copy_from_doc=True,
                                 )

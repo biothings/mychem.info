@@ -46,25 +46,25 @@ graph_mychem.add_edge(
 )
 
 graph_mychem.add_edge(
-    "chembl",
     "inchikey",
-    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id",
-                       "chembl.inchi_key"),
+    "chembl",
+    object=MongoDBEdge("chembl", "chembl.inchikey",
+                       "chembl.molecule_chembl_id"),
     weight=1.0,
 )
 
 graph_mychem.add_edge(
-    "drugbank",
     "inchikey",
+    "drugbank",
     #   TODO drugbank_open
-    object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.inchi_key"),
+    object=MongoDBEdge("drugbank", "drugbank.inchi_key", "drugbank.id"),
     weight=1.1,
 )
 
 graph_mychem.add_edge(
-    "pubchem",
     "inchikey",
-    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.inchikey"),
+    "pubchem",
+    object=MongoDBEdge("pubchem", "pubchem.inchikey", "pubchem.cid"),
     weight=1.2,
 )
 
@@ -102,23 +102,24 @@ graph_mychem.add_edge(
 ###############################################################################
 # chebi -> drugbank -> inchikey
 # chebi -> chembl -> inchikey
+
 graph_mychem.add_edge(
-    "chebi",
     "inchikey",
-    object=MongoDBEdge("chebi", "chebi.id", "chebi.inchikey"),
+    "chebi",
+    object=MongoDBEdge("chebi",  "chebi.inchikey", "chebi.id"),
     weight=1.1,
 )
 graph_mychem.add_edge(
-    "chebi",
     "drugbank",
-    object=MongoDBEdge("drugbank", "drugbank.xrefs.chebi", "drugbank.id"),
+    "chebi",
+    object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.xrefs.chebi"),
     weight=1.0,
 )
 graph_mychem.add_edge(
-    "chebi",
     "chembl",
-    object=MongoDBEdge("chembl", "chembl.chebi_par_id",
-                       "chembl.molecule_chembl_id"),
+    "chebi",
+    object=MongoDBEdge("chembl",
+                       "chembl.molecule_chembl_id", "chembl.chebi_par_id"),
     weight=1.0,
 )
 
@@ -137,10 +138,10 @@ graph_mychem.add_edge(
 # Unii Edges
 ###############################################################################
 graph_mychem.add_edge(
-    "unii", "inchikey", object=MongoDBEdge("unii", "unii.unii", "unii.inchikey")
+    "inchikey", "unii", object=MongoDBEdge("unii", "unii.inchikey", "unii.unii")
 )
 graph_mychem.add_edge(
-    "unii", "pubchem", object=MongoDBEdge("unii", "unii.unii", "unii.pubchem")
+    "pubchem", "unii", object=MongoDBEdge("unii", "unii.pubchem", "unii.unii")
 )
 
 ###############################################################################

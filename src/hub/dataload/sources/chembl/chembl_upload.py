@@ -37,13 +37,15 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
     BINDING_SITE_FILENAME_PATTERN = "binding_site.*.json"
 
     keylookup = MyChemKeyLookup(
-        [("inchikey", "chembl.inchi_key"),
-         ("inchi", "chembl.inchi"),
-         ("chembl", "chembl.molecule_chembl_id"),
-         ("chebi", "chembl.chebi_par_id"),
-         ("drugcentral", "chembl.xrefs.drugcentral.id"),
-         ("drugname", "chembl.pref_name"),
-         ('smiles', 'chembl.smiles')],
+        [
+            ("inchikey", "chembl.inchi_key"),
+            ("inchi", "chembl.inchi"),
+            ("chembl", "chembl.molecule_chembl_id"),
+            ("chebi", "chembl.chebi_par_id"),
+            ("drugcentral", "chembl.xrefs.drugcentral.id"),
+            ("smiles", "chembl.smiles"),
+            ("pubchem", "chembl.xrefs.pubchem.cid"),
+        ],
         # TODO:  handle duplicate keys from pubchem
         # we use RootKeyMergerStorage, but the num. duplicates is too high (>10000)
         # ("pubchem", "chembl.xrefs.pubchem.sid"),

@@ -25,20 +25,29 @@ class DrugBankFullDumper(HTTPDumper):
     VERSIONS_URL = "https://www.drugbank.ca/releases"
 
     def create_todump_list(self, force=False, **kwargs):
-        res = self.client.get(self.VERSIONS_URL)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        }
+        res = self.client.get(self.VERSIONS_URL, headers=headers)
+        if res.status_code != 200:
+            raise ValueError(f"Failed to fetch URL: {
+                             self.VERSIONS_URL}, Status Code: {res.status_code}")
+
         html = bs4.BeautifulSoup(res.text, "lxml")
-        table = html.findAll(attrs={"class": "table-bordered"})
-        if len(table) != 1:
+        table = html.find(
+            "div", class_="download-table").find("table", class_="table-bordered")
+        if not table:
             raise ValueError(
-                "Expecting one table element, got %s" % len(table))
-        table = table.pop()
-        # the very first element in the table contains the latest version
-        version = table.find("tbody").find("tr").find("td").text
+                "Expected table not found in the HTML response. Check the structure of the page.")
+
+        version = table.find("tbody").find("tr").find("td").text.strip()
         if force or not self.src_doc or (self.src_doc and self.src_doc.get("download", {}).get("release") < version):
-            self.release = version  # new_data_folder can be generated
-            self.logger.info("DrugBank, new release '%s' available, please download it from " % version +
-                             "https://www.drugbank.ca/releases and put the file in folder '%s'. " % self.new_data_folder +
-                             "Once downloaded, run upload('drugbank') from the hub command line",
-                             extra={"notify": True})
+            self.release = version
+            self.logger.info(
+                "DrugBank, new release '%s' available, please download it from " % version +
+                "https://www.drugbank.ca/releases and put the file in folder '%s'. " % self.new_data_folder +
+                "Once downloaded, run upload('drugbank') from the hub command line",
+                extra={"notify": True}
+            )
             local = os.path.join(self.new_data_folder, "releases")
             self.to_dump.append({"remote": self.VERSIONS_URL, "local": local})

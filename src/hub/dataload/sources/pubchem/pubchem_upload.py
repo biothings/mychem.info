@@ -1,5 +1,8 @@
-import os.path
 import glob
+import os.path
+
+from biothings.hub.datatransform.keylookup import MyChemKeyLookup
+
 # when code is exported, import becomes relative
 try:
     from pubchem.pubchem_parser import load_annotations as parser_func
@@ -8,9 +11,10 @@ except ImportError:
 
 
 # from parser import load_data
+import biothings.hub.dataload.storage as storage
+
 # from hub.dataload.uploader import BaseDrugUploader
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
-import biothings.hub.dataload.storage as storage
 
 
 class PubChemUploader(ParallelizedSourceUploader):
@@ -29,9 +33,20 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     COMPOUND_PATTERN = "Compound*.xml.gz"
 
+    keylookup = MyChemKeyLookup(
+        [
+            ('inchikey', 'pubchem.inchikey'),
+            ('inchi', 'pubchem.inchi'),
+            ('smiles', 'pubchem.smiles.canonical'),
+            ('pubchem', 'pubchem.cid')
+        ],
+        copy_from_doc=True,
+    )
+
     def jobs(self):
         # this will generate arguments for self.load.data() method, allowing parallelization
-        xmlgz_files = glob.glob(os.path.join(self.data_folder, self.__class__.COMPOUND_PATTERN))
+        xmlgz_files = glob.glob(os.path.join(
+            self.data_folder, self.__class__.COMPOUND_PATTERN))
         return [(f,) for f in xmlgz_files]
 
     def load_data(self, input_file):
