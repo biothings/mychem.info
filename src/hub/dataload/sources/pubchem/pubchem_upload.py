@@ -51,7 +51,7 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def load_data(self, input_file):
         self.logger.info("Load data from file '%s'" % input_file)
-        return parser_func(input_file)
+        return self.keylookup(parser_func)(input_file)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following upload"""
