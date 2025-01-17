@@ -16,11 +16,11 @@ def caching_ncit_descriptions(ncit_ids):
 
     ncit_api = get_client(url="https://biothings.ncats.io/ncit")
     ncit_ids = [f"NCIT:{ncit}" for ncit in ncit_ids]
-    ncit_res = ncit_api.getnodes(ncit_ids, fields="def")
+    ncit_res = ncit_api.getnodes(ncit_ids, fields="definition")
     ncit_def_d = {}
     for hit in ncit_res:
-        if hit.get("def"):
-            ncit_def = hit["def"]
+        if hit.get("definition"):
+            ncit_def = hit["definition"]
             if ncit_def.startswith('"') and ncit_def.endswith('" []'):
                 ncit_def = ncit_def[1:-4]
             ncit_def_d[hit["_id"].replace("NCIT:", "")] = ncit_def
