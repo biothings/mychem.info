@@ -20,6 +20,8 @@ graph_mychem.add_node("pubchem")
 graph_mychem.add_node("rxnorm")
 graph_mychem.add_node("smiles")
 graph_mychem.add_node("unii")
+graph_mychem.add_node("mesh")
+graph_mychem.add_node("umls")
 
 graph_mychem.add_edge(
     "inchi",
@@ -32,9 +34,6 @@ graph_mychem.add_edge(
     "inchi",
     "drugbank",
     object=MongoDBEdge("drugbank_full", "drugbank.inchi", "drugbank.id"),
-    # TODO
-    #   object=MongoDBEdge(
-    #       'drugbank_full', 'drugbank.inchi', 'drugbank.id'),
     weight=1.1,
 )
 
@@ -56,7 +55,6 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "inchikey",
     "drugbank",
-    #   TODO drugbank_open
     object=MongoDBEdge("drugbank", "drugbank.inchi_key", "drugbank.id"),
     weight=1.1,
 )
@@ -74,8 +72,7 @@ graph_mychem.add_edge(
     object=MongoDBEdge("pharmgkb", "pharmgkb.id", "pharmgkb.xrefs.drugbank"),
 )
 
-# self-loops to check looked-up values exist in official collection
-#   TODO drugbank_open
+# self-loop to check looked-up values exist in official collection
 graph_mychem.add_edge(
     "drugbank",
     "drugbank",
@@ -85,28 +82,20 @@ graph_mychem.add_edge(
 ###############################################################################
 # NDC Nodes and Edges
 ###############################################################################
-# ndc -> drugbank -> inchikey
-# shortcut edge, one lookup for ndc to inchikey by way of drugbank
-
 graph_mychem.add_edge(
     "ndc",
     "inchikey",
-    #   TODO drugbank_full
     object=MongoDBEdge(
-        "drugbank_full", "drugbank.products.ndc_product_code", "drugbank.inchi_key"
-    ),
+        "drugbank_full", "drugbank.products.ndc_product_code", "drugbank.inchi_key"),
 )
 
 ###############################################################################
 # Chebi Nodes and Edges
 ###############################################################################
-# chebi -> drugbank -> inchikey
-# chebi -> chembl -> inchikey
-
 graph_mychem.add_edge(
     "inchikey",
     "chebi",
-    object=MongoDBEdge("chebi",  "chebi.inchikey", "chebi.id"),
+    object=MongoDBEdge("chebi", "chebi.inchikey", "chebi.id"),
     weight=1.1,
 )
 graph_mychem.add_edge(
@@ -118,21 +107,10 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chembl",
     "chebi",
-    object=MongoDBEdge("chembl",
-                       "chembl.molecule_chembl_id", "chembl.chebi_par_id"),
+    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id",
+                       "chembl.chebi_par_id"),
     weight=1.0,
 )
-
-# graph_mychem.add_node('chebi-short')
-
-# graph_mychem.add_edge('chebi', 'chebi-short',
-#                      object=RegExEdge('^CHEBI:', ''))
-# graph_mychem.add_edge('chebi-short', 'chebi',
-#                      object=RegExEdge('^', 'CHEBI:'))
-# graph_mychem.add_edge('chebi-short', 'drugbank',
-#                      object=MongoDBEdge('drugbank', 'drugbank.chebi', 'drugbank.drugbank_id'))
-# graph_mychem.add_edge('chebi-short', 'chembl',
-#                      object=MongoDBEdge('chembl', 'chembl.chebi_par_id', 'chembl.molecule_chembl_id'))
 
 ###############################################################################
 # Unii Edges
@@ -147,8 +125,6 @@ graph_mychem.add_edge(
 ###############################################################################
 # Drug name Unii lookup
 ###############################################################################
-# Converting to unii (and possibily Inchikey) should be done as a last resort,
-# so we increase the weight of this edge
 graph_mychem.add_edge(
     "drugname",
     "unii",
@@ -159,34 +135,76 @@ graph_mychem.add_edge(
 ###############################################################################
 # Edges for SMILES sources
 ###############################################################################
-# chebi.smiles -> inchikey
 graph_mychem.add_edge(
     "smiles",
     "inchikey",
     object=MongoDBEdge("chebi", "chebi.smiles", "chebi.inchikey"),
 )
-
-# chembl.smiles -> inchikey
 graph_mychem.add_edge(
     "smiles",
     "inchikey",
     object=MongoDBEdge("chembl", "chembl.smiles", "chembl.inchikey"),
 )
-
-# drugcentral.structures.smiles -> inchikey
 graph_mychem.add_edge(
     "smiles",
     "inchikey",
     object=MongoDBEdge("drugcentral", "drugcentral.structures.smiles",
                        "drugcentral.structures.inchikey"),
 )
-
-# unii.smiles -> inchikey
 graph_mychem.add_edge(
     "smiles",
     "inchikey",
     object=MongoDBEdge("unii", "unii.smiles", "unii.inchikey"),
 )
+
+###############################################################################
+# MeSH Edges
+###############################################################################
+graph_mychem.add_edge(
+    "mesh",
+    "drugcentral",
+    object=MongoDBEdge(
+        "drugcentral", "drugcentral.xrefs.mesh_supplemental_record_ui", "drugcentral.id")
+)
+graph_mychem.add_edge(
+    "mesh",
+    "ginas",
+    object=MongoDBEdge("ginas", "ginas.xrefs.MESH", "ginas.id")
+)
+graph_mychem.add_edge(
+    "mesh",
+    "pharmgkb",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.mesh", "pharmgkb.id")
+)
+graph_mychem.add_edge(
+    "mesh",
+    "umls",
+    object=MongoDBEdge("umls", "umls.mesh", "umls.cui")
+)
+
+###############################################################################
+# UMLS Edges
+###############################################################################
+graph_mychem.add_edge(
+    "umls",
+    "drugcentral",
+    object=MongoDBEdge(
+        "drugcentral", "drugcentral.xrefs.umlscui", "drugcentral.id")
+)
+graph_mychem.add_edge(
+    "umls",
+    "pharmgkb",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.umls", "pharmgkb.id")
+)
+graph_mychem.add_edge(
+    "umls",
+    "umls",
+    object=MongoDBEdge("umls", "umls.cui", "umls.cui")
+)
+
+###############################################################################
+# MyChemKeyLookup Class
+###############################################################################
 
 
 class MyChemKeyLookup(DataTransformMDB):
@@ -200,25 +218,13 @@ class MyChemKeyLookup(DataTransformMDB):
                 "pubchem",
                 "chembl",
                 "drugbank",
+                "mesh",
                 "cas",
                 "drugcentral",
                 "pharmgkb",
                 "inchi",
                 "inchikey",
-                # "mesh",
-                # "gtopdb",
-                # "hmdb",
-                # "kegg_compound",
-                # "chembank",
-                # "pubchem_substance",
-                # "sider_drug",
-                # "bigg_metabolite",
-                # "foodb_compound",
-                # "kegg_glycan",
-                # "kegg_drug",
-                # "kegg_environ",
-                # "kegg",
-                # "umls",
+                "umls"
             ],
             id_priority_list=[
                 "chebi",
@@ -226,25 +232,13 @@ class MyChemKeyLookup(DataTransformMDB):
                 "pubchem",
                 "chembl",
                 "drugbank",
+                "mesh",
                 "cas",
                 "drugcentral",
                 "pharmgkb",
                 "inchi",
                 "inchikey",
-                # "mesh",
-                # "gtopdb",
-                # "hmdb",
-                # "kegg_compound",
-                # "chembank",
-                # "pubchem_substance",
-                # "sider_drug",
-                # "bigg_metabolite",
-                # "foodb_compound",
-                # "kegg_glycan",
-                # "kegg_drug",
-                # "kegg_environ",
-                # "kegg",
-                # "umls",
+                "umls"
             ],
             # skip keylookup for InChIKeys
             skip_w_regex="^[A-Z]{14}-[A-Z]{10}-[A-Z]$",
