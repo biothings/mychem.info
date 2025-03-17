@@ -14,19 +14,17 @@ class UMLSUploader(uploader.BaseSourceUploader):
 
     name = "umls"
 
-    keylookup = MyChemKeyLookup(
-        [
-    ('mesh', 'umls.mesh'),
-    ('umls', 'umls.cui')
-    ]
+    keylookup = MyChemKeyLookup([
+        ('mesh', 'umls.mesh'),
+        ('umls', 'umls.cui')
+    ])
 
     def load_data(self, data_folder):
-        return self.keylookup(load_data)(input_file)
-        return umls_docs
+        return self.keylookup(load_data)(data_folder)
 
-    @ classmethod
+    @classmethod
     def get_mapping(klass):
-        mapping={
+        mapping = {
             "umls": {
                 "properties": {
                     "cui": {
