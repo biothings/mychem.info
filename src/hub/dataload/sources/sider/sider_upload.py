@@ -3,20 +3,21 @@ Sider Uploader
 """
 # pylint: disable=E0401, E0611
 import os
-from biothings.hub.datatransform import IDStruct
-from biothings.hub.datatransform import nested_lookup
+
+import biothings.hub.dataload.storage as storage
+from biothings.hub.datatransform import IDStruct, nested_lookup
+
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
-from .sider_parser import load_data
-from .sider_parser import sort_key
 
+from .sider_parser import load_data, sort_key
 
 SRC_META = {
     "url": 'http://sideeffects.embl.de/',
-    "license_url" : "ftp://xi.embl.de/SIDER/LICENSE",
-    "license_url_short" : "http://bit.ly/2SjPTpx",
+    "license_url": "ftp://xi.embl.de/SIDER/LICENSE",
+    "license_url_short": "http://bit.ly/2SjPTpx",
     "license": "CC BY-NC-SA 3.0"
-    }
+}
 
 
 def preproc(doc):
@@ -30,7 +31,7 @@ def preproc(doc):
 class SiderIDStruct(IDStruct):
     """Custom IDStruct to preprocess _id from sider"""
 
-    def preprocess_id(self,_id):
+    def preprocess_id(self, _id):
         if isinstance(_id, str) and _id.startswith('CID') and len(_id) == 12:
             return int(_id[4:])
         return _id
@@ -70,8 +71,8 @@ class SiderUploader(BaseDrugUploader):
     """
 
     name = "sider"
-    #storage_class = storage.IgnoreDuplicatedStorage
-    __metadata__ = {"src_meta" : SRC_META}
+    storage_class = storage.RootKeyMergerStorage
+    __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup(
         [("pubchem", "_id")],
         idstruct_class=SiderIDStruct)
@@ -79,7 +80,8 @@ class SiderUploader(BaseDrugUploader):
 
     def load_data(self, data_folder):
         """load_data method"""
-        input_file = os.path.join(data_folder, "merged_freq_all_se_indications.tsv")
+        input_file = os.path.join(
+            data_folder, "merged_freq_all_se_indications.tsv")
         self.logger.info("Load data from file '%s'" % input_file)
         docs = self.keylookup(load_data)(input_file)
         for doc in docs:
@@ -105,51 +107,51 @@ class SiderUploader(BaseDrugUploader):
                             "flat": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                },
+                            },
                             "stereo": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                }
                             }
-                        },
+                        }
+                    },
                     "indication": {
                         "properties": {
                             "method_of_detection": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                },
+                            },
                             "name": {
                                 "type": "text"
-                                }
                             }
-                        },
+                        }
+                    },
                     "meddra": {
                         "properties": {
                             "type": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                },
+                            },
                             "umls_id": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                }
                             }
-                        },
+                        }
+                    },
                     "side_effect": {
                         "properties": {
                             "frequency": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
-                                },
+                            },
                             "placebo": {
                                 "type": "boolean"
-                                },
+                            },
                             "name": {
                                 "type": "text"
-                                }
                             }
                         }
                     }
                 }
+            }
         }
         return mapping
