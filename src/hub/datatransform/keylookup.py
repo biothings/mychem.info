@@ -1,5 +1,5 @@
 import networkx as nx
-from biothings.hub.datatransform import CIMongoDBEdge, DataTransformMDB, MongoDBEdge
+from biothings.hub.datatransform import DataTransformMDB, MongoDBEdge
 
 graph_mychem = nx.DiGraph()
 
@@ -7,36 +7,38 @@ graph_mychem = nx.DiGraph()
 # PharmGKB Nodes and Edges
 ###############################################################################
 graph_mychem.add_node("chebi")
-graph_mychem.add_node("cas")
+graph_mychem.add_node("unii")
+graph_mychem.add_node("pubchem")
 graph_mychem.add_node("chembl")
 graph_mychem.add_node("drugbank")
+graph_mychem.add_node("mesh")
+graph_mychem.add_node("cas")
 graph_mychem.add_node("drugcentral")
-graph_mychem.add_node("drugname")
+graph_mychem.add_node("pharmgkb")
 graph_mychem.add_node("inchi")
 graph_mychem.add_node("inchikey")
-graph_mychem.add_node("ndc")
-graph_mychem.add_node("pharmgkb")
-graph_mychem.add_node("pubchem")
-graph_mychem.add_node("rxnorm")
-graph_mychem.add_node("smiles")
-graph_mychem.add_node("unii")
-graph_mychem.add_node("mesh")
 graph_mychem.add_node("umls")
 
+graph_mychem.add_node("aeolus")
+graph_mychem.add_node("fda_orphan_drug")
+graph_mychem.add_node("ginas")
+graph_mychem.add_node("gsrs")
+graph_mychem.add_node("gtopdb")
+graph_mychem.add_node("unichem")
+
+# InChI-based edges
 graph_mychem.add_edge(
     "inchi",
     "chembl",
     object=MongoDBEdge("chembl", "chembl.inchi", "chembl.molecule_chembl_id"),
     weight=1.0,
 )
-
 graph_mychem.add_edge(
     "inchi",
     "drugbank",
     object=MongoDBEdge("drugbank_full", "drugbank.inchi", "drugbank.id"),
     weight=1.1,
 )
-
 graph_mychem.add_edge(
     "inchi",
     "pubchem",
@@ -44,6 +46,7 @@ graph_mychem.add_edge(
     weight=1.2,
 )
 
+# InChIKey-based edges
 graph_mychem.add_edge(
     "inchikey",
     "chembl",
@@ -51,14 +54,12 @@ graph_mychem.add_edge(
                        "chembl.molecule_chembl_id"),
     weight=1.0,
 )
-
 graph_mychem.add_edge(
     "inchikey",
     "drugbank",
     object=MongoDBEdge("drugbank", "drugbank.inchi_key", "drugbank.id"),
     weight=1.1,
 )
-
 graph_mychem.add_edge(
     "inchikey",
     "pubchem",
@@ -66,100 +67,21 @@ graph_mychem.add_edge(
     weight=1.2,
 )
 
+# PharmGKB to DrugBank edge
 graph_mychem.add_edge(
     "pharmgkb",
     "drugbank",
     object=MongoDBEdge("pharmgkb", "pharmgkb.id", "pharmgkb.xrefs.drugbank"),
 )
 
-# self-loop to check looked-up values exist in official collection
+# Self-loop on DrugBank to verify lookup values exist
 graph_mychem.add_edge(
     "drugbank",
     "drugbank",
     object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.id"),
 )
 
-###############################################################################
-# NDC Nodes and Edges
-###############################################################################
-graph_mychem.add_edge(
-    "ndc",
-    "inchikey",
-    object=MongoDBEdge(
-        "drugbank_full", "drugbank.products.ndc_product_code", "drugbank.inchi_key"),
-)
-
-###############################################################################
-# Chebi Nodes and Edges
-###############################################################################
-graph_mychem.add_edge(
-    "inchikey",
-    "chebi",
-    object=MongoDBEdge("chebi", "chebi.inchikey", "chebi.id"),
-    weight=1.1,
-)
-graph_mychem.add_edge(
-    "drugbank",
-    "chebi",
-    object=MongoDBEdge("drugbank", "drugbank.id", "drugbank.xrefs.chebi"),
-    weight=1.0,
-)
-graph_mychem.add_edge(
-    "chembl",
-    "chebi",
-    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id",
-                       "chembl.chebi_par_id"),
-    weight=1.0,
-)
-
-###############################################################################
-# Unii Edges
-###############################################################################
-graph_mychem.add_edge(
-    "inchikey", "unii", object=MongoDBEdge("unii", "unii.inchikey", "unii.unii")
-)
-graph_mychem.add_edge(
-    "pubchem", "unii", object=MongoDBEdge("unii", "unii.pubchem", "unii.unii")
-)
-
-###############################################################################
-# Drug name Unii lookup
-###############################################################################
-graph_mychem.add_edge(
-    "drugname",
-    "unii",
-    object=CIMongoDBEdge("unii", "unii.preferred_term", "unii.unii"),
-    weight=3.0,
-)
-
-###############################################################################
-# Edges for SMILES sources
-###############################################################################
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("chebi", "chebi.smiles", "chebi.inchikey"),
-)
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("chembl", "chembl.smiles", "chembl.inchikey"),
-)
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("drugcentral", "drugcentral.structures.smiles",
-                       "drugcentral.structures.inchikey"),
-)
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("unii", "unii.smiles", "unii.inchikey"),
-)
-
-###############################################################################
-# MeSH Edges
-###############################################################################
+# MeSH edges
 graph_mychem.add_edge(
     "mesh",
     "drugcentral",
@@ -182,9 +104,7 @@ graph_mychem.add_edge(
     object=MongoDBEdge("umls", "umls.mesh", "umls.cui")
 )
 
-###############################################################################
-# UMLS Edges
-###############################################################################
+# UMLS edges
 graph_mychem.add_edge(
     "umls",
     "drugcentral",
@@ -200,6 +120,178 @@ graph_mychem.add_edge(
     "umls",
     "umls",
     object=MongoDBEdge("umls", "umls.cui", "umls.cui")
+)
+
+# aeolus fields
+graph_mychem.add_edge(
+    "aeolus", "inchikey",
+    object=MongoDBEdge("aeolus", "aeolus.inchikey", "inchikey")
+)
+graph_mychem.add_edge(
+    "aeolus", "unii",
+    object=MongoDBEdge("aeolus", "aeolus.unii", "unii")
+)
+
+# chebi new fields
+graph_mychem.add_edge(
+    "chebi", "inchi",
+    object=MongoDBEdge("chebi", "chebi.inchi", "inchi")
+)
+graph_mychem.add_edge(
+    "chebi", "inchikey",
+    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
+)
+graph_mychem.add_edge(
+    "chebi", "cas",
+    object=MongoDBEdge("chebi", "chebi.xrefs.cas", "cas")
+)
+graph_mychem.add_edge(
+    "chebi", "drugbank",
+    object=MongoDBEdge("chebi", "chebi.xrefs.drugbank", "drugbank")
+)
+
+# drugbank new field
+graph_mychem.add_edge(
+    "drugbank", "unii",
+    object=MongoDBEdge("drugbank", "drugbank.unii", "unii")
+)
+
+# drugcentral new fields
+graph_mychem.add_edge(
+    "drugcentral", "chebi",
+    object=MongoDBEdge("drugcentral", "drugcentral.xrefs.chebi", "chebi")
+)
+graph_mychem.add_edge(
+    "drugcentral", "unii",
+    object=MongoDBEdge("drugcentral", "drugcentral.xrefs.unii", "unii")
+)
+
+# fda_orphan_drug field
+graph_mychem.add_edge(
+    "fda_orphan_drug", "inchikey",
+    object=MongoDBEdge("fda_orphan_drug",
+                       "fda_orphan_drug.inchikey", "inchikey")
+)
+
+# ginas fields
+graph_mychem.add_edge(
+    "ginas", "inchikey",
+    object=MongoDBEdge("ginas", "ginas.inchikey", "inchikey")
+)
+graph_mychem.add_edge(
+    "ginas", "unii",
+    object=MongoDBEdge("ginas", "ginas.unii", "unii")
+)
+graph_mychem.add_edge(
+    "ginas", "cas",
+    object=MongoDBEdge("ginas", "ginas.xrefs.CAS", "cas")
+)
+
+# gsrs field (adding intermediate node "smiles")
+graph_mychem.add_node("smiles")
+graph_mychem.add_node("gsrs")
+graph_mychem.add_edge(
+    "gsrs", "smiles",
+    object=MongoDBEdge("gsrs", "gsrs.moieties.smiles", "smiles")
+)
+
+# gtopdb fields
+graph_mychem.add_node("gtopdb")
+graph_mychem.add_edge(
+    "gtopdb", "inchi",
+    object=MongoDBEdge("gtopdb", "gtopdb.inchi", "inchi")
+)
+graph_mychem.add_edge(
+    "gtopdb", "inchikey",
+    object=MongoDBEdge("gtopdb", "gtopdb.inchikey", "inchikey")
+)
+graph_mychem.add_edge(
+    "gtopdb", "smiles",
+    object=MongoDBEdge("gtopdb", "gtopdb.smiles", "smiles")
+)
+graph_mychem.add_edge(
+    "gtopdb", "cas",
+    object=MongoDBEdge("gtopdb", "gtopdb.xrefs.cas", "cas")
+)
+graph_mychem.add_edge(
+    "gtopdb", "pubchem",
+    object=MongoDBEdge("gtopdb", "gtopdb.xrefs.pubchem_cid", "pubchem")
+)
+graph_mychem.add_edge(
+    "gtopdb", "pubchem",
+    object=MongoDBEdge("gtopdb", "gtopdb.xrefs.pubchem_sid", "pubchem")
+)
+
+# pharmgkb new fields
+graph_mychem.add_edge(
+    "pharmgkb", "inchi",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.inchi", "inchi")
+)
+graph_mychem.add_edge(
+    "pharmgkb", "smiles",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.smiles", "smiles")
+)
+graph_mychem.add_edge(
+    "pharmgkb", "cas",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.cas", "cas")
+)
+# pharmgkb -> ndc
+graph_mychem.add_node("ndc")
+graph_mychem.add_edge(
+    "pharmgkb", "ndc",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.ndc", "ndc")
+)
+graph_mychem.add_edge(
+    "pharmgkb", "pubchem",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.pubchem.cid", "pubchem")
+)
+graph_mychem.add_edge(
+    "pharmgkb", "pubchem",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.pubchem.sid", "pubchem")
+)
+graph_mychem.add_node("rxnorm")
+graph_mychem.add_edge(
+    "pharmgkb", "rxnorm",
+    object=MongoDBEdge("pharmgkb", "pharmgkb.xrefs.rxnorm", "rxnorm")
+)
+
+# pubchem new field: smiles canonical
+graph_mychem.add_edge(
+    "pubchem", "smiles",
+    object=MongoDBEdge("pubchem", "pubchem.smiles.canonical", "smiles")
+)
+
+# unichem fields
+graph_mychem.add_node("unichem")
+graph_mychem.add_edge(
+    "unichem", "chebi",
+    object=MongoDBEdge("unichem", "unichem.chebi", "chebi")
+)
+graph_mychem.add_edge(
+    "unichem", "chembl",
+    object=MongoDBEdge("unichem", "unichem.chembl", "chembl")
+)
+graph_mychem.add_edge(
+    "unichem", "drugbank",
+    object=MongoDBEdge("unichem", "unichem.drugbank", "drugbank")
+)
+graph_mychem.add_edge(
+    "unichem", "drugcentral",
+    object=MongoDBEdge("unichem", "unichem.drugcentral", "drugcentral")
+)
+graph_mychem.add_edge(
+    "unichem", "pharmgkb",
+    object=MongoDBEdge("unichem", "unichem.pharmgkb", "pharmgkb")
+)
+graph_mychem.add_edge(
+    "unichem", "pubchem",
+    object=MongoDBEdge("unichem", "unichem.pubchem", "pubchem")
+)
+
+# unii field to pubchem
+graph_mychem.add_edge(
+    "unii", "pubchem",
+    object=MongoDBEdge("unii", "unii.pubchem", "pubchem")
 )
 
 ###############################################################################
