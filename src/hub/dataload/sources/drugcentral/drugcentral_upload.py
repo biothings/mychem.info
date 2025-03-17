@@ -31,18 +31,20 @@ class DrugCentralUploader(BaseDrugUploader):
          ('chebi', 'drugcentral.xrefs.chebi'),
          ('chembl', 'drugcentral.xrefs.chembl_id'),
          ('pubchem', 'drugcentral.xrefs.pubchem_cid'),
-         ('smiles', 'drugcentral.structures.smiles')],
+         ('smiles', 'drugcentral.structures.smiles'),
+         ('mesh', 'drugcentral.xrefs.mesh_supplemental_record_ui'),
+         ('umls', 'drugcentral.xrefs.umlscui'),
+         ('drugcentral', 'unichem.drugcentral')
+         ],
         # ('drugname', 'drugcentral.synonyms')], # unhashable type - list
         copy_from_doc=True,
     )
 
     def load_data(self, data_folder):
-        # Commented out keylookup call, as overlapping work is performed by the parser.
-        # drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
-        drugcentral_docs = load_data(data_folder)
+        drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
         return drugcentral_docs
 
-    @ classmethod
+    @classmethod
     def get_mapping(klass):
         mapping = {
             "drugcentral": {

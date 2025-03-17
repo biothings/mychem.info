@@ -46,6 +46,16 @@ class ChebiUploader(BaseDrugUploader):
         "chebi.xrefs.patent",
     ])
 
+    keylookup = MyChemKeyLookup(
+        [
+            ('inchikey', 'chebi.inchikey'),
+            ('inchi', 'chebi.inchi'),
+            ('cas', 'chebi.xrefs.cas'),
+            ('drugbank', 'chebi.xrefs.drugbank')
+        ],
+        copy_from_doc=True,
+    )
+
     def load_data(self, data_folder):
         self.logger.info("Load data from '%s'" % data_folder)
 

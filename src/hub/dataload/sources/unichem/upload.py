@@ -6,6 +6,7 @@ import biothings.hub.dataload.storage as storage
 import biothings.hub.dataload.uploader
 
 import config
+from hub.datatransform.keylookup import MyChemKeyLookup
 
 biothings.config_for_app(config)
 
@@ -37,9 +38,19 @@ class Unichem_biothings_sdkUploader(
     idconverter = None
     storage_class = storage.BasicStorage
 
+    keylookup = MyChemKeyLookup([
+        ('chebi', 'unichem.chebi'),
+        ('chembl', 'unichem.chembl'),
+        ('drugbank', 'unichem.drugbank'),
+        ('drugcentral', 'unichem.drugcentral'),
+        ('pharmgkb', 'unichem.pharmgkb'),
+        ('pubchem', 'unichem.pubchem')
+    ], copy_from_doc=True)
+
     def load_data(self, data_folder):
         self.logger.info("Load data from directory: '%s'" % data_folder)
-        return parser_func(data_folder)
+        # return parser_func(data_folder)
+        return self.keylookup(parser_func)(data_folder)
 
     @classmethod
     def get_mapping(klass):

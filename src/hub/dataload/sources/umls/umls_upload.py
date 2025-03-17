@@ -1,5 +1,7 @@
 import biothings.hub.dataload.uploader as uploader
 
+from hub.datatransform.keylookup import MyChemKeyLookup
+
 from .umls_parser import load_data
 
 SRC_META = {
@@ -12,13 +14,19 @@ class UMLSUploader(uploader.BaseSourceUploader):
 
     name = "umls"
 
+    keylookup = MyChemKeyLookup(
+        [
+    ('mesh', 'umls.mesh'),
+    ('umls', 'umls.cui')
+    ]
+
     def load_data(self, data_folder):
-        umls_docs = load_data(data_folder)
+        return self.keylookup(load_data)(input_file)
         return umls_docs
 
-    @classmethod
+    @ classmethod
     def get_mapping(klass):
-        mapping = {
+        mapping={
             "umls": {
                 "properties": {
                     "cui": {

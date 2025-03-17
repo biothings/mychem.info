@@ -28,10 +28,21 @@ class PharmGkbUploader(BaseDrugUploader):
     storage_class = storage.RootKeyMergerStorage
     __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup(
-        [('inchi', 'pharmgkb.inchi'),
-         ('pubchem', 'pharmgkb.xrefs.pubchem.cid'),
-         ('drugbank', 'pharmgkb.xrefs.drugbank'),
-         ('chebi', 'pharmgkb.xrefs.chebi')])
+        [
+            ('inchi', 'pharmgkb.inchi'),
+            ('drugbank', 'pharmgkb.xrefs.drugbank'),
+            ('chebi', 'pharmgkb.xrefs.chebi'),
+            ('mesh', 'pharmgkb.xrefs.mesh'),
+            ('umls', 'pharmgkb.xrefs.umls'),
+            ('smiles', 'pharmgkb.smiles'),
+            ('cas', 'pharmgkb.xrefs.cas'),
+            ('ndc', 'pharmgkb.xrefs.ndc'),
+            ('pubchem', 'pharmgkb.xrefs.pubchem.cid'),
+            ('pubchem', 'pharmgkb.xrefs.pubchem.sid'),
+            ('rxnorm', 'pharmgkb.xrefs.rxnorm'),
+            ('pharmgkb', 'unichem.pharmgkb')
+
+        ])
 
     def load_data(self, data_folder):
         """load_data method"""

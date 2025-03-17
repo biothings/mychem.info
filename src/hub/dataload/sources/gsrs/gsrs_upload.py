@@ -27,7 +27,7 @@ class GSRSUploader(BaseDrugUploader):
     __metadata__ = {"src_meta": SRC_META}
     storage_class = storage.RootKeyMergerStorage
     keylookup = MyChemKeyLookup(
-        [('smiles', 'gsrs.smiles')])
+        [('smiles', 'gsrs.moieties.smiles')])
 
     def load_data(self, data_folder):
         """load_data method"""

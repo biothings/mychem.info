@@ -48,7 +48,8 @@ class DrugBankOpenUploader(BaseDrugUploader):
          ("chembl", "drugbank.xrefs.chembl"),
          ("pubchem", "drugbank.xrefs.pubchem.cid"),
          ("inchi", "drugbank.inchi"),
-         ("drugname", "drugbank.name"),
+         ('pharmgkb', 'drugbank.id'),
+         ('drugbank', 'drugbank.id'),
          ],
         copy_from_doc=True)
 

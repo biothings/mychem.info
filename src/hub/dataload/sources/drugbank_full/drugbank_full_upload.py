@@ -48,8 +48,9 @@ class DrugBankFullUploader(BaseDrugUploader):
          ("chembl", "drugbank.xrefs.chembl"),
          ("pubchem", "drugbank.xrefs.pubchem.cid"),
          ("inchi", "drugbank.inchi"),
-         # can be used to lookup unii, disabled for now
-         ("drugname", "drugbank.name"),
+         ('pharmgkb', 'drugbank.id'),
+         ('drugbank', 'drugbank.id'),
+         ('unii', 'drugbank.unii')
          ],
         copy_from_doc=True)
 
