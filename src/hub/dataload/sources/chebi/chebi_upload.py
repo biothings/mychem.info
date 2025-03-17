@@ -48,6 +48,7 @@ class ChebiUploader(BaseDrugUploader):
 
     keylookup = MyChemKeyLookup(
         [
+            ('chebi', 'chebi.id'),
             ('inchikey', 'chebi.inchikey'),
             ('inchi', 'chebi.inchi'),
             ('cas', 'chebi.xrefs.cas'),
@@ -84,7 +85,7 @@ class ChebiUploader(BaseDrugUploader):
         # return self.exclude_fields(load_data)(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        for idxname in ["chebi.id"]:
+        for idxname in ["chebi.id, chebi.inchikey", "chebi.inchi", "chebi.xrefs.cas", "chebi.xrefs.drugbank"]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             self.collection.create_index(

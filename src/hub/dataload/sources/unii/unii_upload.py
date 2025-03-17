@@ -44,7 +44,7 @@ class UniiUploader(BaseDrugUploader):
     #    return load_data(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        for field in ("unii.unii", "unii.preferred_term"):
+        for field in ("unii.unii", "unii.preferred_term, unii.pubchem"):
             self.logger.info("Indexing '%s'" % field)
             self.collection.create_index(field, background=True)
 
