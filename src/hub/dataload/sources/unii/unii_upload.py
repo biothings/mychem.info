@@ -23,11 +23,14 @@ class UniiUploader(BaseDrugUploader):
     storage_class = storage.IgnoreDuplicatedStorage
     __metadata__ = {"src_meta": SRC_META}
 
-    keylookup = MyChemKeyLookup([('inchikey', 'unii.inchikey'),
-                                 ('pubchem', 'unii.pubchem'),
-                                 ('smiles', 'unii.smiles')],
-                                copy_from_doc=True,
-                                )
+    keylookup = MyChemKeyLookup([
+        ('unii', 'unii.unii'),
+        ('pubchem', 'unii.pubchem'),
+        ('smiles', 'unii.smiles'),
+        ('inchikey', 'unii.inchikey')
+    ],
+        copy_from_doc=True,
+    )
 
     def load_data(self, data_folder):
         self.logger.info("Load data from '%s'" % data_folder)
