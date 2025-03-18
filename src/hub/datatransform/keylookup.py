@@ -2,7 +2,6 @@ import networkx as nx
 from biothings.hub.datatransform import DataTransformMDB, MongoDBEdge
 
 graph_mychem = nx.DiGraph()
-
 ###############################################################################
 # PharmGKB Nodes and Edges
 ###############################################################################
@@ -45,14 +44,13 @@ graph_mychem.add_edge(
     object=MongoDBEdge("pubchem", "pubchem.inchi", "pubchem.cid"),
     weight=1.2,
 )
-
 graph_mychem.add_edge(
     "pubchem", "chebi",
-    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.cid", "pubchem")
+    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.cid", "chebi.id")
 )
 graph_mychem.add_edge(
     "pubchem", "chebi",
-    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.sid", "pubchem")
+    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.sid", "chebi.id")
 )
 
 # InChIKey-based edges
@@ -162,7 +160,7 @@ graph_mychem.add_edge(
 )
 graph_mychem.add_edge(
     "smiles", "chebi",
-    object=MongoDBEdge("chebi", "chebi.smiles", "smiles")
+    object=MongoDBEdge("chebi", "chebi.smiles", "chebi.id")
 )
 # drugbank new field
 graph_mychem.add_edge(
