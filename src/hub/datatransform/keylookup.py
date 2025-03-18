@@ -46,6 +46,16 @@ graph_mychem.add_edge(
     weight=1.2,
 )
 
+graph_mychem.add_edge(
+    "pubchem", "chebi",
+    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.cid", "pubchem")
+)
+graph_mychem.add_edge(
+    "pubchem", "chebi",
+    object=MongoDBEdge("chebi", "chebi.pubchem_database_links.sid", "pubchem")
+)
+
+
 # InChIKey-based edges
 graph_mychem.add_edge(
     "inchikey",

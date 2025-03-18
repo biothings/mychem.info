@@ -24,10 +24,10 @@ class UniiUploader(BaseDrugUploader):
     __metadata__ = {"src_meta": SRC_META}
 
     keylookup = MyChemKeyLookup([
-        ('unii', 'unii.unii'),
-        ('pubchem', 'unii.pubchem'),
-        ('smiles', 'unii.smiles'),
         ('inchikey', 'unii.inchikey')
+        ('smiles', 'unii.smiles'),
+        ('pubchem', 'unii.pubchem'),
+        ('unii', 'unii.unii'),
     ],
         copy_from_doc=True,
     )
