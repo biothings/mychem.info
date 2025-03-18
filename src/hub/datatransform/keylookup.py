@@ -340,7 +340,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "umls"
             ],
             # skip keylookup for InChIKeys
-            skip_w_regex="^[A-Z]{14}-[A-Z]{10}-[A-Z]$",
+            # skip_w_regex="^[A-Z]{14}-[A-Z]{10}-[A-Z]$",
             *args,
             **kwargs
         )
