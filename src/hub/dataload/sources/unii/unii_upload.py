@@ -28,7 +28,7 @@ class UniiUploader(BaseDrugUploader):
             ('inchikey', 'unii.inchikey'),
             ('smiles', 'unii.smiles'),
             ('pubchem', 'unii.pubchem'),
-            ('unii', 'unii.unii'),
+            # ('unii', 'unii.unii'),
         ],
         copy_from_doc=True,
     )
