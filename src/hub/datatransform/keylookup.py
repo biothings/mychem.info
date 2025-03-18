@@ -142,6 +142,10 @@ graph_mychem.add_edge(
     object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
 )
 graph_mychem.add_edge(
+    "inchikey", "chebi",
+    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
+)
+graph_mychem.add_edge(
     "chebi", "cas",
     object=MongoDBEdge("chebi", "chebi.xrefs.cas", "cas")
 )
@@ -149,7 +153,10 @@ graph_mychem.add_edge(
     "chebi", "drugbank",
     object=MongoDBEdge("chebi", "chebi.xrefs.drugbank", "drugbank")
 )
-
+graph_mychem.add_edge(
+    "smiles", "chebi",
+    object=MongoDBEdge("chebi", "chebi.smiles", "smiles")
+)
 # drugbank new field
 graph_mychem.add_edge(
     "drugbank", "unii",
