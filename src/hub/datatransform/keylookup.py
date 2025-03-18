@@ -55,7 +55,6 @@ graph_mychem.add_edge(
     object=MongoDBEdge("chebi", "chebi.pubchem_database_links.sid", "pubchem")
 )
 
-
 # InChIKey-based edges
 graph_mychem.add_edge(
     "inchikey",
@@ -75,6 +74,12 @@ graph_mychem.add_edge(
     "pubchem",
     object=MongoDBEdge("pubchem", "pubchem.inchikey", "pubchem.cid"),
     weight=1.2,
+)
+
+# Reverse edge to map external InChIKeys to CHEBI
+graph_mychem.add_edge(
+    "inchikey", "chebi",
+    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
 )
 
 # PharmGKB to DrugBank edge
@@ -146,14 +151,6 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chebi", "inchi",
     object=MongoDBEdge("chebi", "chebi.inchi", "inchi")
-)
-graph_mychem.add_edge(
-    "chebi", "inchikey",
-    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
-)
-graph_mychem.add_edge(
-    "inchikey", "chebi",
-    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
 )
 graph_mychem.add_edge(
     "chebi", "cas",
