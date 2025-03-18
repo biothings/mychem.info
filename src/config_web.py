@@ -83,8 +83,10 @@ chem_prefix_handling = [
         re.compile(r"((chembl\:(?P<term>chembl[0-9]+))|(chembl[0-9]+))", re.I),
         "chembl.molecule_chembl_id",
     ),
-    (re.compile(r"chebi\:[0-9]+", re.I), ["chebi.id", "chebi.secondary_chebi_id"]),
-    (re.compile(r"((unii\:(?P<term>[A-Z0-9]{10}))|([A-Z0-9]{10}))", re.I), "unii.unii"),
+    (re.compile(r"chebi\:[0-9]+", re.I),
+     ["chebi.id", "chebi.secondary_chebi_id"]),
+    (re.compile(
+        r"((unii\:(?P<term>[A-Z0-9]{10}))|([A-Z0-9]{10}))", re.I), "unii.unii"),
     (
         re.compile(r"((drugbank\:(?P<term>db[0-9]+))|(db[0-9]+))", re.I),
         [
@@ -129,9 +131,5 @@ STATUS_CHECK = {
     "index": "mychem_current",
 }
 
-_extra_kwargs = {"list_filter": {"type": str, "default": None}}
 ANNOTATION_KWARGS = copy.deepcopy(ANNOTATION_KWARGS)
-ANNOTATION_KWARGS["*"].update(_extra_kwargs)
 QUERY_KWARGS = copy.deepcopy(QUERY_KWARGS)
-QUERY_KWARGS["*"].update(_extra_kwargs)
-ES_RESULT_TRANSFORM = "web.pipeline.MyChemESResultFormatter"
