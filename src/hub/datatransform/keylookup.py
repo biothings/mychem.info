@@ -79,7 +79,7 @@ graph_mychem.add_edge(
 # Reverse edge to map external InChIKeys to CHEBI
 graph_mychem.add_edge(
     "inchikey", "chebi",
-    object=MongoDBEdge("chebi", "chebi.inchikey", "inchikey")
+    object=MongoDBEdge("chebi", "chebi.inchikey", "chebi.id")
 )
 
 # PharmGKB to DrugBank edge
