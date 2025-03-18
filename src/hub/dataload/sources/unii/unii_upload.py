@@ -23,12 +23,13 @@ class UniiUploader(BaseDrugUploader):
     storage_class = storage.IgnoreDuplicatedStorage
     __metadata__ = {"src_meta": SRC_META}
 
-    keylookup = MyChemKeyLookup([
-        ('inchikey', 'unii.inchikey')
-        ('smiles', 'unii.smiles'),
-        ('pubchem', 'unii.pubchem'),
-        ('unii', 'unii.unii'),
-    ],
+    keylookup = MyChemKeyLookup(
+        [
+            ('inchikey', 'unii.inchikey'),
+            ('smiles', 'unii.smiles'),
+            ('pubchem', 'unii.pubchem'),
+            ('unii', 'unii.unii'),
+        ],
         copy_from_doc=True,
     )
 
@@ -43,7 +44,7 @@ class UniiUploader(BaseDrugUploader):
             raise AssertionError("Can't find input file '%s'" % input_file)
         # disable keylookup - unii is a base collection used for drugname
         # lookup and should be loaded first, (keylookup commented out)
-        return self.keylookup(load_data)(input_file)
+        return self.keylookup(load_data, debug=True)(input_file)
     #    return load_data(input_file)
 
     def post_update_data(self, *args, **kwargs):
