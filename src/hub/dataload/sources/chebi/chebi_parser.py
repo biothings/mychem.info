@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 import networkx as nx
 import obonet
 from biothings.utils.dataload import dict_sweep, unlist, value_convert_to_number
@@ -15,7 +16,8 @@ class CompoundReader:
         #   "<...> <ChEBI ID>\nCHEBI:90\n\n> <Star>\n3\n\n> <...>" will be converted to
         #   [["ChEBI ID", "CHEBI:90"], ["Star", "3"]]
         comp_attr_list = comp_str.split("\n> <")
-        comp_attr_list = [attr.strip("\n").split('>\n', 1) for attr in comp_attr_list]
+        comp_attr_list = [attr.strip("\n").split('>\n', 1)
+                          for attr in comp_attr_list]
 
         # Remove molecule structure - Marvin
         del comp_attr_list[0]
@@ -46,10 +48,9 @@ class CompoundReader:
                 for _value in value:
                     splitted_results = _value.split(':')
                     if len(splitted_results) == 2:
-                        new_pubchem_dict[splitted_results[0].lower()] = splitted_results[1][1:]
-                value = new_pubchem_dict
-
-                new_comp_dict[key] = value
+                        new_pubchem_dict[splitted_results[0].lower()] = int(
+                            splitted_results[1].strip())
+                new_comp_dict['pubchem'] = new_pubchem_dict
                 continue
 
             if key == 'iupac_names':
@@ -106,7 +107,8 @@ class CompoundReader:
 
     def iter_read_compounds(self):
         sdf_content = open(self.sdf_file_path, 'r').read()
-        comp_str_list = sdf_content.split("$$$$")  # split the sdf content into a list of compounds
+        # split the sdf content into a list of compounds
+        comp_str_list = sdf_content.split("$$$$")
         del comp_str_list[-1]  # the last in the list is a "\n" character
 
         for comp_str in comp_str_list:
@@ -127,7 +129,7 @@ class OntologyReader:
 
     The 99.9% quantiles of numbers of successors/predecessors/descendants/ancestors are 224.92, 8, 2187.12, and 86.
 
-    Here we limit the max number of successors/predecessors/descendants/ancestors nodes to be included in any 
+    Here we limit the max number of successors/predecessors/descendants/ancestors nodes to be included in any
       ontology document to 2000
     """
     NODE_FAMILY_CAPACITY = 2000
@@ -136,8 +138,8 @@ class OntologyReader:
         self.obo_file_path = obo_file_path
 
         """
-        The ontology graph obtained from `read_obo` is actually a reverse one whose directed edges point from low-level 
-        to high-level entities, e.g. 
+        The ontology graph obtained from `read_obo` is actually a reverse one whose directed edges point from low-level
+        to high-level entities, e.g.
 
             CHEBI:25106 macrolide -> CHEBI:63944 macrocyclic lactone -> ... -> CHEBI:24431 chemical entity
 
@@ -147,13 +149,14 @@ class OntologyReader:
         graph = graph.reverse(copy=True)
 
         """
-        `parents`, `children`, `ancestors`, and `descendants` must be searched only upon `is_a` edges. 
+        `parents`, `children`, `ancestors`, and `descendants` must be searched only upon `is_a` edges.
         See https://github.com/biothings/mychem.info/issues/83#issuecomment-876111289
         """
         # note that:
         #   method graph.edges() only returns (u, v) collection
         #   attribute graph.edges returns (u, v, data) collection
-        unwanted_edges = [(u, v) for (u, v, data) in graph.edges if data != "is_a"]
+        unwanted_edges = [(u, v)
+                          for (u, v, data) in graph.edges if data != "is_a"]
         # Void, in-place operation. Copy the old graph if necessary.
         graph.remove_edges_from(unwanted_edges)
 
@@ -168,7 +171,7 @@ class OntologyReader:
         """
         if not value:
             return None
-        
+
         return int(value[0][0])
 
     @classmethod
@@ -237,9 +240,9 @@ class OntologyReader:
 
         """
         Each node_obj has 6 keys: {'alt_id', 'def', 'is_a', 'name', 'relationship', 'subset'}
-        
+
         Key mapping:
-        
+
           node_obj['alt_id']       -> ontology_dict['secondary_chebi_id']
           node_obj['def']          -> ontology_dict['definition']
           node_obj['is_a']         -> will be replaced by successors/predecessors/descendants/ancestors fields
@@ -251,20 +254,27 @@ class OntologyReader:
         if node_obj is None:
             return None
 
-        successors = list(self.ontology_graph.successors(node_id))  # graph.predecessors(): iterator
-        predecessors = list(self.ontology_graph.predecessors(node_id))  # graph.predecessors(): iterator
-        descendants = list(nx.descendants(self.ontology_graph, node_id))  # nx.descendants(): set
-        ancestors = list(nx.ancestors(self.ontology_graph, node_id))  # nx.ancestors(): set
+        successors = list(self.ontology_graph.successors(
+            node_id))  # graph.predecessors(): iterator
+        predecessors = list(self.ontology_graph.predecessors(
+            node_id))  # graph.predecessors(): iterator
+        # nx.descendants(): set
+        descendants = list(nx.descendants(self.ontology_graph, node_id))
+        # nx.ancestors(): set
+        ancestors = list(nx.ancestors(self.ontology_graph, node_id))
 
         # Start construction of the ontology document
         ontology_dict = dict()
         ontology_dict["id"] = node_id
 
         ontology_dict["secondary_chebi_id"] = node_obj.get("alt_id")
-        ontology_dict['definition'] = self.convert_def_value(node_obj.get('def'))
+        ontology_dict['definition'] = self.convert_def_value(
+            node_obj.get('def'))
         ontology_dict['name'] = node_obj.get('name')
-        ontology_dict['relationship'] = self.convert_relationship_value(node_obj.get('relationship'))
-        ontology_dict['star'] = self.convert_subset_value(node_obj.get('subset'))
+        ontology_dict['relationship'] = self.convert_relationship_value(
+            node_obj.get('relationship'))
+        ontology_dict['star'] = self.convert_subset_value(
+            node_obj.get('subset'))
 
         # Use the same naming convention as in the Mondo parser
         #   See https://github.com/biothings/mydisease.info/blob/master/src/plugins/mondo/parser.py
@@ -312,7 +322,8 @@ class ChebiParser:
 
             used_chebi_ids.add(chebi_id)
 
-        all_ontology_chebi_ids = set(self.ontology_reader.ontology_graph_node_view)
+        all_ontology_chebi_ids = set(
+            self.ontology_reader.ontology_graph_node_view)
         unused_ontology_chebi_ids = all_ontology_chebi_ids - used_chebi_ids
         for chebi_id in unused_ontology_chebi_ids:
             ontology_dict = self.ontology_reader.read_ontology(chebi_id)
