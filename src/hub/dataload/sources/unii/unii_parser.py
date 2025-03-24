@@ -1,18 +1,19 @@
+import logging
+
 import pandas as pd
 from biothings.utils.dataload import int_convert
 from biothings_client import get_client
 
-import logging
-
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def caching_ncit_descriptions(ncit_ids):
     """cache ncit descriptions for all unii.ncit IDs"""
-    if not ncit_ids:
-        return {}
+    # if not ncit_ids:
+    return {}
 
     ncit_api = get_client(url="https://biothings.ncats.io/ncit")
     ncit_ids = [f"NCIT:{ncit}" for ncit in ncit_ids]
@@ -31,15 +32,15 @@ def load_data(input_file):
     try:
         unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str)
     except UnicodeDecodeError:
-        unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str, encoding='windows-1252')
+        unii = pd.read_csv(input_file, sep='\t', low_memory=False,
+                           dtype=str, encoding='windows-1252')
 
     unii.rename(columns={'MF': 'molecular_formula',
                          'PT': 'preferred_term',
                          'RN': 'registry_number'}, inplace=True)
     unii.columns = unii.columns.str.lower()
 
-    # half of them don't have inchikeys
-    # set the primary key to inchikey and fill in missing ones with unii
+    # Set the primary key to the normalized inchikey and fallback on pubchem then unii
     unii['_id'] = unii.inchikey
     unii['_id'].fillna(unii.pubchem, inplace=True)
     unii['_id'].fillna(unii.unii, inplace=True)
@@ -49,12 +50,14 @@ def load_data(input_file):
     ncit_descriptions = caching_ncit_descriptions(ncit_ids)
 
     dupes = set(unii._id) - set(unii._id.drop_duplicates(keep=False))
-    records = [{k: v for k, v in record.items() if pd.notnull(v)} for record in unii.to_dict("records") if record['_id'] not in dupes]
+    records = [{k: v for k, v in record.items() if pd.notnull(v)}
+               for record in unii.to_dict("records") if record['_id'] not in dupes]
     records = [{'_id': record['_id'], 'unii': record} for record in records]
     # take care of a couple cases with identical inchikeys
     for dupe in dupes:
         dr = unii.query("_id == @dupe").to_dict("records")
-        dr = [{k: v for k, v in record.items() if pd.notnull(v)} for record in dr]
+        dr = [{k: v for k, v in record.items() if pd.notnull(v)}
+              for record in dr]
         records.append({'_id': dupe, 'unii': dr})
     for record in records:
         if 'ncit' in record['unii']:
@@ -72,19 +75,17 @@ def load_data(input_file):
                 if 'display name' in subr:
                     subr['display_name'] = subr.pop('display name').strip()
 
-        # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
 
         yield record
 
 
-
 if __name__ == "__main__":
     """For standalone debugging"""
 
-    from glob import glob
     import json
     import sys
+    from glob import glob
 
     # Add config directory to path
     sys.path.append("../../../../")
