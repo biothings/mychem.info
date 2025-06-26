@@ -42,15 +42,16 @@ class DrugBankFullUploader(BaseDrugUploader):
     ])
     keylookup = MyChemKeyLookup(
         [("inchikey", "drugbank.inchi_key"),
+         ("inchi", "drugbank.inchi"),
+         ("smiles", "drugbank.smiles"),
          ("drugbank", "drugbank.id"),
-         # the following keys could possible be used to lookup 'inchikey' or 'unii'
          ("chebi", "drugbank.xrefs.chebi"),
          ("chembl", "drugbank.xrefs.chembl"),
          ("pubchem", "drugbank.xrefs.pubchem.cid"),
-         ("inchi", "drugbank.inchi"),
-         # can be used to lookup unii, disabled for now
+         ("unii", "drugbank.unii"),
+         ("cas", "drugbank.cas_number"),
          ("drugname", "drugbank.name"),
-         ],
+         ("ndc", "drugbank.products.ndc_product_code")],
         copy_from_doc=True)
 
     def load_data(self, data_folder):
@@ -71,13 +72,32 @@ class DrugBankFullUploader(BaseDrugUploader):
     def post_update_data(self, *args, **kwargs):
         # pylint: disable=W0613
         """create indexes following upload"""
-        for idxname in ["drugbank.id", "drugbank.chebi", "drugbank.xrefs.chebi", "drugbank.inchi"]:
+        # Key identifiers for drugbank lookups based on the keylookup graph
+        index_fields = [
+            "drugbank.id",                      # Primary DrugBank identifier
+            "drugbank.inchi_key",               # Structural identifier
+            "drugbank.inchi",                   # Structural identifier
+            "drugbank.smiles",                  # Structural identifier
+            "drugbank.xrefs.chebi",             # ChEBI cross-reference
+            "drugbank.xrefs.chembl",            # ChemBL cross-reference
+            "drugbank.xrefs.pubchem.cid",       # PubChem cross-reference
+            "drugbank.unii",                    # UNII identifier
+            "drugbank.cas_number",              # CAS registry number
+            "drugbank.name",                    # Drug name lookup
+            "drugbank.products.ndc_product_code"  # NDC product codes
+        ]
+
+        # All except NDC (handled separately)
+        for idxname in index_fields[:-1]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             self.collection.create_index(
                 [(idxname, pymongo.HASHED)], background=True)
-        # hashed index won"t support arrays, values are small enough to standard
-        self.collection.create_index("drugbank.products.ndc_product_code")
+
+        # NDC codes: hashed index won't support arrays, use standard index
+        self.logger.info("Indexing 'drugbank.products.ndc_product_code'")
+        self.collection.create_index("drugbank.products.ndc_product_code",
+                                     background=True)
 
     @classmethod
     def get_mapping(cls):

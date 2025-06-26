@@ -24,9 +24,11 @@ class UniiUploader(BaseDrugUploader):
     __metadata__ = {"src_meta": SRC_META}
 
     keylookup = MyChemKeyLookup([('inchikey', 'unii.inchikey'),
+                                 ('smiles', 'unii.smiles'),
                                  ('pubchem', 'unii.pubchem'),
                                  ('unii', 'unii.unii'),
-                                 ('smiles', 'unii.smiles')],
+                                 ('drugname', 'unii.preferred_term'),
+                                 ('drugcentral', 'unii.drugcentral')],
                                 copy_from_doc=True,
                                 )
 
@@ -45,7 +47,18 @@ class UniiUploader(BaseDrugUploader):
     #    return load_data(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        for field in ("unii.unii", "unii.preferred_term"):
+        """create indexes following upload"""
+        # Key identifiers for UNII lookups based on the keylookup graph
+        index_fields = [
+            "unii.unii",                 # Primary UNII identifier
+            "unii.preferred_term",       # Drug name lookup
+            "unii.inchikey",             # Structural identifier
+            "unii.smiles",               # Structural identifier
+            "unii.pubchem",              # PubChem cross-reference
+            "unii.drugcentral"           # DrugCentral cross-reference
+        ]
+
+        for field in index_fields:
             self.logger.info("Indexing '%s'" % field)
             self.collection.create_index(field, background=True)
 

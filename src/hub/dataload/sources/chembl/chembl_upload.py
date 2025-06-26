@@ -43,10 +43,8 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
          ("chebi", "chembl.chebi_par_id"),
          ("drugcentral", "chembl.xrefs.drugcentral.id"),
          ("drugname", "chembl.pref_name"),
-         ('smiles', 'chembl.smiles')],
-        # TODO:  handle duplicate keys from pubchem
-        # we use RootKeyMergerStorage, but the num. duplicates is too high (>10000)
-        # ("pubchem", "chembl.xrefs.pubchem.sid"),
+         ("smiles", "chembl.smiles"),
+         ("pubchem", "chembl.xrefs.pubchem.sid")],
         copy_from_doc=True)
 
     def jobs(self):
@@ -85,13 +83,25 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
     def post_update_data(self, *args, **kwargs):
         """create indexes following an update"""
         # pylint: disable=W0613
-        """
-        for idxname in ["chembl.chebi_par_id", "chembl.inchi", "chembl.molecule_chembl_id"]:
-            self.logger.info("Indexing '%s'" % idxname)
-            # background=true or it'll lock the whole database...
-            self.collection.create_index(idxname, background=True)
-        """
-        for idxname in ["chembl.chebi_par_id", "chembl.molecule_chembl_id", "chembl.inchi"]:
+        # Create indexes for key identifiers used in the keylookup graph
+        # Priority order based on keylookup graph structure:
+        # 1. ChEBI (primary target) - chembl.chebi_par_id
+        # 2. Core ChemBL identifier - chembl.molecule_chembl_id
+        # 3. Structural identifiers - inchi_key, inchi, smiles
+        # 4. Cross-reference identifiers - drugcentral.id, pubchem.sid
+
+        index_fields = [
+            "chembl.chebi_par_id",           # ChEBI mapping (highest priority)
+            "chembl.molecule_chembl_id",     # ChemBL self-lookup
+            "chembl.inchi_key",              # InChI Key for structural mapping
+            "chembl.inchi",                  # InChI for structural mapping
+            "chembl.smiles",                 # SMILES for structural mapping
+            "chembl.xrefs.drugcentral.id",   # DrugCentral cross-reference
+            "chembl.xrefs.pubchem.sid",      # PubChem cross-reference
+            "chembl.pref_name"               # Drug name lookup
+        ]
+
+        for idxname in index_fields:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true, or it'll lock the whole database...
             self.collection.create_index(idxname, background=True)

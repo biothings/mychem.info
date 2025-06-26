@@ -24,14 +24,17 @@ class DrugCentralUploader(BaseDrugUploader):
     # Keylookup is a callable object
     keylookup = MyChemKeyLookup(
         [('inchikey', 'drugcentral.structures.inchikey'),
-         ('unii', 'drugcentral.xref.unii'),
-         # other keys are present but not currently used by keylookup
          ('inchi', 'drugcentral.structures.inchi'),
+         ('smiles', 'drugcentral.structures.smiles'),
+         ('cas', 'drugcentral.structures.cas_rn'),
+         ('unii', 'drugcentral.xrefs.unii'),
          ('drugbank', 'drugcentral.xrefs.drugbank_id'),
          ('chebi', 'drugcentral.xrefs.chebi'),
          ('chembl', 'drugcentral.xrefs.chembl_id'),
          ('pubchem', 'drugcentral.xrefs.pubchem_cid'),
-         ('smiles', 'drugcentral.structures.smiles')],
+         ('umls', 'drugcentral.xrefs.umlscui'),
+         ('rxnorm', 'drugcentral.xrefs.rxnorm'),
+         ('drugcentral', 'drugcentral.id')],
         # ('drugname', 'drugcentral.synonyms')], # unhashable type - list
         copy_from_doc=True,
     )
@@ -42,7 +45,7 @@ class DrugCentralUploader(BaseDrugUploader):
         drugcentral_docs = load_data(data_folder)
         return drugcentral_docs
 
-    @ classmethod
+    @classmethod
     def get_mapping(klass):
         mapping = {
             "drugcentral": {
@@ -500,3 +503,26 @@ class DrugCentralUploader(BaseDrugUploader):
         }
 
         return mapping
+
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        # Key identifiers for drugcentral lookups based on the keylookup graph
+        index_fields = [
+            "drugcentral.id",                      # Primary identifier
+            "drugcentral.structures.inchikey",     # Structural identifiers
+            "drugcentral.structures.inchi",
+            "drugcentral.structures.smiles",
+            "drugcentral.structures.cas_rn",       # CAS registry number
+            "drugcentral.xrefs.unii",              # Cross-references
+            "drugcentral.xrefs.drugbank_id",
+            "drugcentral.xrefs.chebi",
+            "drugcentral.xrefs.chembl_id",
+            "drugcentral.xrefs.pubchem_cid",
+            "drugcentral.xrefs.umlscui",
+            "drugcentral.xrefs.rxnorm"
+        ]
+
+        for idxname in index_fields:
+            self.logger.info("Indexing '%s'" % idxname)
+            # background=true or it'll lock the whole database...
+            self.collection.create_index(idxname, background=True)

@@ -37,6 +37,18 @@ class NDCUploader(BaseDrugUploader):
         """load data from the data source"""
         return self.exclude_fields(self.keylookup(load_data))(data_folder)
 
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        # Key identifiers for NDC lookups based on the keylookup graph
+        index_fields = [
+            "ndc.productndc",               # Primary NDC identifier
+            "ndc.nonproprietaryname"        # Drug name lookup
+        ]
+
+        for field in index_fields:
+            self.logger.info("Indexing '%s'" % field)
+            self.collection.create_index(field, background=True)
+
     @classmethod
     def get_mapping(cls):
         """return mapping data for the class"""

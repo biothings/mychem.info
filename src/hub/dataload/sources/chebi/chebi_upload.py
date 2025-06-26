@@ -25,9 +25,21 @@ class ChebiUploader(BaseDrugUploader):
     storage_class = storage.RootKeyMergerStorage
     __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup([('inchikey', 'chebi.inchikey'),
+                                 ('inchi', 'chebi.inchi'),
+                                 ('smiles', 'chebi.smiles'),
                                  ('drugbank', 'chebi.xrefs.drugbank'),
-                                 ('chebi', 'chebi.id'),
-                                 ('smiles', 'chebi.smiles')],
+                                 ('chembl', 'chebi.xrefs.chembl'),
+                                 ('pubchem', 'chebi.xrefs.pubchem.cid'),
+                                 ('pharmgkb', 'chebi.xrefs.pharmgkb'),
+                                 ('drugcentral', 'chebi.xrefs.drugcentral'),
+                                 ('cas', 'chebi.xrefs.cas'),
+                                 ('unii', 'chebi.xrefs.unii'),
+                                 ('mesh', 'chebi.xrefs.mesh'),
+                                 ('umls', 'chebi.xrefs.umls'),
+                                 ('rxnorm', 'chebi.xrefs.rxnorm'),
+                                 ('omop', 'chebi.xrefs.omop'),
+                                 ('drugname', 'chebi.name'),
+                                 ('chebi', 'chebi.id')],
                                 copy_from_doc=True)
 
     """
@@ -79,7 +91,29 @@ class ChebiUploader(BaseDrugUploader):
         # return self.exclude_fields(load_data)(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        for idxname in ["chebi.id"]:
+        # ChEBI is the primary target in the keylookup graph, so we need
+        # comprehensive indexing for all key identifier types
+        index_fields = [
+            "chebi.id",                    # Primary ChEBI identifier
+            # Structural identifier (highest priority)
+            "chebi.inchikey",
+            "chebi.inchi",                 # Structural identifier
+            "chebi.smiles",                # Structural identifier
+            "chebi.xrefs.drugbank",        # Cross-references for lookups
+            "chebi.xrefs.chembl",
+            "chebi.xrefs.pubchem.cid",
+            "chebi.xrefs.pharmgkb",
+            "chebi.xrefs.drugcentral",
+            "chebi.xrefs.cas",
+            "chebi.xrefs.unii",
+            "chebi.xrefs.mesh",
+            "chebi.xrefs.umls",
+            "chebi.xrefs.rxnorm",
+            "chebi.xrefs.omop",
+            "chebi.name"                   # Drug name lookup
+        ]
+
+        for idxname in index_fields:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             self.collection.create_index(

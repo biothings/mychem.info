@@ -29,9 +29,12 @@ class PharmGkbUploader(BaseDrugUploader):
     __metadata__ = {"src_meta": SRC_META}
     keylookup = MyChemKeyLookup(
         [('inchi', 'pharmgkb.inchi'),
+         ('smiles', 'pharmgkb.smiles'),
          ('pubchem', 'pharmgkb.xrefs.pubchem.cid'),
          ('drugbank', 'pharmgkb.xrefs.drugbank'),
-         ('chebi', 'pharmgkb.xrefs.chebi')])
+         ('chebi', 'pharmgkb.xrefs.chebi'),
+         ('pharmgkb', 'pharmgkb.id'),
+         ('drugname', 'pharmgkb.name')])
 
     def load_data(self, data_folder):
         """load_data method"""
@@ -42,9 +45,21 @@ class PharmGkbUploader(BaseDrugUploader):
         return self.keylookup(load_data)(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        field = "pharmgkb.id"
-        self.logger.info("Indexing '%s'" % field)
-        self.collection.create_index(field, background=True)
+        """create indexes following upload"""
+        # Key identifiers for PharmGKB lookups based on the keylookup graph
+        index_fields = [
+            "pharmgkb.id",                   # Primary PharmGKB identifier
+            "pharmgkb.inchi",                # Structural identifier
+            "pharmgkb.smiles",               # Structural identifier
+            "pharmgkb.xrefs.pubchem.cid",    # Cross-references
+            "pharmgkb.xrefs.drugbank",
+            "pharmgkb.xrefs.chebi",
+            "pharmgkb.name"                  # Drug name lookup
+        ]
+
+        for field in index_fields:
+            self.logger.info("Indexing '%s'" % field)
+            self.collection.create_index(field, background=True)
 
     @classmethod
     def get_mapping(cls):

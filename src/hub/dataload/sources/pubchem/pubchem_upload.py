@@ -1,5 +1,6 @@
-import os.path
 import glob
+import os.path
+
 # when code is exported, import becomes relative
 try:
     from pubchem.pubchem_parser import load_annotations as parser_func
@@ -8,9 +9,10 @@ except ImportError:
 
 
 # from parser import load_data
+import biothings.hub.dataload.storage as storage
+
 # from hub.dataload.uploader import BaseDrugUploader
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
-import biothings.hub.dataload.storage as storage
 
 
 class PubChemUploader(ParallelizedSourceUploader):
@@ -31,7 +33,8 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def jobs(self):
         # this will generate arguments for self.load.data() method, allowing parallelization
-        xmlgz_files = glob.glob(os.path.join(self.data_folder, self.__class__.COMPOUND_PATTERN))
+        xmlgz_files = glob.glob(os.path.join(
+            self.data_folder, self.__class__.COMPOUND_PATTERN))
         return [(f,) for f in xmlgz_files]
 
     def load_data(self, input_file):
@@ -40,7 +43,14 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following upload"""
-        for idxname in ["pubchem.cid", "pubchem.inchi"]:
+        # Key identifiers for PubChem lookups based on the keylookup graph
+        index_fields = [
+            "pubchem.cid",         # Primary PubChem identifier
+            "pubchem.inchi",       # Structural identifier
+            "pubchem.inchikey"     # Structural identifier (key for lookups)
+        ]
+
+        for idxname in index_fields:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             # pubchem can be an array, hence it doesn't support hashed indexes
