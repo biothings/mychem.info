@@ -43,8 +43,8 @@ def load_data(input_file):
     # half of them don't have inchikeys
     # set the primary key to inchikey and fill in missing ones with unii
     unii['_id'] = unii.inchikey
-    unii['_id'].fillna(unii.pubchem, inplace=True)
-    unii['_id'].fillna(unii.unii, inplace=True)
+    unii['_id'] = unii['_id'].fillna(unii.pubchem)
+    unii['_id'] = unii['_id'].fillna(unii.unii)
 
     # Extract all unique ncit IDs
     ncit_ids = unii["ncit"].dropna().unique().tolist()
@@ -52,7 +52,8 @@ def load_data(input_file):
 
     dupes = set(unii._id) - set(unii._id.drop_duplicates(keep=False))
     records = [{k: v for k, v in record.items() if pd.notnull(v)}
-               for record in unii.to_dict("records") if record['_id'] not in dupes]
+               for record in unii.to_dict("records")
+               if record['_id'] not in dupes]
 
     # Sanitize keylookup fields for non-duplicate records
     keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
@@ -60,7 +61,11 @@ def load_data(input_file):
     for record in records:
         for field in keylookup_fields:
             if field in record and record[field] is not None:
-                if not isinstance(record[field], (str, int, float)):
+                if isinstance(record[field], dict):
+                    # If it's a dict, remove it entirely as it can't be
+                    # used for lookup
+                    record[field] = None
+                elif not isinstance(record[field], (str, int, float)):
                     record[field] = str(record[field])
 
     records = [{'_id': record['_id'], 'unii': record} for record in records]
@@ -93,12 +98,18 @@ def load_data(input_file):
                     # Take the first non-null value
                     merged_record[field] = next(
                         (v for v in merged_record[field]
-                         if pd.notnull(v)), None)
+                         if pd.notnull(v) and not isinstance(v, dict)), None)
                 # Ensure the value is a simple string/number, not complex
+                # (including dicts)
                 if (merged_record[field] is not None and
                         not isinstance(merged_record[field],
                                        (str, int, float))):
-                    merged_record[field] = str(merged_record[field])
+                    if isinstance(merged_record[field], dict):
+                        # If it's a dict, remove it entirely as it can't be
+                        # used for lookup
+                        merged_record[field] = None
+                    else:
+                        merged_record[field] = str(merged_record[field])
 
         records.append({'_id': dupe, 'unii': merged_record})
     for record in records:
@@ -123,10 +134,14 @@ def load_data(input_file):
                             'preferred_term', 'drugcentral']
         for field in keylookup_fields:
             if field in record['unii'] and record['unii'][field] is not None:
-                if not isinstance(record['unii'][field], (str, int, float)):
+                if isinstance(record['unii'][field], dict):
+                    # If it's a dict, remove it entirely as it can't be
+                    # used for lookup
+                    record['unii'][field] = None
+                elif not isinstance(record['unii'][field], (str, int, float)):
                     record['unii'][field] = str(record['unii'][field])
                 # Also ensure no empty strings are used for lookups
-                if record['unii'][field] == '':
+                elif record['unii'][field] == '':
                     record['unii'][field] = None
 
         yield record
