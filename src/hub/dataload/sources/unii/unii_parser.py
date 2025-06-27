@@ -1,11 +1,12 @@
+import logging
+
 import pandas as pd
 from biothings.utils.dataload import int_convert
 from biothings_client import get_client
 
-import logging
-
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +32,8 @@ def load_data(input_file):
     try:
         unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str)
     except UnicodeDecodeError:
-        unii = pd.read_csv(input_file, sep='\t', low_memory=False, dtype=str, encoding='windows-1252')
+        unii = pd.read_csv(input_file, sep='\t', low_memory=False,
+                           dtype=str, encoding='windows-1252')
 
     unii.rename(columns={'MF': 'molecular_formula',
                          'PT': 'preferred_term',
@@ -49,28 +51,51 @@ def load_data(input_file):
     ncit_descriptions = caching_ncit_descriptions(ncit_ids)
 
     dupes = set(unii._id) - set(unii._id.drop_duplicates(keep=False))
-    records = [{k: v for k, v in record.items() if pd.notnull(v)} for record in unii.to_dict("records") if record['_id'] not in dupes]
+    records = [{k: v for k, v in record.items() if pd.notnull(v)}
+               for record in unii.to_dict("records") if record['_id'] not in dupes]
     records = [{'_id': record['_id'], 'unii': record} for record in records]
     # take care of a couple cases with identical inchikeys
     for dupe in dupes:
         dr = unii.query("_id == @dupe").to_dict("records")
-        dr = [{k: v for k, v in record.items() if pd.notnull(v)} for record in dr]
-        records.append({'_id': dupe, 'unii': dr})
+        dr = [{k: v for k, v in record.items() if pd.notnull(v)}
+              for record in dr]
+        # Merge duplicate records for keylookup compatibility
+        # For keylookup compatibility, we need a single dict structure
+        merged_record = {}
+        for record in dr:
+            for key, value in record.items():
+                if key not in merged_record:
+                    merged_record[key] = value
+                elif isinstance(merged_record[key], list):
+                    if value not in merged_record[key]:
+                        merged_record[key].append(value)
+                elif merged_record[key] != value:
+                    # Convert to list if values differ
+                    merged_record[key] = [merged_record[key], value]
+
+        # For keylookup fields, ensure we use single values, not lists
+        # Take the first value if multiple exist
+        keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
+                            'preferred_term', 'drugcentral']
+        for field in keylookup_fields:
+            if (field in merged_record and
+                    isinstance(merged_record[field], list)):
+                merged_record[field] = merged_record[field][0]
+
+        records.append({'_id': dupe, 'unii': merged_record})
     for record in records:
+        # Now record['unii'] is always a dict (we merged duplicates above)
         if 'ncit' in record['unii']:
             ncit_id = record['unii']['ncit']
             if ncit_id in ncit_descriptions:
                 record['unii']['ncit_description'] = ncit_descriptions[ncit_id]
-        if isinstance(record['unii'], dict):
+
+        # Clean up the record - check if _id exists before deleting
+        if '_id' in record['unii']:
             del record['unii']['_id']
-            if 'display name' in record['unii']:
-                record['unii']['display_name'] = record['unii'].pop(
-                    'display name').strip()
-        else:
-            for subr in record['unii']:
-                del subr['_id']
-                if 'display name' in subr:
-                    subr['display_name'] = subr.pop('display name').strip()
+        if 'display name' in record['unii']:
+            record['unii']['display_name'] = record['unii'].pop(
+                'display name').strip()
 
         # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
@@ -78,13 +103,12 @@ def load_data(input_file):
         yield record
 
 
-
 if __name__ == "__main__":
     """For standalone debugging"""
 
-    from glob import glob
     import json
     import sys
+    from glob import glob
 
     # Add config directory to path
     sys.path.append("../../../../")

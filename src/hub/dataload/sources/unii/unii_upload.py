@@ -41,10 +41,7 @@ class UniiUploader(BaseDrugUploader):
         input_file = record_files.pop()
         if not os.path.exists(input_file):
             raise AssertionError("Can't find input file '%s'" % input_file)
-        # disable keylookup - unii is a base collection used for drugname
-        # lookup and should be loaded first, (keylookup commented out)
         return self.keylookup(load_data)(input_file)
-    #    return load_data(input_file)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following upload"""
