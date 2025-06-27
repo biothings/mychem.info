@@ -40,9 +40,7 @@ class DrugCentralUploader(BaseDrugUploader):
     )
 
     def load_data(self, data_folder):
-        # Commented out keylookup call, as overlapping work is performed by the parser.
-        # drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
-        drugcentral_docs = load_data(data_folder)
+        drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
         return drugcentral_docs
 
     @classmethod

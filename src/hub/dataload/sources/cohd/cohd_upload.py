@@ -1,6 +1,10 @@
 import os.path
-from .cohd_parser import load_data
+
 import biothings.hub.dataload.uploader as uploader
+
+from hub.datatransform.keylookup import MyChemKeyLookup
+
+from .cohd_parser import load_data
 
 SRC_META = {
     "url": "http://cohd.smart-api.info/",
@@ -15,8 +19,13 @@ class COHDUploader(uploader.BaseSourceUploader):
     name = "cohd"
     __metadata__ = {"src_meta": SRC_META}
 
+    keylookup = MyChemKeyLookup(
+        [("omop", "omop.omop"),
+         ("drugname", "omop.name")],
+        copy_from_doc=True)
+
     def load_data(self, data_folder):
-        cohd_docs = load_data()
+        cohd_docs = self.keylookup(load_data)()
         return cohd_docs
 
     @classmethod

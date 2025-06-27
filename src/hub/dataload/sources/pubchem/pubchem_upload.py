@@ -14,6 +14,8 @@ import biothings.hub.dataload.storage as storage
 # from hub.dataload.uploader import BaseDrugUploader
 from biothings.hub.dataload.uploader import ParallelizedSourceUploader
 
+from hub.datatransform.keylookup import MyChemKeyLookup
+
 
 class PubChemUploader(ParallelizedSourceUploader):
 
@@ -29,6 +31,13 @@ class PubChemUploader(ParallelizedSourceUploader):
         }
     }
 
+    keylookup = MyChemKeyLookup(
+        [("inchikey", "pubchem.inchikey"),
+         ("inchi", "pubchem.inchi"),
+         ("smiles", "pubchem.smiles.canonical"),
+         ("pubchem", "pubchem.cid")],
+        copy_from_doc=True)
+
     COMPOUND_PATTERN = "Compound*.xml.gz"
 
     def jobs(self):
@@ -39,7 +48,7 @@ class PubChemUploader(ParallelizedSourceUploader):
 
     def load_data(self, input_file):
         self.logger.info("Load data from file '%s'" % input_file)
-        return parser_func(input_file)
+        return self.keylookup(parser_func)(input_file)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following upload"""
