@@ -53,6 +53,16 @@ def load_data(input_file):
     dupes = set(unii._id) - set(unii._id.drop_duplicates(keep=False))
     records = [{k: v for k, v in record.items() if pd.notnull(v)}
                for record in unii.to_dict("records") if record['_id'] not in dupes]
+
+    # Sanitize keylookup fields for non-duplicate records
+    keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
+                        'preferred_term', 'drugcentral']
+    for record in records:
+        for field in keylookup_fields:
+            if field in record and record[field] is not None:
+                if not isinstance(record[field], (str, int, float)):
+                    record[field] = str(record[field])
+
     records = [{'_id': record['_id'], 'unii': record} for record in records]
     # take care of a couple cases with identical inchikeys
     for dupe in dupes:
@@ -78,9 +88,17 @@ def load_data(input_file):
         keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
                             'preferred_term', 'drugcentral']
         for field in keylookup_fields:
-            if (field in merged_record and
-                    isinstance(merged_record[field], list)):
-                merged_record[field] = merged_record[field][0]
+            if field in merged_record:
+                if isinstance(merged_record[field], list):
+                    # Take the first non-null value
+                    merged_record[field] = next(
+                        (v for v in merged_record[field]
+                         if pd.notnull(v)), None)
+                # Ensure the value is a simple string/number, not complex
+                if (merged_record[field] is not None and
+                        not isinstance(merged_record[field],
+                                       (str, int, float))):
+                    merged_record[field] = str(merged_record[field])
 
         records.append({'_id': dupe, 'unii': merged_record})
     for record in records:
@@ -99,6 +117,17 @@ def load_data(input_file):
 
         # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
+
+        # Final sanitization of keylookup fields before yielding
+        keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
+                            'preferred_term', 'drugcentral']
+        for field in keylookup_fields:
+            if field in record['unii'] and record['unii'][field] is not None:
+                if not isinstance(record['unii'][field], (str, int, float)):
+                    record['unii'][field] = str(record['unii'][field])
+                # Also ensure no empty strings are used for lookups
+                if record['unii'][field] == '':
+                    record['unii'][field] = None
 
         yield record
 
