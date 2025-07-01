@@ -180,9 +180,27 @@ def process_structure(file_path_structure):
     d = []
     for strucid, subdf in df_drugcentral_structure.groupby('_id'):
         records = subdf.to_dict(orient="records")
-        drug_dosage_related = [{k.lower(): v for k, v in record.items() if k not in {
-            '_id'}} for record in records]
-        drecord = {"_id": strucid, "structures": drug_dosage_related[0]}
+
+        # Handle multiple records by collecting unique values for each field
+        structure_data = {}
+        for record in records:
+            for k, v in record.items():
+                if k not in {'_id'} and v is not None:
+                    field_name = str(k).lower()
+                    if field_name not in structure_data:
+                        structure_data[field_name] = []
+                    if v not in structure_data[field_name]:
+                        structure_data[field_name].append(v)
+
+        # Convert single-item lists to strings, keep multi-item as lists
+        final_structure = {}
+        for field, values in structure_data.items():
+            if len(values) == 1:
+                final_structure[field] = values[0]
+            else:
+                final_structure[field] = values
+
+        drecord = {"_id": strucid, "structures": final_structure}
         d.append(drecord)
     return {x['_id']: x['structures'] for x in d}
 
