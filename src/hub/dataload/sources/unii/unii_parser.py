@@ -43,8 +43,8 @@ def load_data(input_file):
     # half of them don't have inchikeys
     # set the primary key to inchikey and fill in missing ones with unii
     unii['_id'] = unii.inchikey
-    unii['_id'] = unii['_id'].fillna(unii.pubchem)
-    unii['_id'] = unii['_id'].fillna(unii.unii)
+    unii['_id'].fillna(unii.pubchem, inplace=True)
+    unii['_id'].fillna(unii.unii, inplace=True)
 
     # Extract all unique ncit IDs
     ncit_ids = unii["ncit"].dropna().unique().tolist()
@@ -52,97 +52,32 @@ def load_data(input_file):
 
     dupes = set(unii._id) - set(unii._id.drop_duplicates(keep=False))
     records = [{k: v for k, v in record.items() if pd.notnull(v)}
-               for record in unii.to_dict("records")
-               if record['_id'] not in dupes]
-
-    # Sanitize keylookup fields for non-duplicate records
-    keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
-                        'preferred_term', 'drugcentral']
-    for record in records:
-        for field in keylookup_fields:
-            if field in record and record[field] is not None:
-                if isinstance(record[field], dict):
-                    # If it's a dict, remove it entirely as it can't be
-                    # used for lookup
-                    record[field] = None
-                elif not isinstance(record[field], (str, int, float)):
-                    record[field] = str(record[field])
-
+               for record in unii.to_dict("records") if record['_id'] not in dupes]
     records = [{'_id': record['_id'], 'unii': record} for record in records]
     # take care of a couple cases with identical inchikeys
     for dupe in dupes:
         dr = unii.query("_id == @dupe").to_dict("records")
         dr = [{k: v for k, v in record.items() if pd.notnull(v)}
               for record in dr]
-        # Merge duplicate records for keylookup compatibility
-        # For keylookup compatibility, we need a single dict structure
-        merged_record = {}
-        for record in dr:
-            for key, value in record.items():
-                if key not in merged_record:
-                    merged_record[key] = value
-                elif isinstance(merged_record[key], list):
-                    if value not in merged_record[key]:
-                        merged_record[key].append(value)
-                elif merged_record[key] != value:
-                    # Convert to list if values differ
-                    merged_record[key] = [merged_record[key], value]
-
-        # For keylookup fields, ensure we use single values, not lists
-        # Take the first value if multiple exist
-        keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
-                            'preferred_term', 'drugcentral']
-        for field in keylookup_fields:
-            if field in merged_record:
-                if isinstance(merged_record[field], list):
-                    # Take the first non-null value
-                    merged_record[field] = next(
-                        (v for v in merged_record[field]
-                         if pd.notnull(v) and not isinstance(v, dict)), None)
-                # Ensure the value is a simple string/number, not complex
-                # (including dicts)
-                if (merged_record[field] is not None and
-                        not isinstance(merged_record[field],
-                                       (str, int, float))):
-                    if isinstance(merged_record[field], dict):
-                        # If it's a dict, remove it entirely as it can't be
-                        # used for lookup
-                        merged_record[field] = None
-                    else:
-                        merged_record[field] = str(merged_record[field])
-
-        records.append({'_id': dupe, 'unii': merged_record})
+        records.append({'_id': dupe, 'unii': dr})
     for record in records:
-        # Now record['unii'] is always a dict (we merged duplicates above)
         if 'ncit' in record['unii']:
             ncit_id = record['unii']['ncit']
             if ncit_id in ncit_descriptions:
                 record['unii']['ncit_description'] = ncit_descriptions[ncit_id]
-
-        # Clean up the record - check if _id exists before deleting
-        if '_id' in record['unii']:
+        if isinstance(record['unii'], dict):
             del record['unii']['_id']
-        if 'display name' in record['unii']:
-            record['unii']['display_name'] = record['unii'].pop(
-                'display name').strip()
+            if 'display name' in record['unii']:
+                record['unii']['display_name'] = record['unii'].pop(
+                    'display name').strip()
+        else:
+            for subr in record['unii']:
+                del subr['_id']
+                if 'display name' in subr:
+                    subr['display_name'] = subr.pop('display name').strip()
 
         # convert fields to integer
         record = int_convert(record, include_keys=['unii.pubchem'])
-
-        # Final sanitization of keylookup fields before yielding
-        keylookup_fields = ['inchikey', 'smiles', 'pubchem', 'unii',
-                            'preferred_term', 'drugcentral']
-        for field in keylookup_fields:
-            if field in record['unii'] and record['unii'][field] is not None:
-                if isinstance(record['unii'][field], dict):
-                    # If it's a dict, remove it entirely as it can't be
-                    # used for lookup
-                    record['unii'][field] = None
-                elif not isinstance(record['unii'][field], (str, int, float)):
-                    record['unii'][field] = str(record['unii'][field])
-                # Also ensure no empty strings are used for lookups
-                elif record['unii'][field] == '':
-                    record['unii'][field] = None
 
         yield record
 
