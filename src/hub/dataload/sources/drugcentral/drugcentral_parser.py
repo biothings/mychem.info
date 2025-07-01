@@ -218,9 +218,9 @@ def process_identifier(file_path_identifier):
             # Store just the identifier string, not wrapped in a dictionary
             identifier_related[_record['id_type'].lower()].append(
                 _record['identifier'])
-        drecord = {"_id": strucid, "external_ref": identifier_related}
+        drecord = {"_id": strucid, "xrefs": identifier_related}
         d.append(drecord)
-    return {x['_id']: x['external_ref'] for x in d}
+    return {x['_id']: x['xrefs'] for x in d}
 
 
 def to_list(_key):
