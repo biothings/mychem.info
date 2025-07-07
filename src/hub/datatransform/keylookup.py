@@ -299,7 +299,7 @@ graph_mychem.add_edge(
 )
 graph_mychem.add_edge(
     "unii", "pubchem",
-    object=MongoDBEdge("unii", "unii.unii", "unii.pubchem"),
+    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.cid"),
     weight=3.0,
 )
 

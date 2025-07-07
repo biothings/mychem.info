@@ -126,8 +126,7 @@ class UniiUploader(BaseDrugUploader):
                         "type": "text"
                     },
                     "pubchem": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
+                        "type": "integer",
                     },
                     "mpns": {
                         "normalizer": "keyword_lowercase_normalizer",
