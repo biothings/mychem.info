@@ -299,8 +299,8 @@ graph_mychem.add_edge(
 )
 graph_mychem.add_edge(
     "unii", "pubchem",
-    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.cid"),
-    weight=3.0,
+    object=MongoDBEdge("unii", "unii.unii", "unii.pubchem"),
+    weight=4.0,
 )
 
 ###############################################################################
@@ -537,8 +537,6 @@ class MyChemKeyLookup(DataTransformMDB):
                 "umls",
                 "omop",
             ],
-            # skip keylookup for InchiKeys
-            skip_w_regex="^[A-Z]{14}-[A-Z]{10}-[A-Z]",
             *args,
             **kwargs
         )
