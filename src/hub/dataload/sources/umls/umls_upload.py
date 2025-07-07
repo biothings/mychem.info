@@ -1,3 +1,4 @@
+import biothings.hub.dataload.storage as storage
 import biothings.hub.dataload.uploader as uploader
 
 from hub.datatransform.keylookup import MyChemKeyLookup
@@ -13,6 +14,7 @@ SRC_META = {
 class UMLSUploader(uploader.BaseSourceUploader):
 
     name = "umls"
+    storage_class = storage.IgnoreDuplicatedStorage
 
     keylookup = MyChemKeyLookup(
         [("umls", "umls.cui"),
