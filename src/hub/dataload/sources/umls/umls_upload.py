@@ -14,7 +14,7 @@ SRC_META = {
 class UMLSUploader(uploader.BaseSourceUploader):
 
     name = "umls"
-    storage_class = storage.IgnoreDuplicatedStorage
+    storage_class = storage.MergerStorage
 
     keylookup = MyChemKeyLookup(
         [("umls", "umls.cui"),
