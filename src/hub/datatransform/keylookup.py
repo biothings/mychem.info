@@ -23,6 +23,7 @@ graph_mychem.add_node("rxnorm")
 graph_mychem.add_node("smiles")
 graph_mychem.add_node("umls")
 graph_mychem.add_node("unii")
+graph_mychem.add_node("unichem")
 
 graph_mychem.add_edge(
     "inchi",
@@ -501,6 +502,71 @@ graph_mychem.add_edge(
     weight=3.0,
 )
 
+###############################################################################
+# UniChem Edges - Cross-reference mappings
+###############################################################################
+# UniChem to ChEBI (highest priority for chemical entity lookups)
+graph_mychem.add_edge(
+    "unichem",
+    "chebi",
+    object=MongoDBEdge("unichem", "unichem.chebi", "chebi.id"),
+    weight=0.8,
+)
+
+# UniChem to other database identifiers
+graph_mychem.add_edge(
+    "unichem",
+    "pubchem",
+    object=MongoDBEdge("unichem", "unichem.pubchem", "pubchem.cid"),
+    weight=0.8,
+)
+
+graph_mychem.add_edge(
+    "unichem",
+    "chembl",
+    object=MongoDBEdge("unichem", "unichem.chembl",
+                       "chembl.molecule_chembl_id"),
+    weight=0.8,
+)
+
+graph_mychem.add_edge(
+    "unichem",
+    "drugbank",
+    object=MongoDBEdge("unichem", "unichem.drugbank", "drugbank.id"),
+    weight=0.8,
+)
+
+graph_mychem.add_edge(
+    "unichem",
+    "pharmgkb",
+    object=MongoDBEdge("unichem", "unichem.pharmgkb", "pharmgkb.id"),
+    weight=0.8,
+)
+
+graph_mychem.add_edge(
+    "unichem",
+    "drugcentral",
+    object=MongoDBEdge("unichem", "unichem.drugcentral", "drugcentral.id"),
+    weight=0.8,
+)
+
+graph_mychem.add_edge(
+    "unichem",
+    "rxnorm",
+    object=MongoDBEdge("unichem", "unichem.rxnorm",
+                       "drugcentral.xrefs.rxnorm"),
+    weight=0.8,
+)
+
+# UniChem self-loop to check looked-up values exist in collection
+graph_mychem.add_edge(
+    "unichem",
+    "unichem",
+    object=MongoDBEdge("unichem", "unichem.src_compound_id",
+                       "unichem.src_compound_id"),
+    weight=3.0,
+)
+
 
 class MyChemKeyLookup(DataTransformMDB):
     def __init__(self, input_types, *args, **kwargs):
@@ -521,6 +587,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "inchikey",
                 "umls",
                 "omop",
+                "unichem",
             ],
             id_priority_list=[
                 "chebi",
@@ -536,6 +603,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "inchikey",
                 "umls",
                 "omop",
+                "unichem",
             ],
             *args,
             **kwargs

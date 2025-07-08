@@ -1,9 +1,9 @@
-import re
-import biothings.hub.dataload.uploader
-import os
-
 import biothings
+import biothings.hub.dataload.uploader
+
 import config
+from hub.datatransform.keylookup import MyChemKeyLookup
+
 biothings.config_for_app(config)
 
 # when code is exported, import becomes relative
@@ -31,12 +31,41 @@ class Unichem_biothings_sdkUploader(
     }
     }
 
-    idconverter = None
+    # idconverter = None
     storage_class = biothings.hub.dataload.storage.BasicStorage
+
+    keylookup = MyChemKeyLookup(
+        [("chebi", "unichem.chebi"),
+         ("pubchem", "unichem.pubchem"),
+         ("chembl", "unichem.chembl"),
+         ("rxnorm", "unichem.rxnorm"),
+         ("pharmgkb", "unichem.pharmgkb"),
+         ("drugbank", "unichem.drugbank"),
+         ("drugcentral", "unichem.drugcentral")],
+        copy_from_doc=True)
 
     def load_data(self, data_folder):
         self.logger.info("Load data from directory: '%s'" % data_folder)
-        return parser_func(data_folder)
+        return self.keylookup(parser_func)(data_folder)
+
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        # Key identifiers for UniChem lookups based on the keylookup graph
+        index_fields = [
+            "unichem.chebi",       # Primary target for chemical entity lookups
+            "unichem.pubchem",     # PubChem CID identifier
+            "unichem.chembl",      # ChEMBL molecule identifier
+            "unichem.drugbank",    # DrugBank identifier
+            "unichem.pharmgkb",    # PharmGKB identifier
+            "unichem.rxnorm",      # RxNorm identifier
+            "unichem.drugcentral"  # DrugCentral identifier
+        ]
+
+        for idxname in index_fields:
+            self.logger.info("Indexing '%s'" % idxname)
+            # background=true or it'll lock the whole database...
+            # unichem fields can be arrays, hence no hashed indexes
+            self.collection.create_index(idxname, background=True)
 
     @classmethod
     def get_mapping(klass):
@@ -173,6 +202,10 @@ class Unichem_biothings_sdkUploader(
                         'type': 'keyword'
                     },
                     'rhea': {
+                        'normalizer': 'keyword_lowercase_normalizer',
+                        'type': 'keyword'
+                    },
+                    'rxnorm': {
                         'normalizer': 'keyword_lowercase_normalizer',
                         'type': 'keyword'
                     },
