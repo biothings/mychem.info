@@ -35,7 +35,8 @@ class PubChemUploader(ParallelizedSourceUploader):
         [("inchikey", "pubchem.inchikey"),
          ("inchi", "pubchem.inchi"),
          ("smiles", "pubchem.smiles.canonical"),
-         ("pubchem", "pubchem.cid")],
+         ("pubchem", "pubchem.cid"),
+         ("unii", "pubchem.cid")],
         copy_from_doc=True)
 
     COMPOUND_PATTERN = "Compound*.xml.gz"
