@@ -1,16 +1,17 @@
-import os
-import os.path
 import ftplib
 import glob
+import os
+import os.path
 import shutil
 import subprocess
 
 import biothings
-import config
-biothings.config_for_app(config)
+from biothings.hub.dataload.dumper import DumperException, FTPDumper
 
+import config
 from config import DATA_ARCHIVE_ROOT
-from biothings.hub.dataload.dumper import FTPDumper, DumperException
+
+biothings.config_for_app(config)
 
 
 class PubChemDumper(FTPDumper):
@@ -22,6 +23,10 @@ class PubChemDumper(FTPDumper):
     ARCHIVE = False
     SCHEDULE = "0 12 * * *"
     MAX_PARALLEL_DUMP = 2
+    # Increase FTP timeout for large file downloads (30 minutes)
+    FTP_TIMEOUT = 30 * 60.0
+    # Use optimal block size for NCBI FTP server
+    BLOCK_SIZE = 33554432  # 32MB as recommended by NCBI
 
     VERSION_DIR = '/pubchem/Compound/Monthly'
 
@@ -30,7 +35,8 @@ class PubChemDumper(FTPDumper):
             self.client.cwd(self.__class__.VERSION_DIR)
             releases = sorted(self.client.nlst())
             if len(releases) == 0:
-                raise DumperException("Can't any release information in '%s'" % self.__class__.VERSION_DIR)
+                raise DumperException(
+                    "Can't any release information in '%s'" % self.__class__.VERSION_DIR)
             self.release = releases[-1]
         finally:
             self.client.cwd(self.__class__.CWD_DIR)
@@ -55,10 +61,12 @@ class PubChemDumper(FTPDumper):
         if force and os.path.exists(failed_list):
             with open(failed_list, 'r') as f:
                 failed_files = f.read().splitlines()
-                self.logger.info("Found %s failed files in previous dump, will dump them again", len(failed_files))
+                self.logger.info(
+                    "Found %s failed files in previous dump, will dump them again", len(failed_files))
                 # Also store the filename without the .md5 extension
                 failed_files += [f[:-4] for f in failed_files]
-                self.to_dump = [{'remote': f, 'local': os.path.join(self.new_data_folder, f)} for f in failed_files]
+                self.to_dump = [{'remote': f, 'local': os.path.join(
+                    self.new_data_folder, f)} for f in failed_files]
         elif force or self.new_release_available():
             # get list of files to download
             remote_files = self.client.nlst()
@@ -110,7 +118,8 @@ class PubChemDumper(FTPDumper):
             old = os.path.abspath(os.curdir)
             os.chdir(self.new_data_folder)
             try:
-                failed_list = os.path.join(self.new_data_folder, "failed_dump.list")
+                failed_list = os.path.join(
+                    self.new_data_folder, "failed_dump.list")
                 if os.path.exists(failed_list):
                     # If we have a failed dump list, only check md5sum of files that failed
                     with open(failed_list, 'r') as f:
@@ -121,28 +130,35 @@ class PubChemDumper(FTPDumper):
                 if md5_files:
                     for md5_file in md5_files:
                         cmd = ["md5sum", "-c", md5_file]
-                        self.logger.debug("\tValidating md5 checksum for: %s", md5_file)
+                        self.logger.debug(
+                            "\tValidating md5 checksum for: %s", md5_file)
                         try:
                             subprocess.check_call(cmd)
                         except subprocess.SubprocessError:
-                            self.logger.error("Failed to validate: {}".format(md5_file))
+                            self.logger.error(
+                                "Failed to validate: {}".format(md5_file))
                             failed_files.append(md5_file)
                     if failed_files:
                         err_msg = "Failed to validate {} md5 file(s):\n{}\nPlease re-run dumper to re-try.".format(
                             len(failed_files),
-                            '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
+                            # only display top 10 if it's a long list
+                            '\n'.join(["\t" + fn for fn in failed_files[:10]])
                         )
                         with open(failed_list, 'w') as f:
-                            f.write('\n'.join([os.path.basename(f) for f in failed_files]))
+                            f.write('\n'.join([os.path.basename(f)
+                                    for f in failed_files]))
                         raise DumperException(err_msg)
                     else:
-                        self.logger.debug("All %s files are validated.", len(md5_files))
+                        self.logger.debug(
+                            "All %s files are validated.", len(md5_files))
                         # Delete failed dump list if it exists
                         if os.path.exists(failed_list):
                             os.remove(failed_list)
                 else:
-                    self.logger.debug("No *.md5 file(s) found! File validation is skipped.")
+                    self.logger.debug(
+                        "No *.md5 file(s) found! File validation is skipped.")
             finally:
                 os.chdir(old)
         else:
-            self.logger.warning('"md5sum" is not found in the PATH! File validation is skipped.')
+            self.logger.warning(
+                '"md5sum" is not found in the PATH! File validation is skipped.')
