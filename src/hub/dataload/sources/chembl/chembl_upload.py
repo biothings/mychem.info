@@ -27,7 +27,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
     """
 
     name = "chembl"
-    storage_class = storage.RootKeyMergerStorage
+    storage_class = (storage.RootKeyMergerStorage, storage.CheckSizeStorage)
     __metadata__ = {"src_meta": SRC_META}
 
     MOLECULE_FILENAME_PATTERN = "molecule.*.json"
