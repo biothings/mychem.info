@@ -1,17 +1,25 @@
-import re
 import json
+import logging
+import re
 import urllib.parse
-from itertools import chain, groupby
 from collections import defaultdict
-from typing import List
 from collections.abc import Iterator  # replacing typing.Iterable
+from itertools import chain, groupby
+from pathlib import Path
+from typing import List
 
-from biothings.utils.dataload import dict_sweep, unlist, value_convert_to_number
-from biothings.utils.dataload import boolean_convert
+import bson
+from biothings.utils.dataload import (
+    boolean_convert,
+    dict_sweep,
+    unlist,
+    value_convert_to_number,
+)
 
 
 class ChemblJsonFileReader:
-    EMPTY_VALUES = [None, ".", "-", "", "NA", "None", "none", " ", "Not Available", "unknown", "null", []]
+    EMPTY_VALUES = [None, ".", "-", "", "NA", "None",
+                    "none", " ", "Not Available", "unknown", "null", []]
 
     @classmethod
     def read_file(cls, path: str, key: str, transform_func=None) -> Iterator[dict]:
@@ -23,7 +31,8 @@ class ChemblJsonFileReader:
 
     @classmethod
     def read_multi_files(cls, paths: Iterator[str], key: str, transform_func=None) -> Iterator[dict]:
-        entries = chain.from_iterable(cls.read_file(p, key, transform_func) for p in paths)
+        entries = chain.from_iterable(cls.read_file(
+            p, key, transform_func) for p in paths)
         return entries
 
     @classmethod
@@ -112,7 +121,8 @@ class TargetReader(ChemblJsonFileReader):
     # Keys to the preserved fields in each target entry
     ENTRY_PRIMARY_KEY = "target_chembl_id"
     ENTRY_TARGET_COMPONENT_KEY = "target_components"
-    ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_TARGET_COMPONENT_KEY, "pref_name", "target_type", "organism"}
+    ENTRY_PRESERVED_KEYS = {
+        ENTRY_PRIMARY_KEY, ENTRY_TARGET_COMPONENT_KEY, "pref_name", "target_type", "organism"}
 
     # we need to rename some field keys indicated by the following map
     REKEYING_MAP = {
@@ -125,17 +135,20 @@ class TargetReader(ChemblJsonFileReader):
     # See https://uswest.ensembl.org/info/genome/stable_ids/prefixes.html
     HUMAN_ENSEMBL_GENE_PATTERN = re.compile(r"ENSG[0-9]{11}")
     # See https://www.uniprot.org/help/accession_numbers
-    UNIPROT_ACCESSION_PATTERN = re.compile(r"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}")
+    UNIPROT_ACCESSION_PATTERN = re.compile(
+        r"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}")
 
     @classmethod
     def transform_entry(cls, entry: dict):
-        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        entry_keys = list(entry.keys())
         for key in entry_keys:
             if key not in cls.ENTRY_PRESERVED_KEYS:
                 del entry[key]
 
             if key == cls.ENTRY_TARGET_COMPONENT_KEY:
-                entry[key] = cls.get_accessions_from_target_components(entry[key])
+                entry[key] = cls.get_accessions_from_target_components(
+                    entry[key])
 
             if key in cls.REKEYING_MAP:
                 new_key = cls.REKEYING_MAP[key]
@@ -150,7 +163,8 @@ class TargetReader(ChemblJsonFileReader):
         # `component["accession"]` may be None (e.g. with "CHEMBL2364096"), so we exclude such values here.
         # "CHEMBL4662965" has accession "ENSG00000198670 ", so we apply `.rstrip()` here. ("CHEMBL4662965" is the only case so far)
         #   See https://github.com/chembl/GLaDOS/issues/1311
-        accessions = (component["accession"].rstrip() for component in target_component_list if component["accession"])
+        accessions = (component["accession"].rstrip(
+        ) for component in target_component_list if component["accession"])
 
         # `accession` may be an Ensembl Gene ID (e.g. "CHEMBL1615321" has "ENSG00000207827"), or a UniProt accession ID
         uniprot_accessions = []
@@ -216,7 +230,8 @@ class BindingSiteReader(ChemblJsonFileReader):
 
     @classmethod
     def transform_entry(cls, entry: dict):
-        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        entry_keys = list(entry.keys())
         for key in entry_keys:
             if key not in {"site_id", "site_name"}:
                 del entry[key]
@@ -253,13 +268,15 @@ class MechanismReader(ChemblJsonFileReader):
 
     # Keys to the preserved fields in each mechanism entry
     ENTRY_PRIMARY_KEY = "molecule_chembl_id"
-    ENTRY_REFERENCE_KEY = "mechanism_refs"  # key to the reference list (which needs special transformation)
+    # key to the reference list (which needs special transformation)
+    ENTRY_REFERENCE_KEY = "mechanism_refs"
     ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_REFERENCE_KEY,
                             "action_type", "site_id", "target_chembl_id"}
 
     @classmethod
     def transform_entry(cls, entry: dict):
-        entry_keys = list(entry.keys())  # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        # iterate over the copy of keys, otherwise "RuntimeError: dictionary changed size during iteration".
+        entry_keys = list(entry.keys())
         for key in entry_keys:
             if key not in cls.ENTRY_PRESERVED_KEYS:
                 del entry[key]
@@ -303,7 +320,8 @@ class MechanismReader(ChemblJsonFileReader):
         #     E.g. `[1, 1, 2, 2, 1, 1]` will be split into 3 groups, `[1, 1], [2, 2], [1, 1]`
         # Another workaround is to use `pandas.DataFrame.groupby()`
         entries = sorted(entries, key=primary_key_fn)
-        ret_dict = {key: list(group) for key, group in groupby(entries, key=primary_key_fn)}
+        ret_dict = {key: list(group) for key, group in groupby(
+            entries, key=primary_key_fn)}
 
         for _, mechanism_list in ret_dict.items():
             for mechanism in mechanism_list:
@@ -318,7 +336,8 @@ class DrugIndicationReader(ChemblJsonFileReader):
 
     ENTRY_PRIMARY_KEY = "molecule_chembl_id"
     ENTRY_SECONDARY_KEY = "mesh_id"
-    ENTRY_REFERENCE_KEY = "indication_refs"  # key to the reference list (which needs special transformation)
+    # key to the reference list (which needs special transformation)
+    ENTRY_REFERENCE_KEY = "indication_refs"
     ENTRY_PRESERVED_KEYS = {ENTRY_PRIMARY_KEY, ENTRY_SECONDARY_KEY, ENTRY_REFERENCE_KEY,
                             "mesh_heading", "efo_id", "efo_term", "max_phase_for_ind"}
 
@@ -495,7 +514,8 @@ class DrugIndicationReader(ChemblJsonFileReader):
 
                 # if len(subgroup) == 1: ret_dict["max_phase_for_ind"] = subgroup[0]["max_phase_for_ind"]
                 # `max` operation applies no matter if `len(subgroup) == 1`
-                indication["max_phase_for_ind"] = max(entry["max_phase_for_ind"] for entry in subgroup)
+                indication["max_phase_for_ind"] = max(
+                    entry["max_phase_for_ind"] for entry in subgroup)
 
                 """
                 Corner cases of `efo_id` and `efo_term`:
@@ -539,12 +559,14 @@ class DrugIndicationReader(ChemblJsonFileReader):
                                'chronic progressive multiple sclerosis']
 
                 On https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL1201631/ "Drug Indications" panel,
-                mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references 
+                mesh_id 'D020528' has 1 efo_ids, 1 efo_terms, but 3 duplicated references
                 """
 
                 # I did not find a None `efo_id` mapped to a non-None `efo_term`, or vice versa
-                efo_id_list = [entry["efo_id"] for entry in subgroup if entry["efo_id"] is not None]
-                efo_term_list = [entry["efo_term"] for entry in subgroup if entry["efo_term"] is not None]
+                efo_id_list = [entry["efo_id"]
+                               for entry in subgroup if entry["efo_id"] is not None]
+                efo_term_list = [entry["efo_term"]
+                                 for entry in subgroup if entry["efo_term"] is not None]
 
                 """
                 Addendum: Kevin suggested the following format for `efo_id` and `efo_term`:
@@ -557,12 +579,15 @@ class DrugIndicationReader(ChemblJsonFileReader):
 
                     efo: [{id: ..., term: ...}]
                 """
-                indication["efo"] = [{"id": t[0], "term": t[1]} for t in {*zip(efo_id_list, efo_term_list)}]
+                indication["efo"] = [{"id": t[0], "term": t[1]}
+                                     for t in {*zip(efo_id_list, efo_term_list)}]
 
-                indication_refs = chain.from_iterable([entry["indication_refs"] for entry in subgroup])
+                indication_refs = chain.from_iterable(
+                    [entry["indication_refs"] for entry in subgroup])
                 # remove the duplicated references (dictionaries underlying) in the collection
                 # see https://stackoverflow.com/a/9427216
-                indication["indication_refs"] = [dict(t) for t in {tuple(sorted(ref.items())) for ref in indication_refs}]
+                indication["indication_refs"] = [
+                    dict(t) for t in {tuple(sorted(ref.items())) for ref in indication_refs}]
 
                 yield indication
 
@@ -615,7 +640,8 @@ class MoleculeReader(ChemblJsonFileReader):
         # then discard "cross_references" field
         cross_references = entry.get("cross_references", None)
         if cross_references and isinstance(cross_references, list):
-            doc["chembl"]["xrefs"] = cls.transform_cross_reference_list(cross_references)
+            doc["chembl"]["xrefs"] = cls.transform_cross_reference_list(
+                cross_references)
         doc["chembl"].pop("cross_references", None)
 
         # Add "CHEBI:" prefix, standardize the way representing CHEBI IDs
@@ -627,7 +653,8 @@ class MoleculeReader(ChemblJsonFileReader):
 
         doc = unlist(doc)
         doc = cls.sweep_emtpy_values(doc)
-        doc = value_convert_to_number(doc, skipped_keys=["chebi_par_id", "first_approval"])
+        doc = value_convert_to_number(
+            doc, skipped_keys=["chebi_par_id", "first_approval"])
         doc = boolean_convert(doc, ["topical", "oral", "parenteral", "dosed_ingredient", "polymer_flag",
                                     "therapeutic_flag", "med_chem_friendly", "molecule_properties.ro3_pass"])
         return doc
@@ -651,11 +678,13 @@ class MoleculeReader(ChemblJsonFileReader):
             elif xref_src == 'Wikipedia':
                 xref_dict['wikipedia'].append({'url_stub': xref['xref_id']})
             elif xref_src == 'TG-GATEs':
-                xref_dict['tg-gates'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+                xref_dict['tg-gates'].append(
+                    {'name': xref['xref_name'], 'id': int(xref['xref_id'])})
             elif xref_src == 'DailyMed':
                 xref_dict['dailymed'].append({'name': xref['xref_name']})
             elif xref_src == 'DrugCentral':
-                xref_dict['drugcentral'].append({'name': xref['xref_name'], 'id': int(xref['xref_id'])})
+                xref_dict['drugcentral'].append(
+                    {'name': xref['xref_name'], 'id': int(xref['xref_id'])})
         return xref_dict
 
 
@@ -706,13 +735,15 @@ class AuxiliaryDataLoader:
             for mechanism in mechanism_list:
                 # Both "site_id" and "target_chembl_id" fields may be `None` and got swept
                 if "site_id" in mechanism:
-                    binding_site_name = binding_site_dict.get(mechanism["site_id"], None)
+                    binding_site_name = binding_site_dict.get(
+                        mechanism["site_id"], None)
                     if binding_site_name is not None:
                         mechanism["binding_site_name"] = binding_site_name
                     del mechanism["site_id"]
 
                 if "target_chembl_id" in mechanism:
-                    target = target_dict.get(mechanism["target_chembl_id"], None)
+                    target = target_dict.get(
+                        mechanism["target_chembl_id"], None)
                     if target is not None:
                         mechanism.update(target)
 
@@ -736,41 +767,74 @@ class MoleculeDataLoader:
                                         transform_func=MoleculeReader.transform_entry)
 
 
-def load_chembl_data(mol_data_loader: MoleculeDataLoader, aux_data_loader: AuxiliaryDataLoader):
+def load_chembl_data(
+    mol_data_loader,
+    aux_data_loader,
+    max_bson_size_mb: int = 16  # MongoDB’s hard per-document limit
+):
+    """
+    Yield ChEMBL documents ready for upload.
+
+    • Merges drug_indications and drug_mechanisms.
+    • Uses inchi_key as the primary _id when available.
+    • Skips any document whose BSON-encoded size ≥ `max_bson_size_mb` MB,
+      logging a concise warning and dumping the full payload to disk
+      for later inspection.
+    """
+    logger = logging.getLogger(__name__)
+
     molecules = mol_data_loader.get_molecules()
 
     drug_indication_map = aux_data_loader.get_drug_indication_map()
     drug_mechanism_map = aux_data_loader.get_drug_mechanism_map()
     if (drug_indication_map is None) or (drug_mechanism_map is None):
-        raise ValueError("'aux_data_loader' is not eagerly loaded. Call '.eagerly_load()' in advance.")
+        raise ValueError(
+            "'aux_data_loader' is not eagerly loaded. Call '.eagerly_load()' first."
+        )
+
+    dump_dir = Path("large_docs")
+    dump_dir.mkdir(exist_ok=True)
+
+    size_limit = max_bson_size_mb * 1024 * 1024  # bytes
 
     for doc in molecules:
-        chembl_id = doc["chembl"]["molecule_chembl_id"]
-        drug_indications = drug_indication_map.get(chembl_id, None)
-        drug_mechanisms = drug_mechanism_map.get(chembl_id, None)
+        chembl = doc.setdefault("chembl", {})
+        chembl_id = chembl.get("molecule_chembl_id")
 
-        if drug_indications is not None:
-            # Join `molecule::first_approval` to `drug_indication::first_approval`
-            first_approval = doc["chembl"].get("first_approval", None)
+        drug_indications = drug_indication_map.get(chembl_id)
+        if drug_indications:
+            first_approval = chembl.get("first_approval")
             if first_approval:
-                for indication in drug_indications:
-                    indication["first_approval"] = first_approval
+                for ind in drug_indications:
+                    ind["first_approval"] = first_approval
+            chembl["drug_indications"] = drug_indications
 
-            doc["chembl"]["drug_indications"] = drug_indications
+        drug_mechanisms = drug_mechanism_map.get(chembl_id)
+        if drug_mechanisms:
+            chembl["drug_mechanisms"] = drug_mechanisms
 
-        if drug_mechanisms is not None:
-            doc["chembl"]["drug_mechanisms"] = drug_mechanisms
+        inchi_key = chembl.get("inchi_key")
+        doc["_id"] = inchi_key or chembl_id
 
-        """
-        "inchi_key" is the primary key for cross-datasource merging in MyChem.
-        
-        However we still allow uploading documents without "inchi_key", and `ChemblUploader.keylookup` will set `doc["molecule_chembl_id"]` as their "_id".
+        try:
+            est_size = len(bson.BSON.encode(doc))
+        except Exception as exc:
+            logger.exception(
+                "BSON size estimation failed for %s: %s", chembl_id, exc)
+            continue
 
-        There are 2,331,593 documents in the `mychem_src.chembl` MongoDB collection, among which 24,289 (1.04%) have "_id" starting with "CHEMBL".
-        It can be verified on the EMBL-EBI site that those entities have no inchi representation.
-        """
-        if "inchi_key" in doc["chembl"]:
-            _id = doc["chembl"]["inchi_key"]
-            doc["_id"] = _id
+        if est_size >= size_limit:
+            logger.warning(
+                "Skipping %s – estimated size %.2f MB (limit %d MB)",
+                doc["_id"], est_size / 1_048_576, max_bson_size_mb
+            )
+            try:
+                (dump_dir / f"{doc['_id']}.json").write_text(
+                    json.dumps(doc, indent=2)
+                )
+            except Exception as exc:
+                logger.error(
+                    "Failed to dump oversized doc %s: %s", doc['_id'], exc)
+            continue
 
         yield doc
