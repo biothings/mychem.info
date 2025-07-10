@@ -1,10 +1,12 @@
 import biothings.hub.dataload.storage as storage
-import biothings.hub.dataload.uploader as uploader
 
+from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
 
 
-class AeolusUploader(uploader.DummySourceUploader):
+class AeolusUploader(BaseDrugUploader):
+
+    storage_class = storage.RootKeyMergerStorage
     name = "aeolus"
     __metadata__ = {
         "src_meta": {
@@ -15,7 +17,6 @@ class AeolusUploader(uploader.DummySourceUploader):
         }
     }
 
-    storage_class = storage.RootKeyMergerStorage
     keylookup = MyChemKeyLookup(
         [('inchikey', 'aeolus.inchikey'),
          ('unii', 'aeolus.unii'),
@@ -108,8 +109,7 @@ class AeolusUploader(uploader.DummySourceUploader):
                     "drug_name": {
                         "type": "text",
                         "copy_to": [
-                            "all",
-                            "name"
+                            "all"
                         ]
                     },
                     "pt": {
