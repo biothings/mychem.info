@@ -210,11 +210,12 @@ def load_annotations(data_folder):
                 if (last_inchi == inchi):
                     # if source id already exists for source, then create/add to list. if not, create first entry for source
                     if (source in new_entry["unichem"]):
-                        if (type(new_entry["unichem"][source]) == str):
+                        if (type(new_entry["unichem"][source]) == list):
+                            new_entry["unichem"][source].append(source_id)
+                        else:
+                            # Convert single value to list and add new value
                             new_entry["unichem"][source] = [
                                 new_entry["unichem"][source], source_id]
-                        else:
-                            new_entry["unichem"][source].append(source_id)
                     else:
                         new_entry["unichem"][source] = source_id
                 elif (len(last_inchi) == 0):
