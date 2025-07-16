@@ -205,10 +205,6 @@ class Unichem_biothings_sdkUploader(
                         'normalizer': 'keyword_lowercase_normalizer',
                         'type': 'keyword'
                     },
-                    'rxnorm': {
-                        'normalizer': 'keyword_lowercase_normalizer',
-                        'type': 'keyword'
-                    },
                     'selleck': {
                         'normalizer': 'keyword_lowercase_normalizer',
                         'type': 'keyword'
