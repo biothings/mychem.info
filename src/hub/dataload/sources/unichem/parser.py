@@ -68,6 +68,9 @@ def process_group_chunk(args):
                 unichem_data[source_name] = source_id
 
         if unichem_data:
+            # Always add the InChI key to unichem data (valuable metadata)
+            unichem_data['inchikey'] = inchi_key
+
             # Determine the best _id based on priority list
             best_id = get_best_id(unichem_data, inchi_key)
 
@@ -118,8 +121,8 @@ def load_annotations(data_folder, num_processes=None):
         "pharmgkb",
     ]
 
-    # Smaller chunk sizes for memory efficiency
-    current_chunk_size = 500000  # 500K rows to keep memory low
+    # Larger chunk sizes for better I/O performance during structure loading
+    current_chunk_size = 2000000  # 2M rows for better throughput
 
     # File paths
     source_file = os.path.join(data_folder, "UC_SOURCE.txt")
@@ -174,6 +177,7 @@ def load_annotations(data_folder, num_processes=None):
         logging.info("Loading structure data in chunks...")
         struct_data = {}
         chunk_count = 0
+        total_processed = 0
 
         for struct_chunk in pd.read_csv(
                 struct_file, sep='\t', header=None,
@@ -182,18 +186,28 @@ def load_annotations(data_folder, num_processes=None):
                 chunksize=current_chunk_size,
                 dtype=struct_dtype):
             chunk_count += 1
-            if chunk_count % 10 == 0:
+
+            # Vectorized operation - much faster than iterrows()
+            valid_mask = struct_chunk['standardinchikey'].notna()
+            valid_data = struct_chunk[valid_mask]
+
+            # Update dictionary with valid entries
+            new_entries = dict(zip(valid_data['uci'],
+                                   valid_data['standardinchikey']))
+            struct_data.update(new_entries)
+
+            total_processed += len(struct_chunk)
+
+            if chunk_count % 5 == 0:  # More frequent updates
+                # Estimate progress based on ~200 bytes/line
+                progress_gb = (total_processed * 200) / (1024**3)
                 msg = (f"Structure chunk {chunk_count}, "
+                       f"processed ~{progress_gb:.1f}GB, "
                        f"memory items: {len(struct_data):,}")
                 logging.info(msg)
 
-            # Build lookup dictionary
-            for _, row in struct_chunk.iterrows():
-                if not pd.isna(row['standardinchikey']):
-                    struct_data[row['uci']] = row['standardinchikey']
-
-            del struct_chunk
-            if chunk_count % 10 == 0:
+            del struct_chunk, valid_data, new_entries
+            if chunk_count % 5 == 0:
                 gc.collect()
 
         logging.info(f"Loaded {len(struct_data):,} structure mappings")
@@ -202,6 +216,7 @@ def load_annotations(data_folder, num_processes=None):
         logging.info("Streaming through xref data...")
         chunk_count = 0
         total_merged = 0
+        total_xref_processed = 0
 
         for xref_chunk in pd.read_csv(
                 xref_file, sep='\t', header=None,
@@ -210,24 +225,34 @@ def load_annotations(data_folder, num_processes=None):
                 chunksize=current_chunk_size,
                 dtype=xref_dtype):
             chunk_count += 1
-            if chunk_count % 10 == 0:
+            total_xref_processed += len(xref_chunk)
+
+            # Vectorized lookup - much faster than iterrows()
+            # Find rows where UCI exists in struct_data
+            valid_uci_mask = xref_chunk['uci'].isin(struct_data.keys())
+            valid_xref = xref_chunk[valid_uci_mask]
+
+            # Vectorized merge
+            for _, row in valid_xref.iterrows():
+                uci = row['uci']
+                inchi_key = struct_data[uci]
+                yield {
+                    'standardinchikey': inchi_key,
+                    'src_id': row['src_id'],
+                    'src_compound_id': row['src_compound_id']
+                }
+                total_merged += 1
+
+            if chunk_count % 5 == 0:  # More frequent updates
+                # Estimate progress (~150 bytes/line)
+                progress_gb = (total_xref_processed * 150) / (1024**3)
                 msg = (f"Xref chunk {chunk_count}, "
+                       f"processed ~{progress_gb:.1f}GB, "
                        f"total merged: {total_merged:,}")
                 logging.info(msg)
 
-            for _, row in xref_chunk.iterrows():
-                uci = row['uci']
-                if uci in struct_data:
-                    inchi_key = struct_data[uci]
-                    yield {
-                        'standardinchikey': inchi_key,
-                        'src_id': row['src_id'],
-                        'src_compound_id': row['src_compound_id']
-                    }
-                    total_merged += 1
-
-            del xref_chunk
-            if chunk_count % 10 == 0:
+            del xref_chunk, valid_xref
+            if chunk_count % 5 == 0:
                 gc.collect()
 
         msg = f"Streaming completed. Total merged records: {total_merged:,}"

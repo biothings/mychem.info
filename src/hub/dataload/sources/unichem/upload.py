@@ -31,7 +31,7 @@ class Unichem_biothings_sdkUploader(
     }
 
     idconverter = None
-    storage_class = biothings.hub.dataload.storage.BasicStorage
+    storage_class = biothings.hub.dataload.storage.RootKeyMergerStorage
 
     def load_data(self, data_folder):
         self.logger.info("Load data from directory: '%s'" % data_folder)
