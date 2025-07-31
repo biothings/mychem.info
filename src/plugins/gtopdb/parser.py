@@ -54,12 +54,11 @@ def preprocess_ligands(d: dict, _id: str):
     d = dict_convert(d, valuefn=process_val)
     d = dict_convert(d, valuefn=remove_tags)
 
-    if "inchikey" in d.keys() and not d["inchikey_dup"]:
-        _id = d["inchikey"]
-    elif "pubchem_cid" in d.keys() and not d["cid_dup"]:
-        _id = d['pubchem_cid']
-    elif "pubchem_sid" in d.keys() and not d["sid_dup"]:
-        _id = d['pubchem_sid']
+    # Set _id priority: pubchem_cid -> ligand_id (with prefixes)
+    if "pubchem_cid" in d.keys() and not d["cid_dup"]:
+        _id = f"PUBCHEM.COMPOUND:{d['pubchem_cid']}"
+    else:
+        _id = f"GTOPDB:{_id}"
 
     for key in ["inchikey_dup", "cid_dup", "sid_dup"]:
         d.pop(key)
@@ -131,7 +130,14 @@ def parse_xrefs(d: dict):
             elif k == "ensembl_id":
                 new_k = "ensembl"
 
-            xrefs[new_k] = d[k]
+            # Convert pubchem_cid and pubchem_sid to integers
+            if k in ["pubchem_cid", "pubchem_sid"]:
+                try:
+                    xrefs[new_k] = int(d[k])
+                except (ValueError, TypeError):
+                    xrefs[new_k] = d[k]  # Keep original if conversion fails
+            else:
+                xrefs[new_k] = d[k]
             d.pop(k)
     return xrefs
 
