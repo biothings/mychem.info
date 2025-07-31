@@ -35,7 +35,7 @@ class Unichem_biothings_sdkUploader(
 
     def load_data(self, data_folder):
         self.logger.info("Load data from directory: '%s'" % data_folder)
-        return parser_func(data_folder, num_processes=12)
+        return parser_func(data_folder)
 
     @classmethod
     def get_mapping(klass):
