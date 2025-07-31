@@ -37,6 +37,21 @@ class Unichem_biothings_sdkUploader(
         self.logger.info("Load data from directory: '%s'" % data_folder)
         return parser_func(data_folder)
 
+    def post_update_data(self, *args, **kwargs):
+        """create indexes following upload"""
+        # Key identifiers for PubChem lookups based on the keylookup graph
+        index_fields = [
+            "unichem.chebi",                # ChEBI cross-reference
+            "unichem.src_compound_id",      # Source compound ID
+            "unichem.hmdb",                 # HMDB cross-reference
+        ]
+
+        for idxname in index_fields:
+            self.logger.info("Indexing '%s'" % idxname)
+            # background=true or it'll lock the whole database...
+            # pubchem can be an array, hence it doesn't support hashed indexes
+            self.collection.create_index(idxname, background=True)
+
     @classmethod
     def get_mapping(klass):
         return {
