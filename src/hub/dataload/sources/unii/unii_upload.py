@@ -2,7 +2,7 @@ import glob
 import os
 
 import biothings.hub.dataload.storage as storage
-from biothings.hub.datatransform import DataTransformMDB
+from biothings.hub.datatransform import IDStruct, nested_lookup
 
 from hub.dataload.uploader import BaseDrugUploader
 from hub.datatransform.keylookup import MyChemKeyLookup
@@ -17,19 +17,89 @@ SRC_META = {
 }
 
 
+class UniiIDStruct(IDStruct):
+    """Custom IDStruct to handle UNII data structures (dict or list)"""
+
+    def _init_strct(self, field, doc_lst):
+        """
+        Initialize _id_tuple_lst with proper value extraction for UNII
+
+        This handles both cases:
+        - record['unii'] is a dict (single record)
+        - record['unii'] is a list of dicts (multiple records with same ID)
+        """
+        for doc in doc_lst:
+            value = nested_lookup(doc, field)
+            if value:
+                doc_id = doc.get('_id')
+
+                # Handle the case where unii field contains list or dict
+                if field.startswith('unii.'):
+                    # Remove 'unii.' prefix to get the actual field name
+                    field_name = field.split('.', 1)[1]
+                    unii_data = doc.get('unii')
+
+                    if isinstance(unii_data, list):
+                        # Multiple UNII records - extract field from each
+                        for unii_record in unii_data:
+                            if isinstance(unii_record, dict):
+                                extracted_value = unii_record.get(field_name)
+                                if extracted_value is not None:
+                                    self.add(doc_id, str(extracted_value))
+                    elif isinstance(unii_data, dict):
+                        # Single UNII record
+                        extracted_value = unii_data.get(field_name)
+                        if extracted_value is not None:
+                            self.add(doc_id, str(extracted_value))
+                else:
+                    # Handle non-unii fields normally
+                    self.add(doc_id, str(value))
+
+    def find_right(self, ids):
+        """
+        Override find_right to handle unhashable types properly
+        """
+        if not ids:
+            return []
+
+        # Convert unhashable types to strings
+        safe_ids = []
+        if not isinstance(ids, (set, list, tuple)):
+            ids = [ids]
+
+        for id_val in ids:
+            if isinstance(id_val, dict):
+                # Convert dict to string representation for use as key
+                # For UNII, we're mainly interested in the 'unii' value
+                if 'unii' in id_val:
+                    safe_ids.append(str(id_val['unii']))
+                else:
+                    # Fallback to string representation
+                    safe_ids.append(str(id_val))
+            elif isinstance(id_val, list):
+                # Convert list to string
+                safe_ids.append(str(id_val))
+            else:
+                safe_ids.append(id_val)
+
+        # Use the parent's find method with safe IDs
+        return self.find(self.inverse, safe_ids)
+
+
 class UniiUploader(BaseDrugUploader):
 
     name = "unii"
-    storage_class = storage.IgnoreDuplicatedStorage
+    storage_class = storage.RootKeyMergerStorage
     __metadata__ = {"src_meta": SRC_META}
 
-    keylookup = MyChemKeyLookup([('inchikey', 'unii.inchikey'),
-                                 ('smiles', 'unii.smiles'),
-                                 ('pubchem', 'unii.pubchem'),
+    keylookup = MyChemKeyLookup([('pubchem', 'unii.pubchem'),
                                  ('unii', 'unii.unii'),
+                                 ('inchikey', 'unii.inchikey'),
+                                 ('smiles', 'unii.smiles'),
                                  ('drugname', 'unii.preferred_term'),
                                  ('drugcentral', 'unii.drugcentral')],
                                 copy_from_doc=True,
+                                idstruct_class=UniiIDStruct,
                                 )
 
     def load_data(self, data_folder):
@@ -58,82 +128,3 @@ class UniiUploader(BaseDrugUploader):
         for field in index_fields:
             self.logger.info("Indexing '%s'" % field)
             self.collection.create_index(field, background=True)
-
-    @classmethod
-    def get_mapping(klass):
-        mapping = {
-            "unii": {
-                "properties": {
-                    "unii": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                        'copy_to': ['all'],
-                    },
-                    "display_name": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                        "copy_to": ["name"]
-                    },
-                    "registry_number": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "ec": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "ncit": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "rxcui": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "itis": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "ncbi": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "plants": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "grin": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "inn_id": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "molecular_formula": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "inchikey": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "smiles": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    },
-                    "ingredient_type": {
-                        "type": "text"
-                    },
-                    "pubchem": {
-                        "type": "integer",
-                    },
-                    "mpns": {
-                        "normalizer": "keyword_lowercase_normalizer",
-                        "type": "keyword",
-                    }
-                }
-            }
-        }
-
-        return mapping

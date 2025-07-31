@@ -62,13 +62,6 @@ graph_mychem.add_edge(
 )
 
 graph_mychem.add_edge(
-    "pubchem",
-    "inchikey",
-    object=MongoDBEdge("pubchem", "pubchem.cid", "pubchem.inchikey"),
-    weight=3.2,
-)
-
-graph_mychem.add_edge(
     "pharmgkb",
     "drugbank",
     object=MongoDBEdge("pharmgkb", "pharmgkb.id", "pharmgkb.xrefs.drugbank"),
@@ -212,7 +205,7 @@ graph_mychem.add_edge(
     "pubchem",
     "chebi",
     object=MongoDBEdge("chebi", "chebi.xrefs.pubchem.cid", "chebi.id"),
-    weight=0.7,
+    weight=2.1,  # Increased to preserve PubChem IDs when needed
 )
 
 graph_mychem.add_edge(
@@ -296,19 +289,6 @@ graph_mychem.add_edge(
     weight=1.1,
 )
 
-###############################################################################
-# Unii Edges (fallback mappings with higher weights)
-###############################################################################
-graph_mychem.add_edge(
-    "unii", "inchikey",
-    object=MongoDBEdge("unii", "unii.unii", "unii.inchikey"),
-    weight=4.0,
-)
-graph_mychem.add_edge(
-    "unii", "pubchem",
-    object=MongoDBEdge("unii", "unii.unii", "unii.pubchem"),
-    weight=4.0,
-)
 
 ###############################################################################
 # Drug name to UNII lookup (last resort with high weight)
@@ -365,12 +345,12 @@ graph_mychem.add_edge(
 ###############################################################################
 # Additional identifier mappings TO ChEBI
 ###############################################################################
-# UNII to ChEBI mapping
+# UNII to ChEBI mapping (allow conversion to ChEBI when available)
 graph_mychem.add_edge(
     "unii",
     "chebi",
     object=MongoDBEdge("chebi", "chebi.xrefs.unii", "chebi.id"),
-    weight=0.8,
+    weight=0.8,  # Reverted to original low weight to prefer ChEBI
 )
 
 # Reverse UNII mapping

@@ -16,7 +16,7 @@ ID_PRIORITY_LIST = {
     "drugbank": "DRUGBANK",
     "drugcentral": "DrugCentral",
     "hmdb": "HMDB",
-    "pharmgkb": "PharmGKB",
+    "pharmgkb": "PHARMGKB.DRUG",
 }
 
 
