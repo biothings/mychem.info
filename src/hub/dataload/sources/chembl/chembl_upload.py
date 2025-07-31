@@ -78,7 +78,7 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
         self.logger.info("Load data from file '%s'" %
                          mol_data_loader.molecule_filepath)
 
-        return self.keylookup(load_chembl_data, debug=True)(mol_data_loader, aux_data_loader)
+        return self.keylookup(load_chembl_data, debug=False)(mol_data_loader, aux_data_loader)
 
     def post_update_data(self, *args, **kwargs):
         """create indexes following an update"""
