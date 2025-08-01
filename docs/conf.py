@@ -4,7 +4,7 @@
 # MyChem.info documentation build configuration file, created by
 # sphinx-quickstart on Thu Nov  1 14:02:32 2018.
 #
-# This file is execfile()d with the current directory set to its
+# This file is executed with the current directory set to its
 # containing dir.
 #
 # Note that not all possible configuration values are present in this
@@ -43,7 +43,9 @@ templates_path = ['_templates']
 source_suffix = '.rst'
 
 # The master toctree document.
+# For newer Sphinx versions, use 'root_doc' instead of 'master_doc'
 master_doc = 'index'
+root_doc = 'index'
 
 # General information about the project.
 project = 'MyChem.info'
@@ -159,13 +161,16 @@ try:
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
     html_theme_options = {}
 except ImportError:
-    print 'Warning: "sphinx_rtd_theme" is not installed, fall back to default theme.'
+    print('Warning: "sphinx_rtd_theme" is not installed, '
+          'fall back to default theme.')
     pass
+
 
 def setup(app):
     print('Entered Setup')
-    app.add_javascript('mychem_doc.js')
-    app.add_javascript('jquery.dataTables.min.js')
-    app.add_stylesheet('mychem_doc.css')
-    app.add_stylesheet('jquery.dataTables.min.css')
+    # Updated to use modern Sphinx methods
+    app.add_js_file('mychem_doc.js')
+    app.add_js_file('jquery.dataTables.min.js')
+    app.add_css_file('mychem_doc.css')
+    app.add_css_file('jquery.dataTables.min.css')
     print('Exited Setup')
