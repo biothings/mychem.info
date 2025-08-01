@@ -163,9 +163,9 @@ except ImportError:
     pass
 
 def setup(app):
-    print 'Entered Setup'
+    print('Entered Setup')
     app.add_javascript('mychem_doc.js')
     app.add_javascript('jquery.dataTables.min.js')
     app.add_stylesheet('mychem_doc.css')
     app.add_stylesheet('jquery.dataTables.min.css')
-    print 'Exited Setup'
+    print('Exited Setup')
