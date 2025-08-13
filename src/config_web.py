@@ -125,7 +125,7 @@ ANNOTATION_ID_REGEX_LIST = [
 
 
 STATUS_CHECK = {
-    "id": "USNINKBPBVKHHZ-CYUUQNCZSA-L",  # penicillin
+    "id": "CHEBI:10001",  # penicillin
     "index": "mychem_v2_current",
 }
 
