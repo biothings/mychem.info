@@ -1,6 +1,6 @@
 """
-    Mychem.info
-    https://mychem.info/
+    Mychem.info API v2
+    https://mychem.info/v2/
     Chemical and Drug Annotation as a Service.
 """
 
@@ -14,12 +14,12 @@ from biothings.web.settings.default import ANNOTATION_KWARGS, QUERY_KWARGS
 # *****************************************************************************
 ES_HOST = 'http://localhost:9200'
 ES_INDICES = {
-    "chem": "mychem_current",
-    "drug": "mychem_current",
-    "compound": "mychem_current",
+    "chem": "mychem_v2_current",
+    "drug": "mychem_v2_current",
+    "compound": "mychem_v2_current",
 }
 ES_SCROLL_TIME = "10m"
-
+API_VERSION = "v2"
 # *****************************************************************************
 # Endpoint Specifics
 # *****************************************************************************
@@ -126,7 +126,7 @@ ANNOTATION_ID_REGEX_LIST = [
 
 STATUS_CHECK = {
     "id": "USNINKBPBVKHHZ-CYUUQNCZSA-L",  # penicillin
-    "index": "mychem_current",
+    "index": "mychem_v2_current",
 }
 
 _extra_kwargs = {"list_filter": {"type": str, "default": None}}
