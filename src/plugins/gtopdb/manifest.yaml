@@ -5,7 +5,7 @@ requires:
   - "lxml==5.2.2"
 __metadata__:
   license_url: https://www.guidetopharmacology.org/download.jsp
-  licence: CC BY-SA 4.0
+  license: CC BY-SA 4.0
   url: https://www.guidetopharmacology.org
 dumper:
   data_url:
