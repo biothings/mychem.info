@@ -103,8 +103,7 @@ class ChebiUploader(BaseDrugUploader):
                         "type": "text"
                     },
                     "wurcs_representation": {
-                        "type": "keyword",
-                        "ignore_above": 4096
+                        "type": "keyword"
                     },
                     "inchi": {
                         "normalizer": "keyword_lowercase_normalizer",
