@@ -102,6 +102,10 @@ class ChebiUploader(BaseDrugUploader):
                     "iupac": {
                         "type": "text"
                     },
+                    "wurcs_representation": {
+                        "type": "keyword",
+                        "ignore_above": 4096
+                    },
                     "inchi": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",

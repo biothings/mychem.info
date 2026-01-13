@@ -1,4 +1,6 @@
+import re
 from collections import defaultdict
+
 import networkx as nx
 import obonet
 from biothings.utils.dataload import dict_sweep, unlist, value_convert_to_number
@@ -15,7 +17,8 @@ class CompoundReader:
         #   "<...> <ChEBI ID>\nCHEBI:90\n\n> <Star>\n3\n\n> <...>" will be converted to
         #   [["ChEBI ID", "CHEBI:90"], ["Star", "3"]]
         comp_attr_list = comp_str.split("\n> <")
-        comp_attr_list = [attr.strip("\n").split('>\n', 1) for attr in comp_attr_list]
+        comp_attr_list = [attr.strip("\n").split('>\n', 1)
+                          for attr in comp_attr_list]
 
         # Remove molecule structure - Marvin
         del comp_attr_list[0]
@@ -33,28 +36,78 @@ class CompoundReader:
         xrefs_dict = dict()
         citation_dict = dict()
 
+        pubchem_acc = {}
+
+        def _first_int_like(values):
+            if not values:
+                return None
+            for v in values:
+                if v is None:
+                    continue
+                m = re.search(r"\b(\d+)\b", str(v))
+                if m:
+                    return m.group(1)
+            return None
+
+        def _accumulate_pubchem_from_value_list(values):
+            if not values:
+                return
+            for raw in values:
+                if not raw:
+                    continue
+                # legacy format examples:
+                #   "CID: 123" / "SID: 456"
+                parts = str(raw).split(':', 1)
+                if len(parts) == 2:
+                    k = parts[0].strip().lower()
+                    v = parts[1].strip()
+                    m = re.search(r"\b(\d+)\b", v)
+                    if m:
+                        pubchem_acc[k] = m.group(1)
+
         for key, value in iter(comp_dict.items()):
             if key == "definition":
-                value[0] = value[0].replace('<stereo>', '').replace('<ital>', '')
-                value[0] = value[0].replace('</stereo>', '').replace('</ital>', '')
+                value[0] = value[0].replace(
+                    '<stereo>', '').replace('<ital>', '')
+                value[0] = value[0].replace(
+                    '</stereo>', '').replace('</ital>', '')
                 new_comp_dict[key] = value
                 continue
 
-            # restructure the pubchem_database_links field
-            if key == 'pubchem_database_links':
-                new_pubchem_dict = {}
-                for _value in value:
-                    splitted_results = _value.split(':')
-                    if len(splitted_results) == 2:
-                        new_pubchem_dict[splitted_results[0].lower()] = splitted_results[1][1:]
-                value = new_pubchem_dict
-
-                new_comp_dict[key] = value
+            # PubChem links: legacy was a single tag; ChEBI 2.0 may split
+            # SID/CID into separate tags.
+            if key == 'pubchem_database_links' or key.startswith(
+                'pubchem_database_links'
+            ):
+                _accumulate_pubchem_from_value_list(value)
+                continue
+            if 'pubchem' in key and ('_cid' in key or 'compound' in key):
+                cid = _first_int_like(value)
+                if cid:
+                    pubchem_acc['cid'] = cid
+                continue
+            if 'pubchem' in key and ('_sid' in key or 'substance' in key):
+                sid = _first_int_like(value)
+                if sid:
+                    pubchem_acc['sid'] = sid
                 continue
 
-            if key == 'iupac_names':
+            if key in {'iupac_names', 'iupac_name', 'iupac'}:
                 key = 'iupac'
                 new_comp_dict[key] = value
+                continue
+
+            # WURCS (new ChEBI 2.0 metadata). Accept multiple plausible tag
+            # spellings.
+            if (
+                key in {
+                    'wurcs_representation',
+                    'chemrof:wurcs_representation',
+                    'chemrof_wurcs_representation',
+                }
+                or 'wurcs' in key
+            ):
+                new_comp_dict['wurcs_representation'] = value
                 continue
 
             if key == 'chebi_id':
@@ -98,6 +151,8 @@ class CompoundReader:
             # Put the rest of <key, value> into `new_comp_dict` as-is
             new_comp_dict[key] = value
 
+        if pubchem_acc:
+            new_comp_dict['pubchem_database_links'] = pubchem_acc
         if xrefs_dict.keys():
             new_comp_dict['xrefs'] = xrefs_dict
         if citation_dict.keys():
@@ -106,7 +161,8 @@ class CompoundReader:
 
     def iter_read_compounds(self):
         sdf_content = open(self.sdf_file_path, 'r').read()
-        comp_str_list = sdf_content.split("$$$$")  # split the sdf content into a list of compounds
+        # split the sdf content into a list of compounds
+        comp_str_list = sdf_content.split("$$$$")
         del comp_str_list[-1]  # the last in the list is a "\n" character
 
         for comp_str in comp_str_list:
@@ -127,17 +183,31 @@ class OntologyReader:
 
     The 99.9% quantiles of numbers of successors/predecessors/descendants/ancestors are 224.92, 8, 2187.12, and 86.
 
-    Here we limit the max number of successors/predecessors/descendants/ancestors nodes to be included in any 
+    Here we limit the max number of successors/predecessors/descendants/ancestors nodes to be included in any
       ontology document to 2000
     """
     NODE_FAMILY_CAPACITY = 2000
+
+    # Map ChEBI 2.0 RO/BFO relationship identifiers back to the legacy predicate names
+    # so downstream output stays stable.
+    RELATIONSHIP_NAME_MAP = {
+        'BFO:0000051': 'has_part',
+        'RO:0000087': 'has_role',
+        'RO:0018033': 'is_conjugate_base_of',
+        'RO:0018034': 'is_conjugate_acid_of',
+        'RO:0018036': 'is_tautomer_of',
+        'RO:0018037': 'is_substituent_group_from',
+        'RO:0018038': 'has_functional_parent',
+        'RO:0018039': 'is_enantiomer_of',
+        'RO:0018040': 'has_parent_hydride',
+    }
 
     def __init__(self, obo_file_path):
         self.obo_file_path = obo_file_path
 
         """
-        The ontology graph obtained from `read_obo` is actually a reverse one whose directed edges point from low-level 
-        to high-level entities, e.g. 
+        The ontology graph obtained from `read_obo` is actually a reverse one whose directed edges point from low-level
+        to high-level entities, e.g.
 
             CHEBI:25106 macrolide -> CHEBI:63944 macrocyclic lactone -> ... -> CHEBI:24431 chemical entity
 
@@ -147,14 +217,21 @@ class OntologyReader:
         graph = graph.reverse(copy=True)
 
         """
-        `parents`, `children`, `ancestors`, and `descendants` must be searched only upon `is_a` edges. 
+        `parents`, `children`, `ancestors`, and `descendants` must be searched only upon `is_a` edges.
         See https://github.com/biothings/mychem.info/issues/83#issuecomment-876111289
         """
-        # note that:
-        #   method graph.edges() only returns (u, v) collection
-        #   attribute graph.edges returns (u, v, data) collection
-        unwanted_edges = [(u, v) for (u, v, data) in graph.edges if data != "is_a"]
-        # Void, in-place operation. Copy the old graph if necessary.
+        # note that obonet currently returns a networkx.MultiDiGraph where the edge *key*
+        # (not edge data) indicates relation type ("is_a", "RO:...", "BFO:...", etc.).
+        unwanted_edges = []
+        if isinstance(graph, nx.MultiDiGraph):
+            for u, v, k in graph.edges(keys=True):
+                if k != 'is_a':
+                    unwanted_edges.append((u, v, k))
+        else:
+            for u, v, data in graph.edges(data=True):
+                rel = data.get('type') if isinstance(data, dict) else data
+                if rel != 'is_a':
+                    unwanted_edges.append((u, v))
         graph.remove_edges_from(unwanted_edges)
 
         self.ontology_graph = graph
@@ -168,7 +245,7 @@ class OntologyReader:
         """
         if not value:
             return None
-        
+
         return int(value[0][0])
 
     @classmethod
@@ -226,9 +303,28 @@ class OntologyReader:
         relationship_dict = defaultdict(list)
         for relationship_str in value:
             relationship_name, chebi_id = relationship_str.split(" ", 1)
+            relationship_name = cls.RELATIONSHIP_NAME_MAP.get(
+                relationship_name, relationship_name
+            )
             relationship_dict[relationship_name].append(chebi_id)
 
         return relationship_dict
+
+    @classmethod
+    def extract_wurcs_representation(cls, node_obj):
+        propvals = node_obj.get('property_value')
+        if not propvals:
+            return None
+        if isinstance(propvals, str):
+            propvals = [propvals]
+        wurcs_values = []
+        for pv in propvals:
+            if not pv:
+                continue
+            m = re.search(r'\bchemrof:wurcs_representation\s+"(.*?)"', str(pv))
+            if m:
+                wurcs_values.append(m.group(1))
+        return wurcs_values or None
 
     def read_ontology(self, node_id):
         """
@@ -237,9 +333,9 @@ class OntologyReader:
 
         """
         Each node_obj has 6 keys: {'alt_id', 'def', 'is_a', 'name', 'relationship', 'subset'}
-        
+
         Key mapping:
-        
+
           node_obj['alt_id']       -> ontology_dict['secondary_chebi_id']
           node_obj['def']          -> ontology_dict['definition']
           node_obj['is_a']         -> will be replaced by successors/predecessors/descendants/ancestors fields
@@ -251,20 +347,29 @@ class OntologyReader:
         if node_obj is None:
             return None
 
-        successors = list(self.ontology_graph.successors(node_id))  # graph.predecessors(): iterator
-        predecessors = list(self.ontology_graph.predecessors(node_id))  # graph.predecessors(): iterator
-        descendants = list(nx.descendants(self.ontology_graph, node_id))  # nx.descendants(): set
-        ancestors = list(nx.ancestors(self.ontology_graph, node_id))  # nx.ancestors(): set
+        successors = list(self.ontology_graph.successors(
+            node_id))  # graph.predecessors(): iterator
+        predecessors = list(self.ontology_graph.predecessors(
+            node_id))  # graph.predecessors(): iterator
+        # nx.descendants(): set
+        descendants = list(nx.descendants(self.ontology_graph, node_id))
+        # nx.ancestors(): set
+        ancestors = list(nx.ancestors(self.ontology_graph, node_id))
 
         # Start construction of the ontology document
         ontology_dict = dict()
         ontology_dict["id"] = node_id
 
         ontology_dict["secondary_chebi_id"] = node_obj.get("alt_id")
-        ontology_dict['definition'] = self.convert_def_value(node_obj.get('def'))
+        ontology_dict['definition'] = self.convert_def_value(
+            node_obj.get('def'))
         ontology_dict['name'] = node_obj.get('name')
-        ontology_dict['relationship'] = self.convert_relationship_value(node_obj.get('relationship'))
-        ontology_dict['star'] = self.convert_subset_value(node_obj.get('subset'))
+        ontology_dict['relationship'] = self.convert_relationship_value(
+            node_obj.get('relationship'))
+        ontology_dict['star'] = self.convert_subset_value(
+            node_obj.get('subset'))
+        ontology_dict['wurcs_representation'] = self.extract_wurcs_representation(
+            node_obj)
 
         # Use the same naming convention as in the Mondo parser
         #   See https://github.com/biothings/mydisease.info/blob/master/src/plugins/mondo/parser.py
@@ -312,7 +417,8 @@ class ChebiParser:
 
             used_chebi_ids.add(chebi_id)
 
-        all_ontology_chebi_ids = set(self.ontology_reader.ontology_graph_node_view)
+        all_ontology_chebi_ids = set(
+            self.ontology_reader.ontology_graph_node_view)
         unused_ontology_chebi_ids = all_ontology_chebi_ids - used_chebi_ids
         for chebi_id in unused_ontology_chebi_ids:
             ontology_dict = self.ontology_reader.read_ontology(chebi_id)
