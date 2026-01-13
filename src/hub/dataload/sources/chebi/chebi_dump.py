@@ -37,7 +37,7 @@ class ChebiDumper(FTPDumper):
     def create_todump_list(self, force=False):
         def append_todump(sub_dir, filename):
             work_dir = os.path.join(
-                self.__class__.CWD_DIR, self.release, sub_dir)
+                self.__class__.CWD_DIR, sub_dir)
             self.client.cwd(work_dir)
 
             remote = os.path.join(work_dir, filename)
