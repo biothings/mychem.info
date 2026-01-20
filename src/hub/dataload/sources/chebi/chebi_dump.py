@@ -1,6 +1,7 @@
 import os
 import os.path
-import posixpath
+import re
+import urllib.request
 
 from biothings.hub.dataload.dumper import FTPDumper
 from biothings.utils.common import gunzipall
@@ -17,13 +18,25 @@ class ChebiDumper(FTPDumper):
     # Legacy products remain under /pub/databases/chebi/archive/chebi_legacy/.
     CWD_DIR = '/pub/databases/chebi'
 
-    # Release number from https://ftp.ebi.ac.uk/pub/databases/chebi/SDF/README
-    CHEBI_RELEASE = "248"
+    README_URL = "https://ftp.ebi.ac.uk/pub/databases/chebi/SDF/README"
 
     SCHEDULE = "0 12 * * *"
 
     def get_release(self):
-        self.release = self.__class__.CHEBI_RELEASE
+        with urllib.request.urlopen(
+            self.__class__.README_URL, timeout=20
+        ) as resp:
+            readme_text = resp.read().decode("utf-8", errors="replace")
+
+        match = re.search(r"ChEBI\s+Release:\s*([0-9]+)", readme_text)
+        if not match:
+            raise ValueError(
+                (
+                    "Could not find 'ChEBI Release:' in "
+                    f"{self.__class__.README_URL}"
+                )
+            )
+        self.release = match.group(1)
 
     def new_release_available(self):
         current_release = self.src_doc.get("download", {}).get("release")
