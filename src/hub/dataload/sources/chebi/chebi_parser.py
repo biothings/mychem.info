@@ -368,7 +368,7 @@ class OntologyReader:
             node_obj.get('relationship'))
         ontology_dict['star'] = self.convert_subset_value(
             node_obj.get('subset'))
-        ontology_dict['wurcs_representation'] = self.extract_wurcs_representation(
+        ontology_dict['wurcs'] = self.extract_wurcs_representation(
             node_obj)
 
         # Use the same naming convention as in the Mondo parser
