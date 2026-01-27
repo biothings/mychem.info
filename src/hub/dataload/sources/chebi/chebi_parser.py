@@ -38,6 +38,38 @@ class CompoundReader:
 
         pubchem_acc = {}
 
+        def _normalize_xref_values(values):
+            if not values:
+                return values
+            if isinstance(values, str):
+                values = [values]
+
+            parts = []
+            for raw in values:
+                if raw is None:
+                    continue
+                s = str(raw).strip()
+                if not s:
+                    continue
+                # ChEBI 2.0 SDF sometimes packs multiple xrefs into one field separated by ';'
+                for p in s.split(';'):
+                    p = p.strip()
+                    if p:
+                        parts.append(p)
+
+            if not parts:
+                return None
+
+            # Stable de-duplication
+            seen = set()
+            out = []
+            for p in parts:
+                if p in seen:
+                    continue
+                seen.add(p)
+                out.append(p)
+            return out
+
         def _first_int_like(values):
             if not values:
                 return None
@@ -128,17 +160,17 @@ class CompoundReader:
 
             if key == 'beilstein_registry_numbers':
                 key = 'beilstein'
-                xrefs_dict[key] = value
+                xrefs_dict[key] = _normalize_xref_values(value)
                 continue
 
             if '_database_links' in key:
                 key = key.replace('_database_links', '')
-                xrefs_dict[key] = value
+                xrefs_dict[key] = _normalize_xref_values(value)
                 continue
 
             if '_registry_numbers' in key:
                 key = key.replace('_registry_numbers', '')
-                xrefs_dict[key] = value
+                xrefs_dict[key] = _normalize_xref_values(value)
                 continue
 
             if '_citation_links' in key:
