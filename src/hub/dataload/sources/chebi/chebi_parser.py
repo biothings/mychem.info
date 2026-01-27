@@ -139,7 +139,8 @@ class CompoundReader:
                 }
                 or 'wurcs' in key
             ):
-                new_comp_dict['wurcs_representation'] = value
+                # Normalize to a single field name used in the final documents.
+                new_comp_dict['wurcs'] = value
                 continue
 
             if key == 'chebi_id':
@@ -460,6 +461,14 @@ class ChebiParser:
     def transform_chebi_document(cls, chebi_dict):
         chebi_dict = dict_sweep(chebi_dict, vals=[None, ".", "-", "", "NA", "none", " ", "Not Available", "unknown",
                                                   "null", "None", "NaN"])
+
+        if (
+            chebi_dict.get('wurcs') is None
+            and chebi_dict.get('wurcs_representation') is not None
+        ):
+            chebi_dict['wurcs'] = chebi_dict.get('wurcs_representation')
+        chebi_dict.pop('wurcs_representation', None)
+
         chebi_dict = value_convert_to_number(unlist(chebi_dict), skipped_keys=["cid", "sid", "beilstein", "pubmed",
                                                                                "sabio_rk", "gmelin", "molbase",
                                                                                "synonyms", "wikipedia", "url_stub"])
