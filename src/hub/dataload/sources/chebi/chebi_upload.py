@@ -273,7 +273,7 @@ class ChebiUploader(BaseDrugUploader):
                         "type": "keyword",
                         'copy_to': ['all'],
                     },
-                    "formulae": {
+                    "formula": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
                     },

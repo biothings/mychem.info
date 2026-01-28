@@ -106,6 +106,15 @@ class CompoundReader:
                 new_comp_dict[key] = value
                 continue
 
+            # Normalize SDF field naming: some exports use `Synonym` (singular)
+            # while downstream expects `synonyms`.
+            if key in {'synonym', 'synonyms'}:
+                if 'synonyms' in new_comp_dict:
+                    new_comp_dict['synonyms'].extend(value)
+                else:
+                    new_comp_dict['synonyms'] = value
+                continue
+
             # PubChem links: legacy was a single tag; ChEBI 2.0 may split
             # SID/CID into separate tags.
             if key == 'pubchem_database_links' or key.startswith(
@@ -469,9 +478,57 @@ class ChebiParser:
             chebi_dict['wurcs'] = chebi_dict.get('wurcs_representation')
         chebi_dict.pop('wurcs_representation', None)
 
-        chebi_dict = value_convert_to_number(unlist(chebi_dict), skipped_keys=["cid", "sid", "beilstein", "pubmed",
-                                                                               "sabio_rk", "gmelin", "molbase",
-                                                                               "synonyms", "wikipedia", "url_stub"])
+        def _normalize_synonyms(value):
+            if value is None:
+                return []
+            if isinstance(value, str):
+                values = [value]
+            elif isinstance(value, (list, tuple, set)):
+                values = list(value)
+            else:
+                values = [str(value)]
+
+            parts = []
+
+            def _consume_one(raw):
+                if raw is None:
+                    return
+                s = str(raw).strip()
+                if not s:
+                    return
+                for p in s.split(';'):
+                    p = p.strip()
+                    if p:
+                        parts.append(p)
+
+            for raw in values:
+                if isinstance(raw, (list, tuple, set)):
+                    for inner in raw:
+                        _consume_one(inner)
+                else:
+                    _consume_one(raw)
+
+            # Stable de-duplication
+            seen = set()
+            out = []
+            for p in parts:
+                if p in seen:
+                    continue
+                seen.add(p)
+                out.append(p)
+            return out
+
+        chebi_dict = unlist(chebi_dict)
+        if 'synonym' in chebi_dict or 'synonyms' in chebi_dict:
+            chebi_dict['synonyms'] = _normalize_synonyms([
+                chebi_dict.get('synonyms'),
+                chebi_dict.get('synonym'),
+            ])
+            chebi_dict.pop('synonym', None)
+
+        chebi_dict = value_convert_to_number(chebi_dict, skipped_keys=["cid", "sid", "beilstein", "pubmed",
+                                                                       "sabio_rk", "gmelin", "molbase",
+                                                                       "synonyms", "wikipedia", "url_stub"])
 
         doc = dict()
         doc['_id'] = chebi_dict['id']
