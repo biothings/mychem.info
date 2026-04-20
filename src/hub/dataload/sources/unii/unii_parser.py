@@ -14,7 +14,7 @@ def caching_ncit_descriptions(ncit_ids):
     if not ncit_ids:
         return {}
 
-    ncit_api = get_client(url="https://biothings.ncats.io/ncit")
+    ncit_api = get_client(url="https://biothings.transltr.io/ncit")
     ncit_ids = [f"NCIT:{ncit}" for ncit in ncit_ids]
     ncit_res = ncit_api.getnodes(ncit_ids, fields="definition")
     ncit_def_d = {}
