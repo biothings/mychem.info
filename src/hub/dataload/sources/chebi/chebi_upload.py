@@ -54,7 +54,7 @@ class ChebiUploader(BaseDrugUploader):
     def load_data(self, data_folder):
         self.logger.info("Load data from '%s'" % data_folder)
 
-        sdf_input_file = os.path.join(data_folder, "ChEBI_complete.sdf")
+        sdf_input_file = os.path.join(data_folder, "chebi.sdf")
         assert os.path.exists(
             sdf_input_file), "Can't find input file '%s'" % sdf_input_file
 
@@ -101,6 +101,9 @@ class ChebiUploader(BaseDrugUploader):
                     },
                     "iupac": {
                         "type": "text"
+                    },
+                    "wurcs": {
+                        "type": "keyword"
                     },
                     "inchi": {
                         "normalizer": "keyword_lowercase_normalizer",
@@ -270,7 +273,7 @@ class ChebiUploader(BaseDrugUploader):
                         "type": "keyword",
                         'copy_to': ['all'],
                     },
-                    "formulae": {
+                    "formula": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
                     },
