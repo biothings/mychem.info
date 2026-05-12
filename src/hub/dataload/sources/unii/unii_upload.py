@@ -76,6 +76,9 @@ class UniiUploader(BaseDrugUploader):
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
                     },
+                    "ncit_description": {
+                        "type": "text"
+                    },
                     "rxcui": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
