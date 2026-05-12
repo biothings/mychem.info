@@ -1,8 +1,9 @@
 import os
 import os.path
 import re
-import urllib.request
+from urllib.parse import urlparse
 
+import requests
 from biothings.hub.dataload.dumper import FTPDumper
 from biothings.utils.common import gunzipall
 
@@ -19,21 +20,36 @@ class ChebiDumper(FTPDumper):
     CWD_DIR = '/pub/databases/chebi'
 
     README_URL = "https://ftp.ebi.ac.uk/pub/databases/chebi/SDF/README"
+    README_URL_SCHEMES = {"https"}
 
     SCHEDULE = "0 12 * * *"
 
+    @classmethod
+    def get_readme_url(cls):
+        parsed_url = urlparse(cls.README_URL)
+        if parsed_url.scheme.lower() not in cls.README_URL_SCHEMES:
+            raise ValueError(
+                "README_URL must use one of the allowed schemes "
+                f"{sorted(cls.README_URL_SCHEMES)}: {cls.README_URL}"
+            )
+        if not parsed_url.netloc:
+            raise ValueError(
+                f"README_URL must be an absolute URL: {cls.README_URL}"
+            )
+        return cls.README_URL
+
     def get_release(self):
-        with urllib.request.urlopen(
-            self.__class__.README_URL, timeout=20
-        ) as resp:
-            readme_text = resp.read().decode("utf-8", errors="replace")
+        readme_url = self.__class__.get_readme_url()
+        resp = requests.get(readme_url, timeout=20)
+        resp.raise_for_status()
+        readme_text = resp.text
 
         match = re.search(r"ChEBI\s+Release:\s*([0-9]+)", readme_text)
         if not match:
             raise ValueError(
                 (
                     "Could not find 'ChEBI Release:' in "
-                    f"{self.__class__.README_URL}"
+                    f"{readme_url}"
                 )
             )
         self.release = match.group(1)
