@@ -45,24 +45,24 @@ class MyChemESQueryPipeline(AsyncESQueryPipeline):
         result = await super().fetch(id, **options)
 
         if isinstance(id, list):
-            primary_queries = {
-                document.get("query")
-                for document in result
-                if isinstance(document, dict)
-                and _drugbank_id(document.get("query"))
-                and _has_primary_drugbank_id(
-                    document, _drugbank_id(document.get("query"))
-                )
-            }
+            primary_queries = set()
+            primary_result_indexes = set()
+            for index, document in enumerate(result):
+                if not isinstance(document, dict):
+                    continue
+                query = document.get("query")
+                identifier = _drugbank_id(query)
+                if identifier and _has_primary_drugbank_id(document, identifier):
+                    primary_queries.add(query)
+                    primary_result_indexes.add(index)
+
             if not primary_queries:
                 return result
             return [
                 document
-                for document in result
+                for index, document in enumerate(result)
                 if document.get("query") not in primary_queries
-                or _has_primary_drugbank_id(
-                    document, _drugbank_id(document.get("query"))
-                )
+                or index in primary_result_indexes
             ]
 
         identifier = _drugbank_id(id)

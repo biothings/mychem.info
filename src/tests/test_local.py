@@ -125,4 +125,4 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
             ("DB01590", "CURATED"),
             ("DRUGBANK:DB01590", "CURATED"),
             ("DB00001", "XREF_ONLY"),
-        ]
+        ], res
