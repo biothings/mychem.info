@@ -1,2 +1,6 @@
 {"index": {"_id": "DEFAULTSCO"}}
 {"drugbank": {"name": "mock item should not be hit"}}
+{"index": {"_id": "SPARSE"}}
+{"unichem": {"drugbank": "DB01590"}}
+{"index": {"_id": "CURATED"}}
+{"drugbank": {"id": "DB01590", "name": "Everolimus"}, "unichem": {"drugbank": "DB01590"}}

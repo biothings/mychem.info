@@ -100,3 +100,13 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
         q = "DEFAULTSCO"
         # FIXME: check response status code
         res = self.request(f"chem/{q}", method="GET", expect=404)
+
+    def test_002_drugbank_primary_id_precedes_crossrefs(self):
+        res = self.request("chem/DB01590", method="GET").json()
+        assert res["_id"] == "CURATED"
+        assert res["drugbank"]["id"] == "DB01590"
+
+    def test_003_drugbank_curie_uses_primary_id(self):
+        res = self.request("chem/DRUGBANK:DB01590", method="GET").json()
+        assert res["_id"] == "CURATED"
+        assert res["drugbank"]["id"] == "DB01590"
