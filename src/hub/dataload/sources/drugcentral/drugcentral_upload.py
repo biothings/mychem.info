@@ -21,32 +21,40 @@ class DrugCentralUploader(BaseDrugUploader):
         }
     }
 
-    # Keylookup is a callable object
     keylookup = MyChemKeyLookup(
-        [('inchikey', 'drugcentral.structures.inchikey'),
-         ('unii', 'drugcentral.xref.unii'),
-         # other keys are present but not currently used by keylookup
-         ('inchi', 'drugcentral.structures.inchi'),
-         ('drugbank', 'drugcentral.xrefs.drugbank_id'),
-         ('chebi', 'drugcentral.xrefs.chebi'),
-         ('chembl', 'drugcentral.xrefs.chembl_id'),
-         ('pubchem', 'drugcentral.xrefs.pubchem_cid'),
-         ('smiles', 'drugcentral.structures.smiles')],
-        # ('drugname', 'drugcentral.synonyms')], # unhashable type - list
+        [
+            ('inchikey', 'drugcentral.structures.inchikey'),
+            ('unii', 'drugcentral.xrefs.unii'),
+            ('rxnorm', 'drugcentral.xrefs.rxnorm'),
+            ('drugbank', 'drugcentral.xrefs.drugbank_id'),
+            ('chebi', 'drugcentral.xrefs.chebi'),
+            ('chembl', 'drugcentral.xrefs.chembl_id'),
+            ('pubchem', 'drugcentral.xrefs.pubchem_cid'),
+            ('cas', 'drugcentral.structures.cas_rn'),
+            ('inchi', 'drugcentral.structures.inchi'),
+            ('smiles', 'drugcentral.structures.smiles'),
+        ],
         copy_from_doc=True,
     )
 
     def load_data(self, data_folder):
-        # Commented out keylookup call, as overlapping work is performed by the parser.
-        # drugcentral_docs = self.keylookup(load_data, debug=True)(data_folder)
-        drugcentral_docs = load_data(data_folder)
-        return drugcentral_docs
+        return self.keylookup(load_data)(data_folder)
 
-    @ classmethod
+    def post_update_data(self, *args, **kwargs):
+        """Create indexes used when DrugCentral supplies keylookup mappings."""
+        field = "drugcentral.structures.smiles"
+        self.logger.info("Indexing '%s'" % field)
+        self.collection.create_index(field, background=True)
+
+    @classmethod
     def get_mapping(klass):
         mapping = {
             "drugcentral": {
                 "properties": {
+                    "id": {
+                        "normalizer": "keyword_lowercase_normalizer",
+                        "type": "keyword"
+                    },
                     "pharmacology_class": {
                         "properties": {
                             "mesh_pa": {

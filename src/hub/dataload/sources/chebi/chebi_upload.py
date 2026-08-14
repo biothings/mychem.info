@@ -79,7 +79,7 @@ class ChebiUploader(BaseDrugUploader):
         # return self.exclude_fields(load_data)(input_file)
 
     def post_update_data(self, *args, **kwargs):
-        for idxname in ["chebi.id"]:
+        for idxname in ["chebi.id", "chebi.smiles"]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true or it'll lock the whole database...
             self.collection.create_index(

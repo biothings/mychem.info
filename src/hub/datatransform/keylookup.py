@@ -1,5 +1,46 @@
+import re
+
 import networkx as nx
-from biothings.hub.datatransform import CIMongoDBEdge, DataTransformMDB, MongoDBEdge
+from biothings.hub.datatransform import (
+    CIMongoDBEdge,
+    DataTransformEdge,
+    DataTransformMDB,
+    MongoDBEdge,
+)
+
+
+class MongoDBEdgeGroup(DataTransformEdge):
+    """Run parallel MongoDB mappings represented by one edge in a DiGraph."""
+
+    def __init__(self, edges, weight=1, label=None):
+        super().__init__(label=label)
+        self.edges = tuple(edges)
+        self.weight = weight
+
+    def edge_lookup(self, keylookup_obj, id_strct, debug=False):
+        result = keylookup_obj.idstruct_class()
+        for edge in self.edges:
+            result += edge.edge_lookup(keylookup_obj, id_strct, debug)
+        return result
+
+
+class RegExFilterEdge(DataTransformEdge):
+    """Retain only identifiers that fully match a regular expression."""
+
+    def __init__(self, pattern, weight=1, label=None):
+        super().__init__(label=label)
+        self.pattern = re.compile(pattern)
+        self.weight = weight
+
+    def edge_lookup(self, keylookup_obj, id_strct, debug=False):
+        result = keylookup_obj.idstruct_class()
+        for original_id, current_id in id_strct:
+            if self.pattern.fullmatch(str(current_id)):
+                result.add(original_id, current_id)
+        return result
+
+
+INCHIKEY_PATTERN = r"[A-Z]{14}-[A-Z]{10}-[A-Z]"
 
 graph_mychem = nx.DiGraph()
 
@@ -20,6 +61,13 @@ graph_mychem.add_node("pubchem")
 graph_mychem.add_node("rxnorm")
 graph_mychem.add_node("smiles")
 graph_mychem.add_node("unii")
+
+# Validate field-based InChIKeys before accepting them as canonical IDs.
+graph_mychem.add_edge(
+    "inchikey",
+    "inchikey",
+    object=RegExFilterEdge(INCHIKEY_PATTERN, label="valid inchikey"),
+)
 
 graph_mychem.add_edge(
     "inchi",
@@ -48,8 +96,7 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chembl",
     "inchikey",
-    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id",
-                       "chembl.inchi_key"),
+    object=MongoDBEdge("chembl", "chembl.molecule_chembl_id", "chembl.inchi_key"),
     weight=1.0,
 )
 
@@ -117,8 +164,9 @@ graph_mychem.add_edge(
 graph_mychem.add_edge(
     "chebi",
     "chembl",
-    object=MongoDBEdge("chembl", "chembl.chebi_par_id",
-                       "chembl.molecule_chembl_id"),
+    object=MongoDBEdge(
+        "chembl", "chembl.chebi_par_id", "chembl.molecule_chembl_id"
+    ),
     weight=1.0,
 )
 
@@ -158,33 +206,31 @@ graph_mychem.add_edge(
 ###############################################################################
 # Edges for SMILES sources
 ###############################################################################
-# chebi.smiles -> inchikey
+# A DiGraph retains only one edge for a (source, target) pair. Keep the four
+# intended SMILES lookup collections together so none are silently overwritten.
 graph_mychem.add_edge(
     "smiles",
     "inchikey",
-    object=MongoDBEdge("chebi", "chebi.smiles", "chebi.inchikey"),
-)
-
-# chembl.smiles -> inchikey
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("chembl", "chembl.smiles", "chembl.inchikey"),
-)
-
-# drugcentral.structures.smiles -> inchikey
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("drugcentral", "drugcentral.structures.smiles",
-                       "drugcentral.structures.inchikey"),
-)
-
-# unii.smiles -> inchikey
-graph_mychem.add_edge(
-    "smiles",
-    "inchikey",
-    object=MongoDBEdge("unii", "unii.smiles", "unii.inchikey"),
+    object=MongoDBEdgeGroup(
+        [
+            MongoDBEdge(
+                "chebi", "chebi.smiles", "chebi.inchikey", label="chebi.smiles"
+            ),
+            MongoDBEdge(
+                "chembl", "chembl.smiles", "chembl.inchi_key", label="chembl.smiles"
+            ),
+            MongoDBEdge(
+                "drugcentral",
+                "drugcentral.structures.smiles",
+                "drugcentral.structures.inchikey",
+                label="drugcentral.structures.smiles",
+            ),
+            MongoDBEdge(
+                "unii", "unii.smiles", "unii.inchikey", label="unii.smiles"
+            ),
+        ],
+        label="smiles",
+    ),
 )
 
 
@@ -216,7 +262,7 @@ class MyChemKeyLookup(DataTransformMDB):
                 "drugname",
             ],
             # skip keylookup for InchiKeys
-            skip_w_regex="^[A-Z]{14}-[A-Z]{10}-[A-Z]",
+            skip_w_regex="^%s$" % INCHIKEY_PATTERN,
             *args,
             **kwargs
         )
