@@ -119,7 +119,7 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
         res = self.request(
             "chem",
             method="POST",
-            data={"ids": ["DB01590", "DRUGBANK:DB01590", "DB00001"]},
+            data={"ids": "DB01590,DRUGBANK:DB01590,DB00001"},
         ).json()
         assert [(document["query"], document["_id"]) for document in res] == [
             ("DB01590", "CURATED"),
