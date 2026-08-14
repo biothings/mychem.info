@@ -4,9 +4,10 @@ from biothings.hub.dataindex.indexer import Indexer
 
 DEFAULT_INDEX_MAPPINGS = {
     "properties": {
-        "all": {"type": "text"},
+        "all": {"type": "text", "norms": False},
         "name": {
             "type": "text",
+            "norms": False,
             "fields": {
                 "raw": {
                     "type": "keyword",
