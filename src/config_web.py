@@ -24,6 +24,14 @@ ES_SCROLL_TIME = "10m"
 # Endpoint Specifics
 # *****************************************************************************
 
+DRUGBANK_ID_FIELDS = [
+    "drugbank.id",
+    "unichem.drugbank",
+    "chebi.xrefs.drugbank",
+    "drugcentral.xrefs.drugbank_id",
+    "pharmgkb.xrefs.drugbank",
+]
+
 # *** NOTE ***
 # The CHEBI prefix must have a regex_term_pattern without a named <term> grouping.
 # example query: CHEBI:57966:
@@ -58,6 +66,11 @@ BIOLINK_MODEL_PREFIX_BIOTHINGS_CHEM_MAPPING = {
         "field": "unii.unii",
         "regex_term_pattern": "(?P<term>[A-Z0-9]{10})",
     },
+    "DRUGBANK": {
+        "type": "chem",
+        "field": DRUGBANK_ID_FIELDS,
+        "regex_term_pattern": "(?P<term>DB[0-9]+)",
+    },
 }
 
 # CURIE ID support based on BioLink Model
@@ -87,12 +100,7 @@ chem_prefix_handling = [
     (re.compile(r"((unii\:(?P<term>[A-Z0-9]{10}))|([A-Z0-9]{10}))", re.I), "unii.unii"),
     (
         re.compile(r"((drugbank\:(?P<term>db[0-9]+))|(db[0-9]+))", re.I),
-        [
-            "unichem.drugbank",
-            "chebi.xrefs.drugbank",
-            "drugcentral.xrefs.drugbank_id",
-            "pharmgkb.xrefs.drugbank",
-        ],
+        DRUGBANK_ID_FIELDS,
     ),
     (
         re.compile(r"((pharmgkb.drug\:(?P<term>pa[0-9]+))|(pa[0-9]+))", re.I),
@@ -135,3 +143,4 @@ ANNOTATION_KWARGS["*"].update(_extra_kwargs)
 QUERY_KWARGS = copy.deepcopy(QUERY_KWARGS)
 QUERY_KWARGS["*"].update(_extra_kwargs)
 ES_RESULT_TRANSFORM = "web.pipeline.MyChemESResultFormatter"
+ES_QUERY_PIPELINE = "web.pipeline.MyChemESQueryPipeline"
