@@ -57,7 +57,7 @@ class NDCUploader(BaseDrugUploader):
                     "proprietaryname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        "copy_to": ["name"]
+                        "copy_to": ["all", "name"]
                     },
                     "proprietarynamesuffix": {
                         "normalizer": "keyword_lowercase_normalizer",
@@ -66,7 +66,7 @@ class NDCUploader(BaseDrugUploader):
                     "nonproprietaryname": {
                         "normalizer": "keyword_lowercase_normalizer",
                         "type": "keyword",
-                        "copy_to": ["name"]
+                        "copy_to": ["all", "name"]
                     },
                     "dosageformname": {
                         "normalizer": "keyword_lowercase_normalizer",
