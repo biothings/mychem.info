@@ -2,7 +2,6 @@ import csv
 import os
 
 import biothings
-import psycopg2
 
 import config
 
@@ -17,9 +16,9 @@ class DrugCentralDumper(BaseDumper):
     SRC_NAME = "drugcentral"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
 
-    # The number of rows to fetch at a time with the cursor
-    # More info on cursor.itersize https://www.psycopg.org/docs/cursor.html#cursor.itersize
+    # The number of rows fetched at a time by the server-side cursor.
     CURSOR_ITERSIZE = 100
+    CONNECT_TIMEOUT = 30
 
     # More info about the public DrugCentral Postgres database https://drugcentral.org/download
     HOST = "unmtid-dbs.net"
@@ -29,42 +28,35 @@ class DrugCentralDumper(BaseDumper):
     PASSWORD = DRUGCENTRAL_PASSWORD
 
     def prepare_client(self):
-        # Connect to the database
-        self.client = psycopg2.connect(
-            database=self.DATABASE,
+        # Import the optional database driver only when a dump is requested.
+        # A missing/broken libpq installation must not prevent source discovery.
+        try:
+            import psycopg
+        except ImportError as exc:
+            raise RuntimeError(
+                "DrugCentral dumping requires the 'psycopg[binary]' package"
+            ) from exc
+
+        self.client = psycopg.connect(
+            dbname=self.DATABASE,
             user=self.USER,
             password=self.PASSWORD,
             host=self.HOST,
             port=self.PORT,
+            connect_timeout=self.CONNECT_TIMEOUT,
         )
-        # Create a cursor
-        self._cursor = self.client.cursor()
-        # Set the number of rows to fetch at a time
-        self._cursor.itersize = self.CURSOR_ITERSIZE
 
-    @property
-    def cursor(self):
-        # Create a cursor if it doesn't exist
-        if not getattr(self, "_cursor", None):
-            if self.client:
-                self._cursor = self.client.cursor()
-                self._cursor.itersize = self.CURSOR_ITERSIZE
-            else:
-                self.logger.warning(
-                    "_cursor was not initialized and client is not active."
-                )
-                self._cursor = None
-        return self._cursor
-
-    def unprepare(self):
-        # Set the state of the cursor to None
-        self._cursor = None
-        return super().unprepare()
+    def get_client(self):
+        """Return an active connection without hiding driver/connect errors."""
+        if not self._state.get("client"):
+            self.prepare_client()
+        return self._state["client"]
 
     def release_client(self):
         # Disconnect from the database
-        if self.client:
-            self.client.close()
+        client = self._state.get("client")
+        if client:
+            client.close()
             self.client = None
 
     def download(self, remotefile, localfile):
@@ -75,23 +67,26 @@ class DrugCentralDumper(BaseDumper):
 
         table_name, columns = remotefile.get("table_name"), remotefile.get("columns")
 
-        cursor = self.cursor
-        cursor.execute(f"SELECT {columns} FROM {table_name}")
+        client = self.get_client()
+        cursor_name = f"mychem_{table_name}"
+        with client.cursor(name=cursor_name) as cursor:
+            cursor.itersize = self.CURSOR_ITERSIZE
+            cursor.execute(f"SELECT {columns} FROM {table_name}")
 
-        column_names = [desc[0] for desc in cursor.description]
+            column_names = [column.name for column in cursor.description]
 
-        self.logger.debug(f"Retrieving data from table: {table_name}")
+            self.logger.debug(f"Retrieving data from table: {table_name}")
 
-        with open(os.path.join(localfile), "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(column_names)
+            with open(os.path.join(localfile), "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(column_names)
 
-            row_count = 0
+                row_count = 0
 
-            # Loop directly over the cursor
-            for row in cursor:
-                writer.writerow(row)
-                row_count += 1
+                # A server-side cursor keeps large DrugCentral tables out of RAM.
+                for row in cursor:
+                    writer.writerow(row)
+                    row_count += 1
 
         self.logger.debug(
             f"Retrieved {row_count} rows from table: {table_name} and saved to {localfile}"
@@ -99,10 +94,10 @@ class DrugCentralDumper(BaseDumper):
 
     def get_latest_release(self):
         # Get the latest release from the dbversion table
-        cursor = self.cursor
-        cursor.execute("SELECT * FROM dbversion")
-        # dbversion contains a tuple with the version number and the date, we only need the date
-        _, version_date = cursor.fetchone()
+        with self.get_client().cursor() as cursor:
+            cursor.execute("SELECT * FROM dbversion")
+            # dbversion contains a version number and date; only the date is used.
+            _, version_date = cursor.fetchone()
         return version_date.strftime("%Y-%m-%d")
 
     def create_todump_list(self, force=False):

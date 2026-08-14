@@ -4,6 +4,7 @@ import re
 
 import biothings
 import config
+
 biothings.config_for_app(config)
 
 from config import DATA_ARCHIVE_ROOT
@@ -27,9 +28,13 @@ class DrugBankFullDumper(HTTPDumper):
         """Read the current release from DrugBank's latest-release page."""
         response = self.client.get(self.VERSIONS_URL)
         response.raise_for_status()
-        match = re.search(r"/releases/(\d+-\d+-\d+)", response.text)
+        match = re.search(r"/releases/(\d+-\d+-\d+)", response.url)
         if not match:
-            raise ValueError("Cannot determine the latest DrugBank release")
+            match = re.search(r"/releases/(\d+-\d+-\d+)", response.text)
+        if not match:
+            raise ValueError(
+                "Cannot determine the latest DrugBank release from %s" % response.url
+            )
         return match.group(1).replace("-", ".")
 
     @staticmethod
@@ -39,10 +44,9 @@ class DrugBankFullDumper(HTTPDumper):
     def create_todump_list(self, force=False, **kwargs):
         version = self.get_version()
         current_release = (self.src_doc or {}).get("download", {}).get("release")
-        release_is_newer = (
-            not current_release
-            or self.version_key(version) > self.version_key(current_release)
-        )
+        release_is_newer = not current_release or self.version_key(
+            version
+        ) > self.version_key(current_release)
 
         if force or release_is_newer:
             self.release = version  # new_data_folder can be generated

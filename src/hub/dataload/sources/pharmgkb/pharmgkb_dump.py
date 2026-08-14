@@ -1,8 +1,4 @@
-import os, sys, re, time
-import bs4
-import dateutil.parser as dtparser
-from datetime import datetime
-import requests
+import os
 
 from config import DATA_ARCHIVE_ROOT
 from biothings.hub.dataload.dumper import LastModifiedHTTPDumper
