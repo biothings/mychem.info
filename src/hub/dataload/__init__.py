@@ -12,6 +12,7 @@ __sources_dict__ = [
         'hub.dataload.sources.ndc',
         'hub.dataload.sources.unichem',
         'hub.dataload.sources.gsrs',
+        'hub.dataload.sources.fda_orphan_drug',
 
         # manual dumpers
         'hub.dataload.sources.umls',
@@ -21,4 +22,3 @@ __sources_dict__ = [
         'hub.dataload.sources.aeolus',
         'hub.dataload.sources.drugcentral',
     ]
-

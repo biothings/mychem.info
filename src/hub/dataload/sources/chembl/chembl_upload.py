@@ -91,7 +91,12 @@ class ChemblUploader(BaseDrugUploader, ParallelizedSourceUploader):
             # background=true or it'll lock the whole database...
             self.collection.create_index(idxname, background=True)
         """
-        for idxname in ["chembl.chebi_par_id", "chembl.molecule_chembl_id", "chembl.inchi"]:
+        for idxname in [
+            "chembl.chebi_par_id",
+            "chembl.molecule_chembl_id",
+            "chembl.inchi",
+            "chembl.smiles",
+        ]:
             self.logger.info("Indexing '%s'" % idxname)
             # background=true, or it'll lock the whole database...
             self.collection.create_index(idxname, background=True)

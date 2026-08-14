@@ -1,18 +1,8 @@
-import json
 import os
 from collections import defaultdict
 
 import pandas as pd
-import requests
 from biothings.utils.dataload import dict_sweep, unlist
-
-try:
-    from biothings import config
-    logging = config.logger
-except ImportError:            # run locally as a standalone script
-    import logging
-    LOG_LEVEL = logging.INFO
-    logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s: %(message)s')
 
 
 # A function to convert empty strings to None
@@ -192,42 +182,6 @@ def process_identifier(file_path_identifier):
     return {x['_id']: x['external_ref'] for x in d}
 
 
-def to_list(_key):
-    if type(_key) != list:
-        return [_key]
-    else:
-        return _key
-
-
-def xrefs_2_inchikey(xrefs_dict):
-    # Keyword list is ordered by search priority
-    xrefs_key_list = ['umlscui', 'chembl_id',
-                      'pubchem_cid', 'chebi', 'drugbank_id', 'unii']
-    mychem_field_dict = {
-        'umlscui': 'umls.cui:"',
-        'chembl_id': 'chembl.molecule_chembl_id:"',
-        'pubchem_cid': 'pubchem.cid:"CID',
-        'chebi': 'chebi.chebi_id:"',
-        'drugbank_id': 'drugbank.accession_number:"',
-        'unii': 'unii.unii:"'
-    }
-    mychem_query = 'http://mychem.info/v1/query?q='
-    results_dict = {}
-    results = []
-    for _key in xrefs_key_list:
-        if _key in xrefs_dict:
-            for _xrefs in to_list(xrefs_dict[_key]):
-                query_url = mychem_query + \
-                    mychem_field_dict[_key] + _xrefs + '"'
-                logging.info("Querying mychem.info: {}".format(query_url))
-                json_doc = requests.get(query_url).json()
-                if 'hits' in json_doc and json_doc['hits']:
-                    for hit in json_doc['hits']:
-                        logging.info("Hit: {}".format(hit['_id']))
-                        results.append(hit['_id'])
-    return list(set(results))
-
-
 def load_data(data_folder):
     file_path_pharma_class = os.path.join(data_folder, 'pharma_class.csv')
     file_path_faers = os.path.join(data_folder, 'faers.csv')
@@ -250,82 +204,38 @@ def load_data(data_folder):
     structures = process_structure(file_path_structure)
     identifiers = process_identifier(file_path_identifier)
 
-    for struc_id in set(list(pharmacology_class.keys()) + list(faers.keys()) + list(act.keys()) + list(omop.keys()) +
-                        list(approval.keys()) + list(drug_dosage.keys()) + list(identifiers.keys()) +
-                        list(synonyms.keys()) + list(structures.keys())):
-        # If we have an inchikey, use that as the primary ID
-        if structures.get(struc_id, {}).get('inchikey', {}):
-            _doc = {
-                '_id': structures.get(struc_id, {}).get('inchikey', {}),
-                'drugcentral': {
-                    "pharmacology_class": pharmacology_class.get(struc_id, {}),
-                    "fda_adverse_event": faers.get(struc_id, {}),
-                    "bioactivity": act.get(struc_id, {}),
-                    "drug_use": omop.get(struc_id, {}),
-                    "approval": approval.get(struc_id, {}),
-                    "drug_dosage": drug_dosage.get(struc_id, {}),
-                    "synonyms": synonyms.get(struc_id, {}),
-                    "structures": structures.get(struc_id, {}),
-                    "xrefs": identifiers.get(struc_id, {})
-                }
+    struc_ids = set(
+        list(pharmacology_class)
+        + list(faers)
+        + list(act)
+        + list(omop)
+        + list(approval)
+        + list(drug_dosage)
+        + list(identifiers)
+        + list(synonyms)
+        + list(structures)
+    )
+    for struc_id in sorted(struc_ids):
+        # DataTransform is the sole canonical-ID resolver. The parser supplies a
+        # stable source ID so unresolved documents remain loadable.
+        doc = {
+            '_id': 'DrugCentral:' + str(struc_id),
+            'drugcentral': {
+                "id": str(struc_id),
+                "pharmacology_class": pharmacology_class.get(struc_id, {}),
+                "fda_adverse_event": faers.get(struc_id, {}),
+                "bioactivity": act.get(struc_id, {}),
+                "drug_use": omop.get(struc_id, {}),
+                "approval": approval.get(struc_id, {}),
+                "drug_dosage": drug_dosage.get(struc_id, {}),
+                "synonyms": synonyms.get(struc_id, {}),
+                "structures": structures.get(struc_id, {}),
+                "xrefs": identifiers.get(struc_id, {})
             }
-            _doc = (dict_sweep(unlist(_doc), [None]))
-            yield _doc
-        else:
-            # Try to convert the identifiers in xrefs to _id
-            xrefs = identifiers.get(struc_id, {})
-            logging.info("Missing inchikey for structure {}".format(struc_id))
-            _ids = xrefs_2_inchikey(xrefs)
-            if len(_ids) == 0:
-                # Default to DrugCentral ID
-                logging.info("Could not find an _id for {}".format(struc_id))
-                _id = 'DrugCentral:' + str(struc_id)
-                _doc = {
-                    '_id': _id,
-                    'drugcentral': {
-                        "pharmacology_class": pharmacology_class.get(struc_id, {}),
-                        "fda_adverse_event": faers.get(struc_id, {}),
-                        "bioactivity": act.get(struc_id, {}),
-                        "drug_use": omop.get(struc_id, {}),
-                        "approval": approval.get(struc_id, {}),
-                        "drug_dosage": drug_dosage.get(struc_id, {}),
-                        "synonyms": synonyms.get(struc_id, {}),
-                        "structures": structures.get(struc_id, {}),
-                        "xrefs": identifiers.get(struc_id, {})
-                    }
-                }
-                _doc = (dict_sweep(unlist(_doc), [None]))
-                yield _doc
-            else:
-                logging.info("Found ids {}".format(_ids))
-                for _id in _ids:
-                    _doc = {
-                        '_id': _id,
-                        'drugcentral': {
-                            "pharmacology_class": pharmacology_class.get(struc_id, {}),
-                            "fda_adverse_event": faers.get(struc_id, {}),
-                            "bioactivity": act.get(struc_id, {}),
-                            "drug_use": omop.get(struc_id, {}),
-                            "approval": approval.get(struc_id, {}),
-                            "drug_dosage": drug_dosage.get(struc_id, {}),
-                            "synonyms": synonyms.get(struc_id, {}),
-                            "structures": structures.get(struc_id, {}),
-                            "xrefs": identifiers.get(struc_id, {})
-                        }
-                    }
-                    _doc = (dict_sweep(unlist(_doc), [None]))
-                    yield _doc
+        }
+        yield dict_sweep(unlist(doc), [None])
 
 
 if __name__ == "__main__":
-
-    import json
-
-    for d in load_data('/home/ravila/data/mychem/datasources/drugcentral'):
+    for _doc in load_data('/home/ravila/data/mychem/datasources/drugcentral'):
         pass
-        # if d['_id'] == "OMPJBNCRMGITSC-UHFFFAOYSA-N":
-        #    print("++++++++++++++++++++++++++++")
-        # print(json.dumps(d, indent=2))
-        #    print(json.dumps(d['_id'], indent=2))
-        #    print(json.dumps(d['drugcentral'].get('structures'), indent=2))
-        #    print(json.dumps(d['drugcentral'].get('xrefs'), indent=2))

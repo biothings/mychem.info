@@ -1,7 +1,6 @@
-from datetime import datetime
+from email.utils import parsedate_to_datetime
 
 import biothings
-import requests
 from bs4 import BeautifulSoup
 
 import config
@@ -28,21 +27,39 @@ class SiderDumper(HTTPDumper):
         "meddra_all_indications.tsv.gz",
     ]
 
+    def get_download_links(self):
+        """Return the configured SIDER files exposed by the download page."""
+        response = self.client.get(self.SRC_URL + "/download/")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        return [
+            link.get("href")
+            for link in soup.find_all("a")
+            if os.path.basename(link.get("href", "")) in self.FILES_TO_DUMP
+        ]
+
+    def get_latest_release(self, download_links):
+        """Use the newest source-file modification date as the release."""
+        modified_at = []
+        for link in download_links:
+            response = self.client.head(self.SRC_URL + link, allow_redirects=True)
+            response.raise_for_status()
+            modified_at.append(parsedate_to_datetime(response.headers["Last-Modified"]))
+
+        if not modified_at:
+            raise ValueError("No configured SIDER download files were found")
+        return max(modified_at).strftime("%Y%m%d")
+
     def create_todump_list(self, force=False):
-        if force or self.new_release_available():
-            response = requests.get(self.SRC_URL + "/download/")
-            soup = BeautifulSoup(response.content, "html.parser")
-            download_links = [
-                link.get("href")
-                for link in soup.find_all("a")
-                if link.get("href", "").endswith(".tsv.gz")
-            ]
-            self.release = datetime.now().strftime("%Y%m%d")
+        download_links = self.get_download_links()
+        self.release = self.get_latest_release(download_links)
+        current_release = (self.src_doc or {}).get("download", {}).get("release")
+
+        if force or not current_release or self.release > current_release:
             for link in download_links:
-                if os.path.basename(link) in self.FILES_TO_DUMP:
-                    remote = self.SRC_URL + link
-                    local = os.path.join(self.new_data_folder, os.path.basename(link))
-                    self.to_dump.append({"remote": remote, "local": local})
+                remote = self.SRC_URL + link
+                local = os.path.join(self.new_data_folder, os.path.basename(link))
+                self.to_dump.append({"remote": remote, "local": local})
 
     def post_dump(self, *args, **kwargs):
         gunzipall(self.new_data_folder)

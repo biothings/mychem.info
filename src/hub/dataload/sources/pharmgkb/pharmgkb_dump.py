@@ -13,9 +13,8 @@ class PharmGkbDumper(LastModifiedHTTPDumper):
 
     SRC_NAME = "pharmgkb"
     SRC_ROOT_FOLDER = os.path.join(DATA_ARCHIVE_ROOT, SRC_NAME)
-    SRC_URLS = ["https://api.pharmgkb.org/v1/download/file/data/drugs.zip"]
+    SRC_URLS = ["https://api.clinpgx.org/v1/download/file/data/drugs.zip"]
     SCHEDULE = "0 12 * * *"
 
     def post_dump(self, *args, **kwargs):
         unzipall(self.new_data_folder)
-
