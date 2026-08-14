@@ -110,3 +110,19 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
         res = self.request("chem/DRUGBANK:DB01590", method="GET").json()
         assert res["_id"] == "CURATED"
         assert res["drugbank"]["id"] == "DB01590"
+
+    def test_004_drugbank_crossref_fallback_is_preserved(self):
+        res = self.request("chem/DB00001", method="GET").json()
+        assert res["_id"] == "XREF_ONLY"
+
+    def test_005_drugbank_batch_prefers_primary_and_preserves_fallback(self):
+        res = self.request(
+            "chem",
+            method="POST",
+            data={"ids": ["DB01590", "DRUGBANK:DB01590", "DB00001"]},
+        ).json()
+        assert [(document["query"], document["_id"]) for document in res] == [
+            ("DB01590", "CURATED"),
+            ("DRUGBANK:DB01590", "CURATED"),
+            ("DB00001", "XREF_ONLY"),
+        ]

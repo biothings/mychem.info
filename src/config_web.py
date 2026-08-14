@@ -143,3 +143,4 @@ ANNOTATION_KWARGS["*"].update(_extra_kwargs)
 QUERY_KWARGS = copy.deepcopy(QUERY_KWARGS)
 QUERY_KWARGS["*"].update(_extra_kwargs)
 ES_RESULT_TRANSFORM = "web.pipeline.MyChemESResultFormatter"
+ES_QUERY_PIPELINE = "web.pipeline.MyChemESQueryPipeline"

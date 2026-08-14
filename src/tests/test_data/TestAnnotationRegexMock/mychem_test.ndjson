@@ -4,3 +4,5 @@
 {"unichem": {"drugbank": "DB01590"}}
 {"index": {"_id": "CURATED"}}
 {"drugbank": {"id": "DB01590", "name": "Everolimus"}, "unichem": {"drugbank": "DB01590"}}
+{"index": {"_id": "XREF_ONLY"}}
+{"unichem": {"drugbank": "DB00001"}}

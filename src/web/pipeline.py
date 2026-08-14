@@ -1,5 +1,82 @@
+import re
+
 from biothings.web.query.formatter import ESResultFormatter
+from biothings.web.query.pipeline import AsyncESQueryPipeline
 from biothings.web.options import OptionError
+
+
+DRUGBANK_ID_PATTERN = re.compile(r"(?:drugbank:)?(?P<term>db[0-9]+)", re.I)
+
+
+def _drugbank_id(value):
+    if not isinstance(value, str):
+        return None
+    match = DRUGBANK_ID_PATTERN.fullmatch(value)
+    return match.group("term").upper() if match else None
+
+
+def _field_values(value, path):
+    if not path:
+        if isinstance(value, list):
+            for item in value:
+                yield from _field_values(item, ())
+        elif value is not None:
+            yield value
+        return
+
+    if isinstance(value, list):
+        for item in value:
+            yield from _field_values(item, path)
+    elif isinstance(value, dict) and path[0] in value:
+        yield from _field_values(value[path[0]], path[1:])
+
+
+def _has_primary_drugbank_id(document, identifier):
+    return any(
+        str(value).upper() == identifier
+        for value in _field_values(document, ("drugbank", "id"))
+    )
+
+
+class MyChemESQueryPipeline(AsyncESQueryPipeline):
+    """Prefer authoritative DrugBank IDs while retaining xref fallbacks."""
+
+    async def fetch(self, id, **options):
+        result = await super().fetch(id, **options)
+
+        if isinstance(id, list):
+            primary_queries = {
+                document.get("query")
+                for document in result
+                if isinstance(document, dict)
+                and _drugbank_id(document.get("query"))
+                and _has_primary_drugbank_id(
+                    document, _drugbank_id(document.get("query"))
+                )
+            }
+            if not primary_queries:
+                return result
+            return [
+                document
+                for document in result
+                if document.get("query") not in primary_queries
+                or _has_primary_drugbank_id(
+                    document, _drugbank_id(document.get("query"))
+                )
+            ]
+
+        identifier = _drugbank_id(id)
+        if not identifier or not isinstance(result, list):
+            return result
+
+        primary_matches = [
+            document
+            for document in result
+            if _has_primary_drugbank_id(document, identifier)
+        ]
+        if len(primary_matches) == 1:
+            return primary_matches[0]
+        return primary_matches or result
 
 
 class MyChemESResultFormatter(ESResultFormatter):
