@@ -8,3 +8,4 @@ engines:
   bandit:
     exclude_paths:
       - 'src/tests/test_remote.py'
+      - 'src/tests/test_local.py'

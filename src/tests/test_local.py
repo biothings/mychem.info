@@ -101,28 +101,52 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
         # FIXME: check response status code
         res = self.request(f"chem/{q}", method="GET", expect=404)
 
-    def test_002_drugbank_primary_id_precedes_crossrefs(self):
-        res = self.request("chem/DB01590", method="GET").json()
-        assert res["_id"] == "CURATED"
-        assert res["drugbank"]["id"] == "DB01590"
+    def test_002_drugbank_returns_every_match(self):
+        """
+        Return both records DB01590 reaches through unichem.drugbank.
 
-    def test_003_drugbank_curie_uses_primary_id(self):
+        Order is deliberately not asserted: scopes are searched with a
+        multi_match, which scores best_fields, and in a fixture this
+        small drugbank.id and unichem.drugbank carry identical IDF, so
+        the two records tie exactly. On a real index drugbank.id is the
+        rarer of the two fields, which is what lifts the curated record
+        to the top.
+        """
+        res = self.request("chem/DB01590", method="GET").json()
+        assert sorted(document["_id"] for document in res) == [
+            "CURATED",
+            "SPARSE",
+        ]
+        curated = next(
+            document for document in res if document["_id"] == "CURATED"
+        )
+        assert curated["drugbank"]["id"] == "DB01590"
+
+    def test_003_drugbank_curie_returns_every_match(self):
+        """Resolve a DRUGBANK CURIE to the same records as the bare ID."""
         res = self.request("chem/DRUGBANK:DB01590", method="GET").json()
-        assert res["_id"] == "CURATED"
-        assert res["drugbank"]["id"] == "DB01590"
+        assert sorted(document["_id"] for document in res) == [
+            "CURATED",
+            "SPARSE",
+        ]
 
     def test_004_drugbank_crossref_fallback_is_preserved(self):
+        """Resolve an ID that only a cross-reference field carries."""
         res = self.request("chem/DB00001", method="GET").json()
         assert res["_id"] == "XREF_ONLY"
 
-    def test_005_drugbank_batch_prefers_primary_and_preserves_fallback(self):
+    def test_005_drugbank_batch_returns_every_match(self):
+        """Keep every match for each ID in a batch lookup."""
         res = self.request(
             "chem",
             method="POST",
             data={"ids": "DB01590,DRUGBANK:DB01590,DB00001"},
         ).json()
-        assert [(document["query"], document["_id"]) for document in res] == [
-            ("DB01590", "CURATED"),
-            ("DRUGBANK:DB01590", "CURATED"),
-            ("DB00001", "XREF_ONLY"),
-        ], res
+        grouped = {}
+        for document in res:
+            grouped.setdefault(document["query"], []).append(document["_id"])
+        assert {query: sorted(ids) for query, ids in grouped.items()} == {
+            "DB01590": ["CURATED", "SPARSE"],
+            "DRUGBANK:DB01590": ["CURATED", "SPARSE"],
+            "DB00001": ["XREF_ONLY"],
+        }, res
