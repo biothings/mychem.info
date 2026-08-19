@@ -102,26 +102,41 @@ class TestMyChemWebAppConfigAnnotationRegexMockData(BiothingsWebAppTest):
         res = self.request(f"chem/{q}", method="GET", expect=404)
 
     def test_002_drugbank_returns_every_match(self):
-        # DB01590 reaches both records through unichem.drugbank, so both must
-        # come back. Order is deliberately not asserted: scopes are searched
-        # with a multi_match, which scores best_fields, and in a fixture this
-        # small drugbank.id and unichem.drugbank carry identical IDF, so the
-        # two records tie exactly. On a real index drugbank.id is the rarer
-        # field, which is what lifts the curated record to the top.
+        """
+        Return both records DB01590 reaches through unichem.drugbank.
+
+        Order is deliberately not asserted: scopes are searched with a
+        multi_match, which scores best_fields, and in a fixture this
+        small drugbank.id and unichem.drugbank carry identical IDF, so
+        the two records tie exactly. On a real index drugbank.id is the
+        rarer of the two fields, which is what lifts the curated record
+        to the top.
+        """
         res = self.request("chem/DB01590", method="GET").json()
-        assert sorted(document["_id"] for document in res) == ["CURATED", "SPARSE"]
-        curated = next(document for document in res if document["_id"] == "CURATED")
+        assert sorted(document["_id"] for document in res) == [
+            "CURATED",
+            "SPARSE",
+        ]
+        curated = next(
+            document for document in res if document["_id"] == "CURATED"
+        )
         assert curated["drugbank"]["id"] == "DB01590"
 
     def test_003_drugbank_curie_returns_every_match(self):
+        """Resolve a DRUGBANK CURIE to the same records as the bare ID."""
         res = self.request("chem/DRUGBANK:DB01590", method="GET").json()
-        assert sorted(document["_id"] for document in res) == ["CURATED", "SPARSE"]
+        assert sorted(document["_id"] for document in res) == [
+            "CURATED",
+            "SPARSE",
+        ]
 
     def test_004_drugbank_crossref_fallback_is_preserved(self):
+        """Resolve an ID that only a cross-reference field carries."""
         res = self.request("chem/DB00001", method="GET").json()
         assert res["_id"] == "XREF_ONLY"
 
     def test_005_drugbank_batch_returns_every_match(self):
+        """Keep every match for each ID in a batch lookup."""
         res = self.request(
             "chem",
             method="POST",
