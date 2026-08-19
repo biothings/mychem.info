@@ -21,6 +21,6 @@ xmltodict==0.11.0 # drugbank parsing
 beautifulsoup4==4.11.1 # drugbank dumper
 lxml # bs4 html parsing (note: no version avail to set it fixed)
 pandas>=1.0.1 # sider parser
-obonet==1.0.0 # chebi parser
-networkx==2.5 # chebi parser (dependency of obonet)
+obonet>=1.1 # chebi parser (1.0.0 imports pkg_resources, no longer present in modern venvs)
+networkx>=2.8.8,<3 # chebi parser (dependency of obonet); biothings[hub] caps <3, and 2.5 uses np.float_, removed in numpy 2
 psycopg[binary]==3.3.4 # drugcentral dumper; bundles libpq for hub deployments
