@@ -12,6 +12,8 @@ biothings.config_for_app(config)
 from config import DATA_ARCHIVE_ROOT
 from biothings.hub.dataload.dumper import HTTPDumper
 from biothings.utils.common import iter_n
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 class ChemblDumper(HTTPDumper):
@@ -48,10 +50,36 @@ class ChemblDumper(HTTPDumper):
     SLEEP_BETWEEN_DOWNLOAD = 0.1
     MAX_PARALLEL_DUMP = 5   # HUB_MAX_WORKERS // 2
 
+    # The EBI API regularly stalls, drops connections or answers with error pages,
+    # so no request waits forever and every request is retried with backoff.
+    REQUEST_TIMEOUT = 120
+    MAX_RETRIES = 5
+
     # number of documents in each download job, i.e. number of documents in each .part* file
     TO_DUMP_DOWNLOAD_SIZE = 1000
     # number of .part* files to be merged together after download
     POST_DUMP_MERGE_SIZE = 100
+
+    def prepare_client(self):
+        """
+        Same session as HTTPDumper, plus retries with exponential backoff.
+
+        Without them, a single hiccup from the EBI API (connection reset, 502/503
+        error page, throttling) fails the whole dump.
+        """
+        super().prepare_client()
+
+        retry = Retry(
+            total=self.__class__.MAX_RETRIES,
+            backoff_factor=2,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=("GET", "HEAD"),
+            # let the caller report the failing response instead of raising here
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self.client.mount("http://", adapter)
+        self.client.mount("https://", adapter)
 
     def get_total_count_of_documents(self, src_data_name):
         """
@@ -85,11 +113,21 @@ class ChemblDumper(HTTPDumper):
         """
         Note that:
 
-        - `json.loads(string)` deserializes string
+        - `response.json()` deserializes the body of a HTTP response
         - `json.load(file)` deserializes a file object
         """
         if file.startswith("http://") or file.startswith("https://"):  # file is an URL
-            data = json.loads(self.client.get(file).text)
+            response = self.client.get(file, timeout=self.__class__.REQUEST_TIMEOUT)
+            response.raise_for_status()
+            try:
+                data = response.json()
+            except ValueError as exc:
+                # e.g. the API answered 200 with an empty body or an HTML error page
+                raise ValueError(
+                    "ChEMBL API did not return JSON for {} (status: {}, content-type: {}, body: {!r})".
+                    format(file, response.status_code,
+                           response.headers.get("Content-Type"), response.text[:200])
+                ) from exc
         else:  # file is a local path
             data = json.load(open(file))
 
