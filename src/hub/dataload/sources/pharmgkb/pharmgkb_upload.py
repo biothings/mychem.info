@@ -1,5 +1,10 @@
 """
-PharmGKB Biothings Uploader
+ClinPGx (formerly PharmGKB) Biothings Uploader
+
+PharmGKB has merged into ClinPGx, a unified pharmacogenomics resource combining
+PharmGKB with CPIC and PharmCAT. Legacy pharmgkb.org URLs redirect to their
+clinpgx.org equivalents. The source name and field names are kept as "pharmgkb"
+for backward compatibility.
 """
 # pylint: disable=E0401, E0611
 import os
@@ -12,8 +17,8 @@ from hub.datatransform.keylookup import MyChemKeyLookup
 from .pharmgkb_parser import load_data
 
 SRC_META = {
-    "url": 'https://www.pharmgkb.org/',
-    "license_url": "https://www.pharmgkb.org/page/dataUsagePolicy",
+    "url": 'https://www.clinpgx.org/',
+    "license_url": "https://www.clinpgx.org/page/dataUsagePolicy",
     "license_url_short": "http://bit.ly/2zqM8aJ",
     "license": "CC BY-SA 4.0"
 }
@@ -21,7 +26,7 @@ SRC_META = {
 
 class PharmGkbUploader(BaseDrugUploader):
     """
-    PharmGKB Uploader Class
+    ClinPGx (formerly PharmGKB) Uploader Class
     """
 
     name = "pharmgkb"
@@ -167,14 +172,6 @@ class PharmGkbUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "cas": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
-                            "ttd": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
                             "kegg_drug": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
@@ -207,19 +204,27 @@ class PharmGkbUploader(BaseDrugUploader):
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
-                            "bindingdb": {
+                            "chembl": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                            },
+                            "clinicaltrials_gov": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                            },
+                            "clinpgx_tags": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                            },
+                            "snomed_ct": {
+                                "normalizer": "keyword_lowercase_normalizer",
+                                "type": "keyword",
+                            },
+                            "unii": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             },
                             "drugbank": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
-                            "pdb": {
-                                "normalizer": "keyword_lowercase_normalizer",
-                                "type": "keyword",
-                            },
-                            "dpd": {
                                 "normalizer": "keyword_lowercase_normalizer",
                                 "type": "keyword",
                             }
