@@ -1,254 +1,162 @@
-import xml.etree.ElementTree as ET
+import functools
 import gzip
 import re
 
 from biothings.utils.dataload import value_convert_to_number
 
+# A PubChem Compound XML record is ~40KB, mostly atom, bond and 2D coordinate
+# elements we don't use, and building ElementTree elements for all of them made
+# parsing ~10x slower. Records are instead split on their closing tag and only the
+# few sections we need (id, charge, props, count) are matched on the raw bytes.
+
+CHUNK_SIZE = 256 * 1024  # bigger isn't faster, only uses more memory
+RECORD_END = b"</PC-Compound>"
+ROOT_END = b"</PC-Compounds>"
+
+CID_RE = re.compile(rb"<PC-CompoundType_id_cid>([^<]*)</PC-CompoundType_id_cid>")
+CHARGE_RE = re.compile(rb"<PC-Compound_charge>([^<]*)</PC-Compound_charge>")
+LABEL_RE = re.compile(rb"<PC-Urn_label>([^<]*)</PC-Urn_label>")
+NAME_RE = re.compile(rb"<PC-Urn_name>([^<]*)</PC-Urn_name>")
+VALUE_RE = re.compile(rb"<PC-InfoData_value_(sval|ival|fval)>([^<]*)</PC-InfoData_value_\1>")
+COUNT_RE = re.compile(rb"<PC-Count_([a-z-]+)>([^<]*)</PC-Count_\1>")
+ENTITY_RE = re.compile(r"&(#x[0-9a-fA-F]+|#[0-9]+|lt|gt|amp|apos|quot);")
+XML_ENTITIES = {"lt": "<", "gt": ">", "amp": "&", "apos": "'", "quot": '"'}
+
+# PC-Urn_label -> (field, value types it is read from)
+LABEL_FIELDS = {
+    "InChI": ("inchi", ("sval",)),
+    "InChIKey": ("inchikey", ("sval",)),
+    "Log P": ("xlogp", ("fval",)),
+    "Mass": ("exact_mass", ("sval", "fval")),
+    "Molecular Formula": ("molecular_formula", ("sval",)),
+    "Molecular Weight": ("molecular_weight", ("sval", "fval")),
+    "Topological": ("topological_polar_surface_area", ("fval",)),
+    "Weight": ("monoisotopic_weight", ("sval", "fval")),
+    "Compound Complexity": ("complexity", ("fval",)),
+}
+# PC-Urn_name -> (field, value types it is read from), whatever the label
+NAME_FIELDS = {
+    "Hydrogen Bond Acceptor": ("hydrogen_bond_acceptor_count", ("ival",)),
+    "Hydrogen Bond Donor": ("hydrogen_bond_donor_count", ("ival",)),
+    "Rotatable Bond": ("rotatable_bond_count", ("ival",)),
+}
+# labels whose values are keyed by their PC-Urn_name, eg. iupac.cas_like_style
+NAMED_LABELS = {"IUPAC Name": "iupac", "SMILES": "smiles"}
+# PC-Count_<suffix> -> field
+COUNT_FIELDS = {
+    "heavy-atom": "heavy_atom_count",
+    "atom-chiral": "chiral_atom_count",
+    "bond-chiral": "chiral_bond_count",
+    "atom-chiral-def": "defined_chiral_atom_count",
+    "bond-chiral-def": "defined_chiral_bond_count",
+    "atom-chiral-undef": "undefined_chiral_atom_count",
+    "bond-chiral-undef": "undefined_chiral_bond_count",
+    "isotope-atom": "isotope_atom_count",
+    "covalent-unit": "covalent_unit_count",
+    "tautomers": "tautomers_count",
+}
+
 
 def load_annotations(input_file):
-    """Main function to load data from individual xml files
-       With a nicer error handling.
-    """
-    try:
-        return parse_one_file(input_file)
-    except ET.ParseError:
-        print("Error parsing file: ", input_file)
-        raise
-
-
-def parse_one_file(input_file):
     """Main function to load data from individual xml files"""
+    for record in iter_records(input_file):
+        yield parse_record(record, input_file)
 
-    # use gzip to read the .gz file
-    unzipped_file = gzip.open(input_file, 'rb')
 
-    """ Keep track of tags, whereby these change to true the next item in the appropriate element
-    will be the relevant value
-    """
-    PC_count = False
-    inchi = False
-    inchikey = False
-    hydrogen_bond_acceptor = False
-    hydrogen_bond_donor = False
-    rotatable_bond = False
-    iupac = False
-    logp = False
-    mass = False
-    molecular_formula = False
-    molecular_weight = False
-    smiles = False
-    topological = False
-    monoisotopic_weight = False
-    complexity = False
+def iter_records(input_file):
+    """Yield the raw bytes of each PC-Compound element of a gzipped XML file"""
+    with gzip.open(input_file, "rb") as f:
+        buf = b""
+        while True:
+            chunk = f.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            buf += chunk
+            start = 0
+            end = buf.find(RECORD_END)
+            while end >= 0:
+                end += len(RECORD_END)
+                yield buf[start:end]
+                start = end
+                end = buf.find(RECORD_END, start)
+            buf = buf[start:]
+    # a truncated file would otherwise just yield fewer compounds
+    if not buf.rstrip().endswith(ROOT_END):
+        raise ValueError("File {} doesn't end with {}, it may be truncated".format(input_file, ROOT_END.decode()))
 
-    """ Use ET.iterparse to loop through the xml line by line.
-    Note:
-    The 'end' events are used whenever we need to obtain elem.text field, because
-    the text, tail, and children of an element are not necessarily present when receiving
-    the start event. Only the end event guarantees that the Element has been parsed completely.
-    """
+
+def unescape_entity(match):
+    entity = match.group(1)
+    if entity.startswith("#x"):
+        return chr(int(entity[2:], 16))
+    if entity.startswith("#"):
+        return chr(int(entity[1:]))
+    return XML_ENTITIES[entity]
+
+
+def text(value):
+    """Decode an element's raw text, unescaping XML entities (eg. &lt;I&gt; in IUPAC markup names)"""
+    value = value.decode("utf-8")
+    return ENTITY_RE.sub(unescape_entity, value) if "&" in value else value
+
+
+def section(record, tag):
+    """Raw bytes of the first <tag> element of a record, or b"" if absent"""
+    start = record.find(b"<" + tag + b">")
+    if start < 0:
+        return b""
+    return record[start:record.find(b"</" + tag + b">", start)]
+
+
+def parse_record(record, input_file):
+    """Build the document of a PC-Compound record"""
     current_compound = {}
-    for event, elem in ET.iterparse(unzipped_file, events=("start", "end")):
-        prefix, has_namespace, postfix = elem.tag.partition('}')
-        if has_namespace:
-            elem.tag = postfix  # strip all namespaces
-        # Maximum one of these flags sould be activated at any given time
-        flags = [PC_count, inchi, inchikey, hydrogen_bond_acceptor, hydrogen_bond_donor,
-                 rotatable_bond, iupac, logp, mass, molecular_formula, molecular_weight,
-                 smiles, topological, monoisotopic_weight, complexity]
-        assert sum(flags) <= 1, "Bad parsing on file {}, doument {}. Only one flag at most should be active.".format(
-                                 input_file, current_compound)
-        # all of the compound properties will be inside this element
-        if((elem.tag == "PC-CompoundType_id_cid") & (event == 'end')):
-            # Start a new compound record
-            current_compound = {}
-            compound_data = {}
+    cid = CID_RE.search(record)
+    assert cid and cid.group(1), "File {} has document missing CID. Every document must have a CID.".format(input_file)
+    compound_data = {"cid": text(cid.group(1)), "iupac": {}, "smiles": {}}
 
-            # Reset flags
-            PC_count = False
-            inchi = False
-            inchikey = False
-            hydrogen_bond_acceptor = False
-            hydrogen_bond_donor = False
-            rotatable_bond = False
-            iupac = False
-            logp = False
-            mass = False
-            molecular_formula = False
-            molecular_weight = False
-            smiles = False
-            topological = False
-            monoisotopic_weight = False
-            complexity = False
+    charge = CHARGE_RE.search(record)
+    if charge and charge.group(1):
+        compound_data["formal_charge"] = text(charge.group(1))
 
-            compound_data["cid"] = elem.text
-            compound_data["iupac"] = {}
-            compound_data["smiles"] = {}
-            assert elem.text is not None, "File {} has document missing CID. Every document must have a CID.".format(input_file)
+    for info in section(record, b"PC-Compound_props").split(b"</PC-InfoData>"):
+        value = VALUE_RE.search(info)
+        if not value:
+            continue
+        value_type, value = value.group(1).decode(), value.group(2)
+        label = LABEL_RE.search(info)
+        label = text(label.group(1)) if label else None
+        name = NAME_RE.search(info)
+        name = text(name.group(1)) if name else None
+        if name in NAME_FIELDS:
+            field, value_types = NAME_FIELDS[name]
+        elif label in NAMED_LABELS:
+            if name and value and value_type == "sval":
+                compound_data[NAMED_LABELS[label]][camel_to_snake(name)] = text(value)
+            continue
+        elif label in LABEL_FIELDS:
+            field, value_types = LABEL_FIELDS[label]
+        else:
+            continue
+        if value and value_type in value_types:
+            if field == "inchikey":
+                current_compound["_id"] = text(value)
+            compound_data[field] = text(value)
 
-        elif((elem.tag == "PC-Compound") & (event == 'end')):
-            # Document parsing is complete
-            current_compound["pubchem"] = compound_data
-            # Fall back to using cid if inchikey is not present
-            if current_compound.get("_id") is None:
-                current_compound["_id"] = current_compound["pubchem"]["cid"]
-            # This shouldn't happen, but just in case
-            assert current_compound.get("_id"), "File {}, document {} is missing an _id".format(input_file, current_compound)
-            # Convert numeric values to float or integer
-            current_compound = value_convert_to_number(current_compound, skipped_keys=["_id", "pubchem.cid"])
-            # yield the compound
-            yield(current_compound)
-            # clear element from memory
-            elem.clear()
+    for suffix, value in COUNT_RE.findall(section(record, b"PC-Compound_count")):
+        field = COUNT_FIELDS.get(suffix.decode())
+        if field and value:
+            compound_data[field] = text(value)
 
-        elif((elem.tag == "PC-Compound_charge") & (event == 'end')):
-            if(elem.text):
-                compound_data["formal_charge"] = elem.text
-        elif((elem.tag == "PC-Count") & (event == 'start')):
-            PC_count = True
-        elif((elem.tag == "PC-Count") & (event == 'end')):
-            PC_count = False
-        elif(PC_count):
-            if(elem.text):
-                if((elem.tag == "PC-Count_heavy-atom") & (event == 'end')):
-                    compound_data["heavy_atom_count"] = elem.text
-                elif((elem.tag == "PC-Count_atom-chiral") & (event == 'end')):
-                    compound_data["chiral_atom_count"] = elem.text
-                elif((elem.tag == "PC-Count_bond-chiral") & (event == 'end')):
-                    compound_data["chiral_bond_count"] = elem.text
-                elif((elem.tag == "PC-Count_atom-chiral-def") & (event == 'end')):
-                    compound_data["defined_chiral_atom_count"] = elem.text
-                elif((elem.tag == "PC-Count_bond-chiral-def") & (event == 'end')):
-                    compound_data["defined_chiral_bond_count"] = elem.text
-                elif((elem.tag == "PC-Count_atom-chiral-undef") & (event == 'end')):
-                    compound_data["undefined_chiral_atom_count"] = elem.text
-                elif((elem.tag == "PC-Count_bond-chiral-undef") & (event == 'end')):
-                    compound_data["undefined_chiral_bond_count"] = elem.text
-                elif((elem.tag == "PC-Count_isotope-atom") & (event == 'end')):
-                    compound_data["isotope_atom_count"] = elem.text
-                elif((elem.tag == "PC-Count_covalent-unit") & (event == 'end')):
-                    compound_data["covalent_unit_count"] = elem.text
-                elif((elem.tag == "PC-Count_tautomers") & (event == 'end')):
-                    compound_data["tautomers_count"] = elem.text
-        elif((elem.tag == "PC-Count") & (event == 'start')):
-            PC_count = True
-        elif((elem.tag == "PC-Count") & (event == 'end')):
-            PC_count = False
-
-        elif((elem.tag == "PC-Urn_label") & (event == 'end')):
-            if(elem.text == 'InChI'):
-                inchi = True
-            elif(elem.text == 'InChIKey'):
-                inchikey = True
-            elif(elem.text == 'IUPAC Name'):
-                iupac = True
-            elif(elem.text == "Log P"):
-                logp = True
-            elif(elem.text == "Mass"):
-                mass = True
-            elif(elem.text == "Molecular Formula"):
-                molecular_formula = True
-            elif(elem.text == "Molecular Weight"):
-                molecular_weight = True
-            elif(elem.text == "SMILES"):
-                smiles = True
-            elif(elem.text == "Topological"):
-                topological = True
-            elif(elem.text == "Weight"):
-                monoisotopic_weight = True
-            elif(elem.text == "Compound Complexity"):
-                complexity = True
-
-        elif((elem.tag == "PC-Urn_name") & (event == 'end')):
-            if(elem.text == 'Hydrogen Bond Acceptor'):
-                hydrogen_bond_acceptor = True
-            elif(elem.text == 'Hydrogen Bond Donor'):
-                hydrogen_bond_donor = True
-            elif(elem.text == 'Rotatable Bond'):
-                rotatable_bond = True
-            elif(iupac):
-                iupac_key = camel_to_snake(elem.text)
-            elif(smiles):
-                smiles_key = camel_to_snake(elem.text)
-
-        elif((elem.tag == "PC-InfoData_value_sval") & (event == 'end')):
-            if(inchi):
-                if(elem.text):
-                    compound_data["inchi"] = elem.text
-                inchi = False
-            elif(inchikey):
-                if(elem.text):
-                    current_compound["_id"] = elem.text
-                    compound_data["inchikey"] = elem.text
-                inchikey = False
-            elif(iupac):
-                if(iupac_key):
-                    if(elem.text):
-                        compound_data['iupac'][iupac_key] = elem.text
-                iupac = False
-            elif(molecular_weight):
-                if(elem.text):
-                    compound_data["molecular_weight"] = elem.text
-                molecular_weight = False
-            elif(monoisotopic_weight):
-                if(elem.text):
-                    compound_data["monoisotopic_weight"] = elem.text
-                monoisotopic_weight = False
-            elif(mass):
-                if(elem.text):
-                    compound_data["exact_mass"] = elem.text
-                mass = False
-            elif(molecular_formula):
-                if(elem.text):
-                    compound_data["molecular_formula"] = elem.text
-                molecular_formula = False
-            elif(smiles):
-                if(smiles_key):
-                    if(elem.text):
-                        compound_data['smiles'][smiles_key] = elem.text
-                smiles = False
-
-        elif((elem.tag == "PC-InfoData_value_ival") & (event == 'end')):
-            if(hydrogen_bond_acceptor):
-                if(elem.text):
-                    compound_data["hydrogen_bond_acceptor_count"] = elem.text
-                hydrogen_bond_acceptor = False
-            elif(hydrogen_bond_donor):
-                if(elem.text):
-                    compound_data["hydrogen_bond_donor_count"] = elem.text
-                hydrogen_bond_donor = False
-            elif(rotatable_bond):
-                if(elem.text):
-                    compound_data["rotatable_bond_count"] = elem.text
-                rotatable_bond = False
-
-        elif((elem.tag == "PC-InfoData_value_fval") & (event == 'end')):
-            if(logp):
-                if(elem.text):
-                    compound_data["xlogp"] = elem.text
-                logp = False
-            elif(topological):
-                if(elem.text):
-                    compound_data["topological_polar_surface_area"] = elem.text
-                topological = False
-            elif(molecular_weight):
-                if(elem.text):
-                    compound_data["molecular_weight"] = elem.text
-                molecular_weight = False
-            elif(monoisotopic_weight):
-                if(elem.text):
-                    compound_data["monoisotopic_weight"] = elem.text
-                monoisotopic_weight = False
-            elif(mass):
-                if(elem.text):
-                    compound_data["exact_mass"] = elem.text
-                mass = False
-            elif(complexity):
-                if(elem.text):
-                    compound_data["complexity"] = elem.text
-                complexity = False
+    current_compound["pubchem"] = compound_data
+    # Fall back to using cid if inchikey is not present
+    if current_compound.get("_id") is None:
+        current_compound["_id"] = compound_data["cid"]
+    # Convert numeric values to float or integer
+    return value_convert_to_number(current_compound, skipped_keys=["_id", "pubchem.cid"])
 
 
+@functools.lru_cache(maxsize=None)
 def camel_to_snake(s):
     """Convert camelCase strings to snake_case, keeping abbreviations together,
     and removing white space, and dashes."""
