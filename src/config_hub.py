@@ -6,6 +6,11 @@
 HUB_NAME = "MyChem"
 HUB_ICON = "http://biothings.io/static/img/mychem-logo-shiny.svg"
 
+# On a free-threaded (no-GIL) Python build, run CPU-bound jobs (uploads, merge
+# steps...) in threads of the hub process instead of forked processes.
+# Ignored on regular Python builds. bin/hub.py checks the GIL is still off at startup.
+HUB_FREE_THREADED_WORKERS = True
+
 # Pre-prod/test ES definitions
 INDEX_CONFIG = {
     "indexer_select": {

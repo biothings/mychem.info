@@ -18,9 +18,12 @@
 biothings[hub] @ git+https://github.com/biothings/biothings.api.git@1.2.x
 
 xmltodict==0.11.0 # drugbank parsing
-beautifulsoup4==4.11.1 # drugbank dumper
-lxml # bs4 html parsing (note: no version avail to set it fixed)
-pandas>=1.0.1 # sider parser
+beautifulsoup4==4.12.3 # drugbank dumper; pandas 3 read_html needs >=4.12.3
+# no lxml: it re-enables the GIL on free-threaded Python (3.14t), and bs4 imports it whenever it's installed.
+# HTML is parsed with html.parser, and pandas.read_html (fda_orphan_drug) with bs4 + html5lib
+html5lib # pandas.read_html(flavor="bs4")
+pandas>=3.0 # sider parser; pandas<3 re-enables the GIL on free-threaded Python
 obonet>=1.1 # chebi parser (1.0.0 imports pkg_resources, no longer present in modern venvs)
 networkx>=2.8.8,<3 # chebi parser (dependency of obonet); biothings[hub] caps <3, and 2.5 uses np.float_, removed in numpy 2
-psycopg[binary]==3.3.4 # drugcentral dumper; bundles libpq for hub deployments
+psycopg[binary]==3.3.4; python_version < "3.14" # drugcentral dumper; bundles libpq for hub deployments
+psycopg==3.3.4; python_version >= "3.14" # no free-threaded psycopg-binary build: needs the system libpq (apt install libpq5)

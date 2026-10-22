@@ -29,7 +29,7 @@ class UniiDumper(HTTPDumper):
         res = self.client.get(self.__class__.HOMEPAGE_URL)
         res.raise_for_status()
 
-        html = bs4.BeautifulSoup(res.text, "lxml")
+        html = bs4.BeautifulSoup(res.text, "html.parser")
         releases = []
 
         # Prefer explicit archive download URLs over CSS selectors or layout.

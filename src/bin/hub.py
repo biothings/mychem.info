@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, logging
+import concurrent.futures, os, logging, sys
 from functools import partial
 
 import config, biothings
@@ -58,6 +58,26 @@ class MyChemHubServer(HubServer):
         #                                        s3_bucket=config.S3_DIFF_BUCKET + "-demo")
         #self.commands["publish_snapshot"] = partial(self.managers["index_manager"].publish_snapshot,s3_folder=config.S3_APP_FOLDER)
         #self.commands["publish_snapshot_demo"] = partial(self.managers["index_manager"].publish_snapshot,s3_folder=config.S3_APP_FOLDER + "-demo")
+
+    def before_start(self):
+        super().before_start()
+        self.check_free_threaded_workers()
+
+    def check_free_threaded_workers(self):
+        # biothings picks thread workers (HUB_FREE_THREADED_WORKERS) when the job manager is
+        # created, before sources and plugins are imported. If one of those imports re-enabled
+        # the GIL (Python warns which module did), CPU-bound jobs would all share it: fall back
+        # to process workers. No job has run yet at this point.
+        job_manager = self.managers["job_manager"]
+        if not isinstance(job_manager.process_queue, concurrent.futures.ThreadPoolExecutor):
+            return
+        if not sys._is_gil_enabled():
+            self.logger.info("Free-threaded workers: the GIL is still disabled after loading sources")
+            return
+        self.logger.warning("The GIL was re-enabled while loading sources or plugins, "
+                            "falling back to process workers")
+        job_manager.process_queue.shutdown(wait=False)
+        job_manager.process_queue = job_manager._get_process_executor()
 
 
 
