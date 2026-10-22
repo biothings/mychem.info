@@ -11,7 +11,7 @@ def empty_string_to_none(value):
 
 
 def read_drugcentral_csv(file_path, columns):
-    """Read a DrugCentral CSV export, with empty cells as None"""
+    """Read a DrugCentral CSV export, with empty cells as None."""
     converters = {column: empty_string_to_none for column in columns}
     df = pd.read_csv(file_path, sep=",", names=columns, skiprows=1, converters=converters)
     # pandas 3 stores the converters' None as NaN in its string columns

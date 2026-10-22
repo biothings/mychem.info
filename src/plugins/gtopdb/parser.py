@@ -17,12 +17,12 @@ def process_val(val): return (
 )
 
 
+# (in place of lxml's text_content(): lxml re-enables the GIL on free-threaded Python)
 class TextExtractor(HTMLParser):
-    """Collect the text of an HTML fragment, like lxml's text_content()
-    (lxml isn't used: it re-enables the GIL on free-threaded Python)"""
+    """Collect the text of an HTML fragment, with entities decoded."""
 
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
+    def reset(self):
+        super().reset()
         self.parts = []
 
     def handle_data(self, data):

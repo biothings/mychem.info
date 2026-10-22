@@ -122,7 +122,7 @@ class PubChemDumper(FTPDumper):
                     cmd = ["md5sum", "-c", md5_file]
                     self.logger.debug("\tValidating md5 checksum for: %s", md5_file)
                     try:
-                        subprocess.check_call(cmd, cwd=self.new_data_folder)
+                        subprocess.check_call(cmd, cwd=self.new_data_folder)  # nosec B603 - fixed md5sum command
                     except subprocess.SubprocessError:
                         self.logger.error("Failed to validate: {}".format(md5_file))
                         failed_files.append(md5_file)
