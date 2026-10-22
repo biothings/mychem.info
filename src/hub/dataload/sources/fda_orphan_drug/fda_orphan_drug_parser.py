@@ -169,7 +169,10 @@ def build_record(row, identifiers, orphan_enrichment, exclusivity_column):
 
 
 def load_data(input_file, reference_file=REFERENCE_FILE):
-    tables = pd.read_html(input_file)
+    # bs4 + html5lib: pandas' default (lxml) re-enables the GIL on free-threaded Python,
+    # and read_html raises instead of falling back when lxml isn't installed.
+    # The export declares no charset: decode it as latin-1, as lxml did
+    tables = pd.read_html(input_file, flavor="bs4", encoding="latin-1")
     if len(tables) != 1:
         raise ValueError(
             "Expected one table in the FDA Excel export, found %s" % len(tables)

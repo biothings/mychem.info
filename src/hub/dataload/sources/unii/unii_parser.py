@@ -40,9 +40,8 @@ def load_data(input_file):
 
     # half of them don't have inchikeys
     # set the primary key to inchikey and fill in missing ones with unii
-    unii['_id'] = unii.inchikey
-    unii['_id'].fillna(unii.pubchem, inplace=True)
-    unii['_id'].fillna(unii.unii, inplace=True)
+    # (not unii['_id'].fillna(..., inplace=True): with pandas 3's copy-on-write, that fills a copy)
+    unii['_id'] = unii.inchikey.fillna(unii.pubchem).fillna(unii.unii)
 
     # Extract all unique ncit IDs
     ncit_ids = unii["ncit"].dropna().unique().tolist()

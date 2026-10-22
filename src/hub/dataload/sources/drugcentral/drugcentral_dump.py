@@ -34,7 +34,9 @@ class DrugCentralDumper(BaseDumper):
             import psycopg
         except ImportError as exc:
             raise RuntimeError(
-                "DrugCentral dumping requires the 'psycopg[binary]' package"
+                "DrugCentral dumping requires the 'psycopg[binary]' package, or 'psycopg' "
+                "and the system libpq (apt install libpq5) where there's no psycopg-binary "
+                "build, e.g. on free-threaded Python"
             ) from exc
 
         self.client = psycopg.connect(
