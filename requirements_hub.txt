@@ -18,7 +18,7 @@
 biothings[hub] @ git+https://github.com/biothings/biothings.api.git@1.3.x
 
 xmltodict==0.11.0 # drugbank parsing
-beautifulsoup4==4.12.3 # drugbank dumper; pandas 3 read_html needs >=4.12.3
+beautifulsoup4==4.15.0 # drugbank dumper; pandas 3.1 read_html needs >=4.13.4
 # no lxml: it re-enables the GIL on free-threaded Python (3.14t), and bs4 imports it whenever it's installed.
 # HTML is parsed with html.parser, and pandas.read_html (fda_orphan_drug) with bs4 + html5lib
 html5lib # pandas.read_html(flavor="bs4")

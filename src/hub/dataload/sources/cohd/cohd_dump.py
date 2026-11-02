@@ -27,7 +27,7 @@ class COHDDumper(HTTPDumper):
     def create_todump_list(self, force=False, **kwargs):
         res = self.client.get(self.VERSIONS_URL)
         html = bs4.BeautifulSoup(res.text, "html.parser")
-        table = html.findAll(attrs={"class": "table-bordered"})
+        table = html.find_all(attrs={"class": "table-bordered"})
         assert len(table) == 1, "Expecting one table element, got %s" % len(table)
         table = table.pop()
         # the very first element in the table contains the latest version
