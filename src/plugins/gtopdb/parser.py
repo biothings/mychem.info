@@ -1,6 +1,6 @@
 import os
+from html.parser import HTMLParser
 
-import lxml.html
 import numpy as np
 import pandas as pd
 from biothings import config
@@ -17,10 +17,25 @@ def process_val(val): return (
 )
 
 
-def remove_tags(val): return (
-    lxml.html.document_fromstring(
-        val).text_content() if isinstance(val, str) else val
-)
+# (in place of lxml's text_content(): lxml re-enables the GIL on free-threaded Python)
+class TextExtractor(HTMLParser):
+    """Collect the text of an HTML fragment, with entities decoded."""
+
+    def reset(self):
+        super().reset()
+        self.parts = []
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+
+def remove_tags(val):
+    if not isinstance(val, str):
+        return val
+    extractor = TextExtractor()
+    extractor.feed(val)
+    extractor.close()
+    return "".join(extractor.parts)
 
 
 intrs_rename_dict = {

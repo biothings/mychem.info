@@ -107,42 +107,39 @@ class PubChemDumper(FTPDumper):
         self.logger.debug("Start validating downloaded files...")
         cmd = shutil.which('md5sum')
         if cmd:
-            old = os.path.abspath(os.curdir)
-            os.chdir(self.new_data_folder)
-            try:
-                failed_list = os.path.join(self.new_data_folder, "failed_dump.list")
-                if os.path.exists(failed_list):
-                    # If we have a failed dump list, only check md5sum of files that failed
-                    with open(failed_list, 'r') as f:
-                        md5_files = f.read().splitlines()
+            # the .md5 files list relative file names, so md5sum runs from the data folder
+            # (passed as cwd: an os.chdir() would move every job sharing this process)
+            failed_list = os.path.join(self.new_data_folder, "failed_dump.list")
+            if os.path.exists(failed_list):
+                # If we have a failed dump list, only check md5sum of files that failed
+                with open(failed_list, 'r') as f:
+                    md5_files = f.read().splitlines()
+            else:
+                md5_files = glob.glob("*.md5", root_dir=self.new_data_folder)
+            failed_files = []
+            if md5_files:
+                for md5_file in md5_files:
+                    cmd = ["md5sum", "-c", md5_file]
+                    self.logger.debug("\tValidating md5 checksum for: %s", md5_file)
+                    try:
+                        subprocess.check_call(cmd, cwd=self.new_data_folder)  # nosec B603 - fixed md5sum command
+                    except subprocess.SubprocessError:
+                        self.logger.error("Failed to validate: {}".format(md5_file))
+                        failed_files.append(md5_file)
+                if failed_files:
+                    err_msg = "Failed to validate {} md5 file(s):\n{}\nPlease re-run dumper to re-try.".format(
+                        len(failed_files),
+                        '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
+                    )
+                    with open(failed_list, 'w') as f:
+                        f.write('\n'.join([os.path.basename(f) for f in failed_files]))
+                    raise DumperException(err_msg)
                 else:
-                    md5_files = glob.glob("*.md5")
-                failed_files = []
-                if md5_files:
-                    for md5_file in md5_files:
-                        cmd = ["md5sum", "-c", md5_file]
-                        self.logger.debug("\tValidating md5 checksum for: %s", md5_file)
-                        try:
-                            subprocess.check_call(cmd)
-                        except subprocess.SubprocessError:
-                            self.logger.error("Failed to validate: {}".format(md5_file))
-                            failed_files.append(md5_file)
-                    if failed_files:
-                        err_msg = "Failed to validate {} md5 file(s):\n{}\nPlease re-run dumper to re-try.".format(
-                            len(failed_files),
-                            '\n'.join(["\t" + fn for fn in failed_files[:10]])    # only display top 10 if it's a long list
-                        )
-                        with open(failed_list, 'w') as f:
-                            f.write('\n'.join([os.path.basename(f) for f in failed_files]))
-                        raise DumperException(err_msg)
-                    else:
-                        self.logger.debug("All %s files are validated.", len(md5_files))
-                        # Delete failed dump list if it exists
-                        if os.path.exists(failed_list):
-                            os.remove(failed_list)
-                else:
-                    self.logger.debug("No *.md5 file(s) found! File validation is skipped.")
-            finally:
-                os.chdir(old)
+                    self.logger.debug("All %s files are validated.", len(md5_files))
+                    # Delete failed dump list if it exists
+                    if os.path.exists(failed_list):
+                        os.remove(failed_list)
+            else:
+                self.logger.debug("No *.md5 file(s) found! File validation is skipped.")
         else:
             self.logger.warning('"md5sum" is not found in the PATH! File validation is skipped.')

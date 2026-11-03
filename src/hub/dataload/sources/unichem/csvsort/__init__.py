@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import csv, heapq, logging, multiprocessing, os, sys, tempfile
+import concurrent.futures, csv, heapq, logging, multiprocessing, os, sys, tempfile
 if sys.version_info.major == 2:
     from io import open
 from optparse import OptionParser
@@ -61,9 +61,17 @@ def csvsort(input_filename,
 
         if parallel:
             concurrency = multiprocessing.cpu_count()
-            with multiprocessing.Pool(processes=concurrency) as pool:
-                map_args = [(filename, columns, numeric_column, encoding) for filename in filenames]
-                pool.starmap(memorysort, map_args)
+            map_args = [(filename, columns, numeric_column, encoding) for filename in filenames]
+            if not getattr(sys, "_is_gil_enabled", lambda: True)():
+                # free-threaded Python: threads sort in parallel, and forking
+                # the (multi-threaded) hub process wouldn't be safe
+                with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+                    for future in [executor.submit(memorysort, *args) for args in map_args]:
+                        future.result()
+            else:
+                # Python 3.14 defaults to "forkserver", which re-imports the hub in every worker
+                with multiprocessing.get_context("fork").Pool(processes=concurrency) as pool:
+                    pool.starmap(memorysort, map_args)
         else:
             for filename in filenames:
                 memorysort(filename, columns, numeric_column, encoding)

@@ -228,3 +228,46 @@ assert client.closed is True
 assert dumper._state["client"] is None
 """
     )
+
+
+def test_fda_orphan_drug_export_rejects_corrupted_responses():
+    run_source_test(
+        r"""
+fda_module = load_source_module("fda_orphan_drug", "fda_orphan_drug_dump")
+
+
+class Response:
+    headers = {"Content-Type": "application/msexcel;charset=UTF-8"}
+
+    def __init__(self, content):
+        self.content = content
+
+    def raise_for_status(self):
+        return None
+
+
+class Client:
+    def __init__(self, content):
+        self.content = content
+
+    def post(self, url, data, timeout):
+        assert url == fda_module.FDAOrphanDrugDumper.SEARCH_URL
+        assert data["Output_Format"] == "Excel"
+        return Response(self.content)
+
+
+export = b"<table><tr><th>Generic Name</th></tr><tr><td>olezarsen</td></tr></table>"
+dumper = fda_module.FDAOrphanDrugDumper.__new__(fda_module.FDAOrphanDrugDumper)
+dumper._state = {"client": Client(export)}
+assert dumper.fetch_export() == export
+
+# full size, but most of it zeroed, like one export on 2026-10-22
+dumper._state = {"client": Client(export[:40] + bytes(len(export) - 40))}
+try:
+    dumper.fetch_export()
+except ValueError as exc:
+    assert "NUL bytes" in str(exc)
+else:
+    raise AssertionError("A zeroed export was accepted")
+"""
+    )

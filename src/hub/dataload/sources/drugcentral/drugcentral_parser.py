@@ -10,11 +10,17 @@ def empty_string_to_none(value):
     return None if value == '' else value
 
 
-def process_pharmacology_action(file_path_pharma_class):
-    # Use a dictionary comprehension to apply this converter to every column
-    columns = ['_id', 'struc_id', 'role', 'description', 'code', 'source']
+def read_drugcentral_csv(file_path, columns):
+    """Read a DrugCentral CSV export, with empty cells as None."""
     converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_pharma_class = pd.read_csv(file_path_pharma_class, sep=",", names=columns, skiprows=1, converters=converters)
+    df = pd.read_csv(file_path, sep=",", names=columns, skiprows=1, converters=converters)
+    # pandas 3 stores the converters' None as NaN in its string columns
+    return df.astype(object).where(pd.notnull(df), None)
+
+
+def process_pharmacology_action(file_path_pharma_class):
+    columns = ['_id', 'struc_id', 'role', 'description', 'code', 'source']
+    df_drugcentral_pharma_class = read_drugcentral_csv(file_path_pharma_class, columns)
     df_drugcentral_pharma_class['source_name'] = df_drugcentral_pharma_class.apply(
         lambda row: row.source + '_' + row.role, axis=1)
     df_drugcentral_pharma_class = df_drugcentral_pharma_class.where(
@@ -36,8 +42,7 @@ def process_faers(file_path_faers):
     # TODO: JSON field naming needs to be confirmed
     """
     columns = ['_id', 'struc_id', 'meddra_term', 'meddra_code', 'level', 'llr', 'llr_threshold', 'drug_ae', 'drug_no_ae', 'no_drug_ae', 'no_drug_no_ar']
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_faers = pd.read_csv(file_path_faers, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_faers = read_drugcentral_csv(file_path_faers, columns)
     d = []
     for strucid, subdf in df_drugcentral_faers.groupby('struc_id'):
         records = subdf.to_dict(orient="records")
@@ -53,8 +58,7 @@ def process_act(file_path_act):
                "gene", "swissprot", "act_value", "act_unit", "act_type", "act_comment",
                "act_source", "relation", "moa", "moa_source", "act_source_url", "moa_source_url",
                "action_type", "first_in_class", "tdl", "act_ref_id", "moa_ref_id", "organism"]
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_act = pd.read_csv(file_path_act, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_act = read_drugcentral_csv(file_path_act, columns)
     d = []
     for strucid, subdf in df_drugcentral_act.groupby('struct_id'):
         records = subdf.to_dict(orient="records")
@@ -89,8 +93,7 @@ def process_act(file_path_act):
 
 def process_omop(file_path_omop):
     columns = ['_id', 'struct_id', 'concept_id', 'relationship_name', 'concept_name', 'umls_cui', 'snomed_full_name', 'cui_semantic_type', 'snomed_conceptid']
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_omop = pd.read_csv(file_path_omop, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_omop = read_drugcentral_csv(file_path_omop, columns)
     d = []
     for strucid, subdf in df_drugcentral_omop.groupby('struct_id'):
         records = subdf.to_dict(orient="records")
@@ -107,8 +110,7 @@ def process_omop(file_path_omop):
 
 def process_approval(file_path_approval):
     columns = ['_id', 'struct_id', 'date', 'agency', 'company', 'orphan']
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_approval = pd.read_csv(file_path_approval, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_approval = read_drugcentral_csv(file_path_approval, columns)
     df_drugcentral_approval = df_drugcentral_approval.where(
         (pd.notnull(df_drugcentral_approval)), None)
     d = []
@@ -123,8 +125,7 @@ def process_approval(file_path_approval):
 
 def process_drug_dosage(file_path_drug_dosage):
     columns = ['_id', 'atc_code', 'dosage', 'unit', 'route', 'comment', 'struct_id']
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_drug_dosage = pd.read_csv(file_path_drug_dosage, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_drug_dosage = read_drugcentral_csv(file_path_drug_dosage, columns)
     d = []
     for strucid, subdf in df_drugcentral_drug_dosage.groupby('struct_id'):
         records = subdf.to_dict(orient="records")
@@ -137,8 +138,7 @@ def process_drug_dosage(file_path_drug_dosage):
 
 def process_synonym(file_path_synonym):
     columns = ['_id', 'struct_id', 'synonym', 'pref', 'parent', 's2']
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_synonym = pd.read_csv(file_path_synonym, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_synonym = read_drugcentral_csv(file_path_synonym, columns)
     d = []
     for strucid, subdf in df_drugcentral_synonym.groupby('struct_id'):
         records = subdf.to_dict(orient="records")
@@ -154,8 +154,7 @@ def process_synonym(file_path_synonym):
 
 def process_structure(file_path_structure):
     columns = ["_id", "inchi", "inchikey", "smiles", "cas_rn", "inn"]
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_structure = pd.read_csv(file_path_structure, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_structure = read_drugcentral_csv(file_path_structure, columns)
     d = []
     for strucid, subdf in df_drugcentral_structure.groupby('_id'):
         records = subdf.to_dict(orient="records")
@@ -168,8 +167,7 @@ def process_structure(file_path_structure):
 
 def process_identifier(file_path_identifier):
     columns = ["_id", "identifier", "id_type", "struct_id", "parent"]
-    converters = {column: empty_string_to_none for column in columns}
-    df_drugcentral_identifier = pd.read_csv(file_path_identifier, sep=",", names=columns, skiprows=1, converters=converters)
+    df_drugcentral_identifier = read_drugcentral_csv(file_path_identifier, columns)
     d = []
     for strucid, subdf in df_drugcentral_identifier.groupby('struct_id'):
         records = subdf.to_dict(orient="records")

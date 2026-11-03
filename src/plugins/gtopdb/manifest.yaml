@@ -1,8 +1,9 @@
 version: '0.2'
 requires:
-  - "numpy==1.26.4"
-  - "pandas==2.2.2"
-  - "lxml==5.2.2"
+  # names only: the hub runs "pip show <requirement>" and pip-installs what it can't find,
+  # so a pinned version would reinstall over the hub's own numpy/pandas
+  - "numpy"
+  - "pandas"
 __metadata__:
   license_url: https://www.guidetopharmacology.org/download.jsp
   license: CC BY-SA 4.0

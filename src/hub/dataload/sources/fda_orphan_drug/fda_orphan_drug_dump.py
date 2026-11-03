@@ -51,6 +51,12 @@ class FDAOrphanDrugDumper(HTTPDumper):
             raise ValueError(
                 "FDA orphan-drug response is not the expected Excel export"
             )
+        # A full-size export with a zeroed span (seen once on 2026-10-22) parses to one row:
+        # fail the dump so the current release is kept and the next run retries
+        if b"\x00" in response.content:
+            raise ValueError(
+                "FDA orphan-drug export contains NUL bytes: the response is corrupted"
+            )
         return response.content
 
     def create_todump_list(self, force=False, **kwargs):

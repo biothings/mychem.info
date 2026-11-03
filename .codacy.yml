@@ -9,3 +9,4 @@ engines:
     exclude_paths:
       - 'src/tests/test_remote.py'
       - 'src/tests/test_local.py'
+      - 'src/tests/test_free_threading.py'

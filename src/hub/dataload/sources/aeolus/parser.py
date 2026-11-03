@@ -106,8 +106,7 @@ def main():
     df = pd.merge(unii[['unii', 'pt', 'rxcui', 'inchikey']], aeolus, how="right", left_on="rxcui", right_on="drug_rxcui")
 
     # specify id as inchikey if exists, else unii
-    df['drug_mongo_id'] = df.inchikey
-    df.drug_mongo_id.fillna(df.unii, inplace=True)
+    df['drug_mongo_id'] = df.inchikey.fillna(df.unii)
 
     # write missing
     df[df.drug_mongo_id.isnull()][['drug_id', 'drug_name', 'unii', 'drug_rxcui']].drop_duplicates().to_csv("missing.csv", index=None)
